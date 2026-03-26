@@ -1,9 +1,7 @@
-/**
- * Render Blueprint Specification
- * 
- * This file allows one-click deployment of the entire stack on Render.
- * It defines a managed PostgreSQL database and two Web Services (Server and Client).
- */
+# Render Blueprint Specification
+#
+# This file allows one-click deployment of the entire stack on Render.
+# It defines a managed PostgreSQL database and two Web Services (Server and Client).
 
 services:
   # 1. API Server (Node.js Docker)
