@@ -1,8 +1,8 @@
 import { pgTable, integer, uuid, pgEnum, numeric, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { timestamps, userTracking } from './base.schema';
-import { organizations, baseColumns } from './core';
-import { suppliers, products } from './master';
+import { timestamps, userTracking } from './base.schema.js';
+import { organizations, baseColumns } from './core.js';
+import { suppliers, products } from './master.js';
 
 export const purchaseOrderStatusEnum = pgEnum('purchase_order_status', [
   'draft',

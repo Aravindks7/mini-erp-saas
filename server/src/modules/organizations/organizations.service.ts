@@ -1,5 +1,10 @@
-import { db } from '../../db';
-import { organizations, organizationMemberships, user, organizationInvites } from '../../db/schema';
+import { db } from '../../db/index.js';
+import {
+  organizations,
+  organizationMemberships,
+  user,
+  organizationInvites,
+} from '../../db/schema/index.js';
 import { and, eq, sql } from 'drizzle-orm';
 
 export class OrganizationsService {

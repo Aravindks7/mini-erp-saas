@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { customersService } from './customers.service';
-import { createCustomerSchema, updateCustomerSchema } from './customers.schema';
-import { logger } from '../../utils/logger';
+import { customersService } from './customers.service.js';
+import { createCustomerSchema, updateCustomerSchema } from './customers.schema.js';
+import { logger } from '../../utils/logger.js';
 
 export async function listCustomers(req: Request, res: Response) {
   const organizationId = req.organizationId;

@@ -1,7 +1,7 @@
 import { pgTable, text, uuid, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { timestamps, userTracking } from './base.schema';
-import { organizationMemberships } from './auth';
+import { timestamps, userTracking } from './base.schema.js';
+import { organizationMemberships } from './auth.js';
 
 // ---------------------------------------------------------------------------
 // Organizations Table

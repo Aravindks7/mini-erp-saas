@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { fromNodeHeaders } from 'better-auth/node';
-import { auth } from '../lib/auth';
-import { db } from '../db';
-import { organizationMemberships } from '../db/schema';
+import { auth } from '../lib/auth.js';
+import { db } from '../db/index.js';
+import { organizationMemberships } from '../db/schema/index.js';
 import { eq, and } from 'drizzle-orm';
-import { logger } from '../utils/logger';
-import { setTenant } from '../db/setTenant';
+import { logger } from '../utils/logger.js';
+import { setTenant } from '../db/setTenant.js';
 
 /**
  * Tenant-aware authentication middleware.

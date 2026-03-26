@@ -1,7 +1,7 @@
 import { pgTable, text, timestamp, index, uniqueIndex, pgEnum, numeric } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
-import { timestamps, userTracking } from './base.schema';
-import { organizations, baseColumns } from './core';
+import { timestamps, userTracking } from './base.schema.js';
+import { organizations, baseColumns } from './core.js';
 
 export const customerStatusEnum = pgEnum('customer_status', ['active', 'inactive']);
 

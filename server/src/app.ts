@@ -1,14 +1,23 @@
 import 'dotenv/config';
 import express from 'express';
+import cors from 'cors';
 import { toNodeHandler } from 'better-auth/node';
-import { httpLogger } from './utils/httpLogger';
-import { errorMiddleware } from './middleware/error.middleware';
-import { auth } from './lib/auth';
+import { httpLogger } from './utils/httpLogger.js';
+import { errorMiddleware } from './middleware/error.middleware.js';
+import { auth } from './lib/auth.js';
 
-import customersRoutes from './modules/customers/customers.routes';
-import organizationsRoutes from './modules/organizations/organizations.routes';
+import customersRoutes from './modules/customers/customers.routes.js';
+import organizationsRoutes from './modules/organizations/organizations.routes.js';
 
 const app = express();
+
+app.use(
+  cors({
+    origin: ['http://localhost:5173'], // Vite dev server
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-organization-id'],
+  }),
+);
 
 /**
  * IMPORTANT: The Better Auth handler MUST be mounted BEFORE express.json().
