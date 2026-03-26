@@ -34,10 +34,7 @@ services:
     plan: free
     envVars:
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: erp-saas-api
-          property: host
+        value: https://erp-saas-api.onrender.com
 
 databases:
   # Managed PostgreSQL
