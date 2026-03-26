@@ -1,22 +1,54 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
-import { app } from '../app';
-import { auth } from '../lib/auth';
-import { db } from '../db';
-import { organizationInvites, organizationMemberships } from '../db/schema';
+import { app } from '../app.js';
+import { auth } from '../lib/auth.js';
+import { db } from '../db/index.js';
+import { organizationInvites, organizationMemberships } from '../db/schema/index.js';
 
 // Mock auth and db
-vi.mock('../lib/auth', () => ({
+vi.mock('../lib/auth.js', () => ({
   auth: {
     api: {
       getSession: vi.fn(),
     },
+    handler: vi.fn(),
   },
 }));
 
 // Mock db
-vi.mock('../db', () => ({
+vi.mock('../db/index.js', () => ({
   db: {
+    transaction: vi.fn(
+      async (cb) =>
+        await cb({
+          insert: vi.fn(() => ({
+            values: vi
+              .fn()
+              .mockReturnThis()
+              .mockReturnValue({
+                returning: vi.fn().mockResolvedValue([{ id: 'trans-id' }]),
+              }),
+          })),
+          update: vi.fn(() => ({
+            set: vi
+              .fn()
+              .mockReturnThis()
+              .mockReturnValue({
+                where: vi
+                  .fn()
+                  .mockReturnThis()
+                  .mockReturnValue({
+                    returning: vi.fn().mockResolvedValue([{ id: 'trans-up-id' }]),
+                  }),
+              }),
+          })),
+          query: {
+            organizationInvites: {
+              findMany: vi.fn(),
+            },
+          },
+        }),
+    ),
     query: {
       organizationMemberships: {
         findFirst: vi.fn(),
@@ -49,37 +81,6 @@ vi.mock('../db', () => ({
             }),
         }),
     })),
-    transaction: vi.fn(
-      async (cb) =>
-        await cb({
-          insert: vi.fn(() => ({
-            values: vi
-              .fn()
-              .mockReturnThis()
-              .mockReturnValue({
-                returning: vi.fn().mockResolvedValue([{ id: 'trans-id' }]),
-              }),
-          })),
-          update: vi.fn(() => ({
-            set: vi
-              .fn()
-              .mockReturnThis()
-              .mockReturnValue({
-                where: vi
-                  .fn()
-                  .mockReturnThis()
-                  .mockReturnValue({
-                    returning: vi.fn().mockResolvedValue([{ id: 'trans-up-id' }]),
-                  }),
-              }),
-          })),
-          query: {
-            organizationInvites: {
-              findMany: vi.fn(),
-            },
-          },
-        }),
-    ),
   },
 }));
 
@@ -161,7 +162,7 @@ describe('Invitations Module Integration', () => {
     it('should process pending invites when a new user signs up', async () => {
       // This is a unit test for the service method called by the hook
       const { organizationsService } =
-        await import('../modules/organizations/organizations.service');
+        await import('../modules/organizations/organizations.service.js');
 
       const mockInvite = {
         id: 'invite-1',

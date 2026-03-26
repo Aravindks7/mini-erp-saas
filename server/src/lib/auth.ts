@@ -1,9 +1,9 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { db } from '../db';
-import * as schema from '../db/schema';
+import { db } from '../db/index.js';
+import * as schema from '../db/schema/index.js';
 
-import { organizationsService } from '../modules/organizations/organizations.service';
+import { organizationsService } from '../modules/organizations/organizations.service.js';
 
 /**
  * Central Better Auth instance.

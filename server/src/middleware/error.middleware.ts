@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
-import { logger } from '../utils/logger';
-import { AppError } from '../utils/AppError';
+import { logger } from '../utils/logger.js';
+import { AppError } from '../utils/AppError.js';
 
 export function errorMiddleware(
   err: Error | AppError | ZodError | unknown,

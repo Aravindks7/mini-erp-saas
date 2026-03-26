@@ -1,8 +1,8 @@
 import { pgTable, integer, uuid, text, index, uniqueIndex, pgEnum } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { timestamps, userTracking } from './base.schema';
-import { organizations, baseColumns } from './core';
-import { products } from './master';
+import { timestamps, userTracking } from './base.schema.js';
+import { organizations, baseColumns } from './core.js';
+import { products } from './master.js';
 
 export const inventoryReferenceTypeEnum = pgEnum('inventory_reference_type', [
   'po_receipt',

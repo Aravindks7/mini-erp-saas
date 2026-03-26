@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
-import { app } from '../app';
-import { auth } from '../lib/auth';
-import { db } from '../db';
-import { organizationMemberships } from '../db/schema';
+import { app } from '../app.js';
+import { auth } from '../lib/auth.js';
+import { db } from '../db/index.js';
+import { organizationMemberships } from '../db/schema/index.js';
 
 // Mock auth and db
 vi.mock('../lib/auth', () => ({
@@ -11,6 +11,7 @@ vi.mock('../lib/auth', () => ({
     api: {
       getSession: vi.fn(),
     },
+    handler: vi.fn(),
   },
 }));
 
@@ -19,7 +20,7 @@ const mockReturning = vi.fn().mockResolvedValue([{ id: 'new-customer-id', firstN
 const mockSet = vi.fn().mockReturnThis();
 const mockWhere = vi.fn().mockReturnThis();
 
-vi.mock('../db', () => ({
+vi.mock('../db/index.js', () => ({
   db: {
     query: {
       organizationMemberships: {

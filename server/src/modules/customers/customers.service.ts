@@ -1,9 +1,9 @@
-import { db } from '../../db';
-import { customers } from '../../db/schema/master';
+import { db } from '../../db/index.js';
+import { customers } from '../../db/schema/master.js';
 import { and, eq, sql } from 'drizzle-orm';
-import { CreateCustomerInput, UpdateCustomerInput } from './customers.schema';
+import { CreateCustomerInput, UpdateCustomerInput } from './customers.schema.js';
 
-import { BaseService } from '../../lib/base.service';
+import { BaseService } from '../../lib/base.service.js';
 
 export class CustomersService extends BaseService<typeof customers> {
   constructor() {
