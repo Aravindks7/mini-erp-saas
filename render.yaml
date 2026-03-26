@@ -9,7 +9,7 @@ services:
     name: erp-saas-api
     env: docker
     dockerContext: server
-    dockerfilePath: Dockerfile
+    dockerfilePath: server/Dockerfile
     plan: free # Change to 'starter' or higher for production use
     envVars:
       - key: NODE_ENV
@@ -30,7 +30,7 @@ services:
     name: erp-saas-client
     env: docker
     dockerContext: client
-    dockerfilePath: Dockerfile
+    dockerfilePath: client/Dockerfile
     plan: free
     envVars:
       - key: VITE_API_URL
