@@ -12,7 +12,6 @@ export const customers = pgTable(
     ...timestamps,
     ...userTracking,
 
-    displayName: text('display_name').notNull(),
     firstName: text('first_name'),
     lastName: text('last_name'),
     companyName: text('company_name'),
@@ -38,6 +37,8 @@ export const customersRelations = relations(customers, ({ one }) => ({
   }),
 }));
 
+export const productStatusEnum = pgEnum('product_status', ['active', 'inactive']);
+
 export const products = pgTable(
   'products',
   {
@@ -49,11 +50,16 @@ export const products = pgTable(
     name: text('name').notNull(),
     description: text('description'),
     basePrice: numeric('base_price', { precision: 12, scale: 2 }).notNull(),
+
+    status: productStatusEnum('status').default('active').notNull(),
+    deletedAt: timestamp('deleted_at'),
   },
   (table) => [
     index('products_org_idx').on(table.organizationId),
     index('products_name_idx').on(table.name),
-    uniqueIndex('products_org_sku_unique').on(table.organizationId, table.sku),
+    uniqueIndex('products_org_sku_unique')
+      .on(table.organizationId, table.sku)
+      .where(sql`${table.sku} IS NOT NULL AND ${table.deletedAt} IS NULL`),
   ],
 );
 
@@ -63,6 +69,8 @@ export const productsRelations = relations(products, ({ one }) => ({
     references: [organizations.id],
   }),
 }));
+
+export const supplierStatusEnum = pgEnum('supplier_status', ['active', 'inactive']);
 
 export const suppliers = pgTable(
   'suppliers',
@@ -74,6 +82,9 @@ export const suppliers = pgTable(
     name: text('name').notNull(),
     contactEmail: text('contact_email'),
     contactPhone: text('contact_phone'),
+
+    status: supplierStatusEnum('status').default('active').notNull(),
+    deletedAt: timestamp('deleted_at'),
   },
   (table) => [
     index('suppliers_org_idx').on(table.organizationId),
@@ -87,3 +98,12 @@ export const suppliersRelations = relations(suppliers, ({ one }) => ({
     references: [organizations.id],
   }),
 }));
+
+export type Customer = typeof customers.$inferSelect;
+export type NewCustomer = typeof customers.$inferInsert;
+
+export type Product = typeof products.$inferSelect;
+export type NewProduct = typeof products.$inferInsert;
+
+export type Supplier = typeof suppliers.$inferSelect;
+export type NewSupplier = typeof suppliers.$inferInsert;

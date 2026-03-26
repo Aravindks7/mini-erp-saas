@@ -80,3 +80,9 @@ export const purchaseOrderLinesRelations = relations(purchaseOrderLines, ({ one 
     references: [products.id],
   }),
 }));
+
+export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
+export type NewPurchaseOrder = typeof purchaseOrders.$inferInsert;
+
+export type PurchaseOrderLine = typeof purchaseOrderLines.$inferSelect;
+export type NewPurchaseOrderLine = typeof purchaseOrderLines.$inferInsert;

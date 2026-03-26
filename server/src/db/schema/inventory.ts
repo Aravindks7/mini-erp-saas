@@ -5,11 +5,11 @@ import { organizations, baseColumns } from './core';
 import { products } from './master';
 
 export const inventoryReferenceTypeEnum = pgEnum('inventory_reference_type', [
-  'PO_RECEIPT',
-  'SO_SHIPMENT',
-  'ADJUSTMENT',
-  'TRANSFER',
-  'STOCK_COUNT',
+  'po_receipt',
+  'so_shipment',
+  'adjustment',
+  'transfer',
+  'stock_count',
 ]);
 
 export const inventoryLevels = pgTable(
@@ -74,3 +74,9 @@ export const inventoryLedgersRelations = relations(inventoryLedgers, ({ one }) =
     references: [products.id],
   }),
 }));
+
+export type InventoryLevel = typeof inventoryLevels.$inferSelect;
+export type NewInventoryLevel = typeof inventoryLevels.$inferInsert;
+
+export type InventoryLedger = typeof inventoryLedgers.$inferSelect;
+export type NewInventoryLedger = typeof inventoryLedgers.$inferInsert;

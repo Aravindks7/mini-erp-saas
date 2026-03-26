@@ -1,29 +1,74 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../utils/jwt';
+import { fromNodeHeaders } from 'better-auth/node';
+import { auth } from '../lib/auth';
+import { db } from '../db';
+import { organizationMemberships } from '../db/schema';
+import { eq, and } from 'drizzle-orm';
+import { logger } from '../utils/logger';
+import { setTenant } from '../db/setTenant';
 
-export function authMiddleware(req: Request, res: Response, next: NextFunction) {
-  const authHeader = req.headers.authorization;
+/**
+ * Tenant-aware authentication middleware.
+ *
+ * 1. Validates the Better Auth session from the incoming cookie/bearer token.
+ * 2. Reads the `x-organization-id` header and verifies the caller has a membership.
+ * 3. Sets the PostgreSQL session variable for RLS using `setTenant`.
+ * 4. Attaches `req.authSession`, `req.organizationId`, and `req.userRole` for downstream use.
+ *
+ * Apply this middleware to any route that requires a signed-in, tenant-scoped user.
+ */
+export async function authMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  // Step 1 — verify the Better Auth session
+  const sessionData = await auth.api.getSession({
+    headers: fromNodeHeaders(req.headers),
+  });
 
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  if (!sessionData) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
   }
 
-  const token = authHeader.split(' ')[1];
+  // Step 2 — resolve and validate the target organization
+  const orgId = req.headers['x-organization-id'];
 
-  if (!token) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  if (!orgId || typeof orgId !== 'string') {
+    res.status(400).json({ error: 'Missing required header: x-organization-id' });
+    return;
   }
 
-  try {
-    const payload = verifyToken(token) as {
-      userId: string;
-      organizationId: string;
-      role: string;
-    };
+  const membership = await db.query.organizationMemberships.findFirst({
+    where: and(
+      eq(organizationMemberships.userId, sessionData.user.id),
+      eq(organizationMemberships.organizationId, orgId),
+    ),
+    with: {
+      organization: true,
+    },
+  });
 
-    (req as any).user = payload;
-    next();
-  } catch {
-    return res.status(401).json({ error: 'Invalid token' });
+  if (!membership || !membership.organization) {
+    logger.warn(
+      { userId: sessionData.user.id, orgId },
+      'Tenant access denied — user is not a member or organization does not exist',
+    );
+    res.status(403).json({ error: 'Forbidden: You do not have access to this organization' });
+    return;
   }
+
+  // Step 3 — set PostgreSQL session context for RLS
+  // NOTE: This setting is local to the current session. In a pooled environment,
+  // we rely on the middleware always setting this before any DB operation.
+  // Manual filters (where clauses) in services provide a secondary layer of isolation.
+  await setTenant(orgId);
+
+  // Step 4 — attach to request for downstream handlers
+  req.authSession = sessionData;
+  req.organizationId = orgId;
+  req.userRole = membership.role;
+
+  next();
 }

@@ -1,23 +1,18 @@
-import { Router, Request } from 'express';
-import { eq } from 'drizzle-orm';
+import { Router } from 'express';
 import { authMiddleware } from '../../middleware/auth.middleware';
-import { db } from '../../db';
-import { customers } from '../../db/schema';
+import * as customersController from './customers.controller';
 
-interface AuthRequest extends Request {
-  user?: { organizationId: string; userId: string; role: string };
-}
+import { requireRole } from '../../middleware/role.middleware';
 
 const router = Router();
 
-router.get('/', authMiddleware, async (req: AuthRequest, res) => {
-  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-  const result = await db
-    .select()
-    .from(customers)
-    .where(eq(customers.organizationId, req.user.organizationId));
+// All customers routes require a valid session + a matched org membership.
+router.use(authMiddleware);
 
-  res.json(result);
-});
+router.get('/', customersController.listCustomers);
+router.get('/:id', customersController.getCustomer);
+router.post('/', customersController.createCustomer);
+router.patch('/:id', customersController.updateCustomer);
+router.delete('/:id', requireRole(['admin']), customersController.deleteCustomer);
 
 export default router;

@@ -1,5 +1,6 @@
 export * from './base.schema';
 export * from './core';
+export * from './auth';
 export * from './master';
 export * from './inventory';
 export * from './sales';
