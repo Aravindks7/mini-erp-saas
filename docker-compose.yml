@@ -24,7 +24,7 @@ services:
       db:
         condition: service_healthy
 
-  server:
+  erp-saas-api:
     build:
       context: ./server
       dockerfile: Dockerfile
@@ -56,7 +56,7 @@ services:
       timeout: 10s
       retries: 3
     depends_on:
-      server:
+      erp-saas-api:
         condition: service_healthy
 
 volumes:
