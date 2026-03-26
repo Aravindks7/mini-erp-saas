@@ -11,6 +11,8 @@ import organizationsRoutes from './modules/organizations/organizations.routes.js
 
 const app = express();
 
+app.set('trust proxy', true);
+
 app.use(
   cors({
     origin: ['http://localhost:5173', ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL] : [])],
@@ -22,13 +24,10 @@ app.use(
 /**
  * IMPORTANT: The Better Auth handler MUST be mounted BEFORE express.json().
  * It reads the raw request body internally; parsing it first would break it.
- *
- * All auth routes are available at /api/auth/*
- * e.g. POST /api/auth/sign-up/email, POST /api/auth/sign-in/email
  */
 app.use((req, res, next) => {
   if (req.url.startsWith('/api/auth')) {
-    return toNodeHandler(auth.handler)(req, res);
+    return toNodeHandler(auth)(req, res);
   }
   next();
 });

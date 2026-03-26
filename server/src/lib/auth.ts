@@ -13,6 +13,7 @@ import { organizationsService } from '../modules/organizations/organizations.ser
  * - trustedOrigins must list every frontend origin that sends credentials.
  */
 export const auth = betterAuth({
+  baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3000',
   database: drizzleAdapter(db, {
     provider: 'pg',
     schema: {
@@ -47,6 +48,11 @@ export const auth = betterAuth({
     database: {
       generateId: false,
     },
+    /**
+     * Required for Render/Proxies to correctly detect HTTPS and Client IP.
+     * Prevents "500 Internal Server Error" during cookie/session operations.
+     */
+    trustProxy: true,
   },
 });
 
