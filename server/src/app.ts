@@ -13,7 +13,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: ['http://localhost:5173'], // Vite dev server
+    origin: ['http://localhost:5173', ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL] : [])],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'x-organization-id'],
   }),
