@@ -54,6 +54,16 @@ export const auth = betterAuth({
      * Prevents "500 Internal Server Error" during cookie/session operations.
      */
     trustProxy: true,
+    /**
+     * Explicitly set cookie options for production (different subdomains on onrender.com).
+     * Browsers require SameSite=None and Secure for cross-site cookies.
+     */
+    cookieOptions: {
+      server: {
+        sameSite: 'none',
+        secure: true,
+      },
+    },
   },
   plugins: [dash(), organization()],
 });
