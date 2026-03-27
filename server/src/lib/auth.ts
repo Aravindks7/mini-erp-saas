@@ -1,4 +1,5 @@
 import { betterAuth } from 'better-auth';
+import { dash } from '@better-auth/infra';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from '../db/index.js';
 import * as schema from '../db/schema/index.js';
@@ -54,6 +55,7 @@ export const auth = betterAuth({
      */
     trustProxy: true,
   },
+  plugins: [dash()],
 });
 
 // Export the inferred type for use in middleware
