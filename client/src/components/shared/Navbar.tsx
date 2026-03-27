@@ -2,17 +2,26 @@ import { Button } from '@/components/ui/button';
 import { Bell, LogOut, User } from 'lucide-react';
 import { OrganizationSwitcher } from '@/components/ui/OrganizationSwitcher';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { signOut } from '@/lib/auth-client';
+import { AUTH_QUERY_KEY } from '@/hooks/use-auth-session';
 import { useNavigate } from 'react-router-dom';
 
 export default function Navbar() {
   const { data: session } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
+  const { mutate: handleSignOut } = useMutation({
+    mutationFn: async () => {
+      await signOut();
+    },
+    onSuccess: async () => {
+      // Clear session from cache and navigate to login
+      await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+      navigate('/login');
+    },
+  });
 
   return (
     <header className="h-16 border-b bg-background flex items-center justify-between px-6 sticky top-0 z-30">
@@ -42,7 +51,7 @@ export default function Navbar() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleSignOut}
+            onClick={() => handleSignOut()}
             className="text-muted-foreground hover:text-destructive transition-colors"
             title="Sign Out"
           >
