@@ -1,14 +1,14 @@
 import { createContext, useContext, type ReactNode } from 'react';
-import { useSession } from '../lib/auth-client';
+import { useAuthSession } from '../hooks/use-auth-session';
 
 // Define the shape of our authentication context
-type AuthContextType = ReturnType<typeof useSession>;
+type AuthContextType = ReturnType<typeof useAuthSession>;
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  // Use the Better Auth hook to manage session state
-  const sessionData = useSession();
+  // Use the standardized TanStack Query hook to manage session state
+  const sessionData = useAuthSession();
 
   return <AuthContext.Provider value={sessionData}>{children}</AuthContext.Provider>;
 };

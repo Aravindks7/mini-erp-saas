@@ -7,10 +7,16 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
 
   if (isPending) {
-    // Return a minimal loading state while standardizing auth checks
+    // Return a minimal loading state while standardizing auth checks.
+    // This is especially important after sign-in/register when we invalidate the session.
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <div className="text-sm text-zinc-500 animate-pulse">Loading session...</div>
+        <div className="flex flex-col items-center gap-2">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="text-sm text-zinc-500 font-medium animate-pulse">
+            Verifying session...
+          </div>
+        </div>
       </div>
     );
   }
