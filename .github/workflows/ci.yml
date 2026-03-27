@@ -50,12 +50,13 @@ jobs:
       - name: Build
         run: npm run build
 
-  docker-build:
+  deploy:
+    name: Deploy to Render
     needs: [server-ci, client-ci]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Build Server Image
-        run: docker build -t erp-saas-server ./server
-      - name: Build Client Image
-        run: docker build -t erp-saas-client ./client
+      - name: Trigger Server Deploy
+        run: curl -s "${{ secrets.RENDER_DEPLOY_HOOK_SERVER }}"
+      - name: Trigger Client Deploy
+        run: curl -s "${{ secrets.RENDER_DEPLOY_HOOK_CLIENT }}"
