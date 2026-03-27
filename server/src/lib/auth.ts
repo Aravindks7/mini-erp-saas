@@ -15,7 +15,7 @@ import { organizationsService } from '../modules/organizations/organizations.ser
  * - trustedOrigins must list every frontend origin that sends credentials.
  */
 export const auth = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3000',
+  baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3000/api/auth',
   database: drizzleAdapter(db, {
     provider: 'pg',
     schema: {
@@ -59,10 +59,8 @@ export const auth = betterAuth({
      * Browsers require SameSite=None and Secure for cross-site cookies.
      */
     cookieOptions: {
-      server: {
-        sameSite: 'none',
-        secure: true,
-      },
+      sameSite: 'none',
+      secure: true,
     },
   },
   plugins: [dash(), organization()],
