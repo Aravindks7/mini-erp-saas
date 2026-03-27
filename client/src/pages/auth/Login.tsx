@@ -1,9 +1,6 @@
-import { useState } from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Controller, useForm } from 'react-hook-form';
-import * as z from 'zod';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { signIn } from '@/lib/auth-client';
+import { Controller } from 'react-hook-form';
+import { Link } from 'react-router-dom';
+import { useLogin } from '@/hooks/auth/use-login';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -16,45 +13,8 @@ import {
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 
-const formSchema = z.object({
-  email: z.string().email({ message: 'Please enter a valid email address.' }),
-  password: z.string().min(1, { message: 'Password is required.' }),
-});
-
 export default function LoginPage() {
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
-  });
-
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    setError(null);
-    setIsLoading(true);
-
-    const { error: signInError } = await signIn.email({
-      email: values.email,
-      password: values.password,
-    });
-
-    setIsLoading(false);
-
-    if (signInError) {
-      setError(signInError.message || 'Failed to sign in. Please verify your credentials.');
-      return;
-    }
-
-    // Navigate to the intended destination or dashboard
-    const from = location.state?.from?.pathname || '/';
-    navigate(from, { replace: true });
-  }
+  const { form, onSubmit, isLoggingIn } = useLogin();
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
@@ -68,7 +28,7 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form id="login-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 mt-2">
+          <form id="login-form" onSubmit={onSubmit} className="space-y-5 mt-2">
             <FieldGroup>
               <Controller
                 name="email"
@@ -110,7 +70,11 @@ export default function LoginPage() {
                 )}
               />
             </FieldGroup>
-            {error && <div className="text-sm font-medium text-destructive">{error}</div>}
+            {form.formState.errors.root && (
+              <div className="text-sm font-medium text-destructive">
+                {form.formState.errors.root.message}
+              </div>
+            )}
           </form>
         </CardContent>
         <CardFooter className="flex-col gap-4 border-t bg-muted/20 p-6">
@@ -118,9 +82,9 @@ export default function LoginPage() {
             type="submit"
             form="login-form"
             className="w-full h-11 text-base font-semibold transition-all"
-            disabled={isLoading}
+            disabled={isLoggingIn}
           >
-            {isLoading ? 'Signing in...' : 'Sign in'}
+            {isLoggingIn ? 'Signing in...' : 'Sign in'}
           </Button>
           <div className="text-sm text-center text-muted-foreground">
             <span className="mr-1">Don't have an account?</span>
