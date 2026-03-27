@@ -58,9 +58,10 @@ export const auth = betterAuth({
      * Explicitly set cookie options for production (different subdomains on onrender.com).
      * Browsers require SameSite=None and Secure for cross-site cookies.
      */
-    cookieOptions: {
+    defaultCookieAttributes: {
       sameSite: 'none',
       secure: true,
+      httpOnly: true,
     },
   },
   plugins: [dash(), organization()],
