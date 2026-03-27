@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { dash } from '@better-auth/infra';
+import { organization } from 'better-auth/plugins';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from '../db/index.js';
 import * as schema from '../db/schema/index.js';
@@ -41,7 +42,6 @@ export const auth = betterAuth({
     minPasswordLength: 8,
   },
   trustedOrigins: [
-    process.env.BETTER_AUTH_URL ?? 'http://localhost:3000',
     'http://localhost:5173', // Vite dev server
     ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL] : []),
   ],
@@ -55,7 +55,7 @@ export const auth = betterAuth({
      */
     trustProxy: true,
   },
-  plugins: [dash()],
+  plugins: [dash(), organization()],
 });
 
 // Export the inferred type for use in middleware
