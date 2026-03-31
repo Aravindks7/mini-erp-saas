@@ -1,6 +1,15 @@
-import { pgTable, integer, uuid, pgEnum, numeric, index } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
-import { timestamps, userTracking } from './base.schema.js';
+import {
+  pgTable,
+  uuid,
+  pgEnum,
+  numeric,
+  index,
+  check,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core';
+import { relations, sql } from 'drizzle-orm';
+import { timestamps, userTracking, versioning } from './base.schema.js';
 import { organizations, baseColumns } from './core.js';
 import { customers, products } from './master.js';
 
@@ -17,17 +26,20 @@ export const salesOrders = pgTable(
     ...baseColumns,
     ...timestamps,
     ...userTracking,
+    ...versioning,
 
     customerId: uuid('customer_id')
       .notNull()
       .references(() => customers.id),
+    documentNumber: text('document_number').notNull(),
     status: salesOrderStatusEnum('status').default('draft').notNull(),
-    totalAmount: numeric('total_amount', { precision: 12, scale: 2 }),
+    totalAmount: numeric('total_amount', { precision: 18, scale: 8 }),
   },
   (table) => [
     index('so_org_idx').on(table.organizationId),
     index('so_customer_idx').on(table.customerId),
     index('so_status_idx').on(table.status),
+    uniqueIndex('so_org_doc_unique').on(table.organizationId, table.documentNumber),
   ],
 );
 
@@ -43,6 +55,10 @@ export const salesOrdersRelations = relations(salesOrders, ({ one, many }) => ({
   lines: many(salesOrderLines),
 }));
 
+/**
+ * Sales order lines with absolute numeric precision.
+ * Precision: numeric(18, 8) ensures exact quantity tracking across conversions.
+ */
 export const salesOrderLines = pgTable(
   'sales_order_lines',
   {
@@ -56,13 +72,18 @@ export const salesOrderLines = pgTable(
     productId: uuid('product_id')
       .notNull()
       .references(() => products.id),
-    quantity: integer('quantity').notNull(),
-    unitPrice: numeric('unit_price', { precision: 12, scale: 2 }).notNull(),
+
+    quantity: numeric('quantity', { precision: 18, scale: 8 }).notNull(),
+    unitPrice: numeric('unit_price', { precision: 18, scale: 8 }).notNull(),
+    taxRateAtOrder: numeric('tax_rate_at_order', { precision: 18, scale: 8 }).notNull(),
+    taxAmount: numeric('tax_amount', { precision: 18, scale: 8 }).notNull(),
   },
   (table) => [
     index('so_lines_org_idx').on(table.organizationId),
     index('so_lines_order_idx').on(table.salesOrderId),
     index('so_lines_product_idx').on(table.productId),
+    check('so_lines_quantity_check', sql`${table.quantity} > 0`),
+    check('so_lines_price_check', sql`${table.unitPrice} >= 0`),
   ],
 );
 
@@ -82,7 +103,4 @@ export const salesOrderLinesRelations = relations(salesOrderLines, ({ one }) => 
 }));
 
 export type SalesOrder = typeof salesOrders.$inferSelect;
-export type NewSalesOrder = typeof salesOrders.$inferInsert;
-
 export type SalesOrderLine = typeof salesOrderLines.$inferSelect;
-export type NewSalesOrderLine = typeof salesOrderLines.$inferInsert;

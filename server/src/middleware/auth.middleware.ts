@@ -63,7 +63,7 @@ export async function authMiddleware(
   // NOTE: This setting is local to the current session. In a pooled environment,
   // we rely on the middleware always setting this before any DB operation.
   // Manual filters (where clauses) in services provide a secondary layer of isolation.
-  await setTenant(orgId);
+  await setTenant(orgId, sessionData.user.id);
 
   // Step 4 — attach to request for downstream handlers
   req.authSession = sessionData;
