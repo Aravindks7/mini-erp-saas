@@ -1,6 +1,15 @@
-import { pgTable, integer, uuid, pgEnum, numeric, index } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
-import { timestamps, userTracking } from './base.schema.js';
+import {
+  pgTable,
+  uuid,
+  pgEnum,
+  numeric,
+  index,
+  check,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core';
+import { relations, sql } from 'drizzle-orm';
+import { timestamps, userTracking, versioning } from './base.schema.js';
 import { organizations, baseColumns } from './core.js';
 import { suppliers, products } from './master.js';
 
@@ -17,17 +26,20 @@ export const purchaseOrders = pgTable(
     ...baseColumns,
     ...timestamps,
     ...userTracking,
+    ...versioning,
 
     supplierId: uuid('supplier_id')
       .notNull()
       .references(() => suppliers.id),
+    documentNumber: text('document_number').notNull(),
     status: purchaseOrderStatusEnum('status').default('draft').notNull(),
-    totalAmount: numeric('total_amount', { precision: 12, scale: 2 }),
+    totalAmount: numeric('total_amount', { precision: 18, scale: 8 }),
   },
   (table) => [
     index('po_org_idx').on(table.organizationId),
     index('po_supplier_idx').on(table.supplierId),
     index('po_status_idx').on(table.status),
+    uniqueIndex('po_org_doc_unique').on(table.organizationId, table.documentNumber),
   ],
 );
 
@@ -43,6 +55,10 @@ export const purchaseOrdersRelations = relations(purchaseOrders, ({ one, many })
   lines: many(purchaseOrderLines),
 }));
 
+/**
+ * Purchase order lines with absolute numeric precision.
+ * Precision: numeric(18, 8) ensures exact quantity tracking across conversions.
+ */
 export const purchaseOrderLines = pgTable(
   'purchase_order_lines',
   {
@@ -56,13 +72,18 @@ export const purchaseOrderLines = pgTable(
     productId: uuid('product_id')
       .notNull()
       .references(() => products.id),
-    quantity: integer('quantity').notNull(),
-    unitPrice: numeric('unit_price', { precision: 12, scale: 2 }).notNull(),
+
+    quantity: numeric('quantity', { precision: 18, scale: 8 }).notNull(),
+    unitPrice: numeric('unit_price', { precision: 18, scale: 8 }).notNull(),
+    taxRateAtOrder: numeric('tax_rate_at_order', { precision: 18, scale: 8 }).notNull(),
+    taxAmount: numeric('tax_amount', { precision: 18, scale: 8 }).notNull(),
   },
   (table) => [
     index('po_lines_org_idx').on(table.organizationId),
     index('po_lines_order_idx').on(table.purchaseOrderId),
     index('po_lines_product_idx').on(table.productId),
+    check('po_lines_quantity_check', sql`${table.quantity} > 0`),
+    check('po_lines_price_check', sql`${table.unitPrice} >= 0`),
   ],
 );
 
@@ -82,7 +103,37 @@ export const purchaseOrderLinesRelations = relations(purchaseOrderLines, ({ one 
 }));
 
 export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
-export type NewPurchaseOrder = typeof purchaseOrders.$inferInsert;
-
 export type PurchaseOrderLine = typeof purchaseOrderLines.$inferSelect;
-export type NewPurchaseOrderLine = typeof purchaseOrderLines.$inferInsert;
+
+/**
+ * Zod Validation Schemas
+ * Strictly enforces snapshot integrity for financial data.
+ */
+import { z } from 'zod';
+
+export const purchaseOrderLineSchema = z.object({
+  productId: z.uuid(),
+  quantity: z
+    .string()
+    .transform((v) => Number(v))
+    .refine((v) => v > 0, 'Quantity must be positive'),
+  unitPrice: z
+    .string()
+    .transform((v) => Number(v))
+    .refine((v) => v >= 0, 'Price cannot be negative'),
+  taxRateAtOrder: z
+    .string()
+    .transform((v) => Number(v))
+    .refine((v) => v >= 0, 'Tax rate cannot be negative'),
+  taxAmount: z
+    .string()
+    .transform((v) => Number(v))
+    .refine((v) => v >= 0, 'Tax amount cannot be negative'),
+});
+
+export const purchaseOrderSchema = z.object({
+  supplierId: z.uuid(),
+  documentNumber: z.string().min(1, 'Document number is required'),
+  status: z.enum(['draft', 'sent', 'received', 'cancelled']).default('draft'),
+  lines: z.array(purchaseOrderLineSchema).min(1, 'Order must have at least one line'),
+});
