@@ -1,5 +1,5 @@
 {
-  "id": "f506f918-a094-467f-b012-c6ff8dc00447",
+  "id": "8a269d65-2b1c-4524-9e0e-25c923c7354b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -2434,6 +2434,166 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.bins": {
+      "name": "bins",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "warehouse_id": {
+          "name": "warehouse_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "bins_org_idx": {
+          "name": "bins_org_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "bins_warehouse_idx": {
+          "name": "bins_warehouse_idx",
+          "columns": [
+            {
+              "expression": "warehouse_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "bins_org_wh_code_unique": {
+          "name": "bins_org_wh_code_unique",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "warehouse_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "lower(\"code\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "bins_organization_id_organizations_id_fk": {
+          "name": "bins_organization_id_organizations_id_fk",
+          "tableFrom": "bins",
+          "tableTo": "organizations",
+          "columnsFrom": ["organization_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "bins_warehouse_id_warehouses_id_fk": {
+          "name": "bins_warehouse_id_warehouses_id_fk",
+          "tableFrom": "bins",
+          "tableTo": "warehouses",
+          "columnsFrom": ["warehouse_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.inventory_ledgers": {
       "name": "inventory_ledgers",
       "schema": "",
@@ -2488,6 +2648,12 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
+        },
+        "bin_id": {
+          "name": "bin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         },
         "quantity_change": {
           "name": "quantity_change",
@@ -2555,6 +2721,21 @@
           "method": "btree",
           "with": {}
         },
+        "inv_ledger_bin_idx": {
+          "name": "inv_ledger_bin_idx",
+          "columns": [
+            {
+              "expression": "bin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "inv_ledger_ref_idx": {
           "name": "inv_ledger_ref_idx",
           "columns": [
@@ -2601,6 +2782,15 @@
           "tableFrom": "inventory_ledgers",
           "tableTo": "warehouses",
           "columnsFrom": ["warehouse_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "inventory_ledgers_bin_id_bins_id_fk": {
+          "name": "inventory_ledgers_bin_id_bins_id_fk",
+          "tableFrom": "inventory_ledgers",
+          "tableTo": "bins",
+          "columnsFrom": ["bin_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -2674,6 +2864,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "bin_id": {
+          "name": "bin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "quantity_on_hand": {
           "name": "quantity_on_hand",
           "type": "numeric(18, 8)",
@@ -2742,8 +2938,23 @@
           "method": "btree",
           "with": {}
         },
-        "inv_levels_org_prod_wh_unique": {
-          "name": "inv_levels_org_prod_wh_unique",
+        "inv_levels_bin_idx": {
+          "name": "inv_levels_bin_idx",
+          "columns": [
+            {
+              "expression": "bin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "inv_levels_org_prod_wh_bin_unique": {
+          "name": "inv_levels_org_prod_wh_bin_unique",
           "columns": [
             {
               "expression": "organization_id",
@@ -2759,6 +2970,12 @@
             },
             {
               "expression": "warehouse_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "bin_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2797,6 +3014,15 @@
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
+        },
+        "inventory_levels_bin_id_bins_id_fk": {
+          "name": "inventory_levels_bin_id_bins_id_fk",
+          "tableFrom": "inventory_levels",
+          "tableTo": "bins",
+          "columnsFrom": ["bin_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2816,6 +3042,282 @@
           "value": "\"inventory_levels\".\"quantity_reserved\" >= 0"
         }
       },
+      "isRLSEnabled": false
+    },
+    "public.inventory_adjustment_lines": {
+      "name": "inventory_adjustment_lines",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "adjustment_id": {
+          "name": "adjustment_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "product_id": {
+          "name": "product_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "warehouse_id": {
+          "name": "warehouse_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bin_id": {
+          "name": "bin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quantity_change": {
+          "name": "quantity_change",
+          "type": "numeric(18, 8)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "inv_adj_line_org_idx": {
+          "name": "inv_adj_line_org_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "inv_adj_line_adj_idx": {
+          "name": "inv_adj_line_adj_idx",
+          "columns": [
+            {
+              "expression": "adjustment_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "inventory_adjustment_lines_organization_id_organizations_id_fk": {
+          "name": "inventory_adjustment_lines_organization_id_organizations_id_fk",
+          "tableFrom": "inventory_adjustment_lines",
+          "tableTo": "organizations",
+          "columnsFrom": ["organization_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "inventory_adjustment_lines_adjustment_id_inventory_adjustments_id_fk": {
+          "name": "inventory_adjustment_lines_adjustment_id_inventory_adjustments_id_fk",
+          "tableFrom": "inventory_adjustment_lines",
+          "tableTo": "inventory_adjustments",
+          "columnsFrom": ["adjustment_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "inventory_adjustment_lines_product_id_products_id_fk": {
+          "name": "inventory_adjustment_lines_product_id_products_id_fk",
+          "tableFrom": "inventory_adjustment_lines",
+          "tableTo": "products",
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "inventory_adjustment_lines_warehouse_id_warehouses_id_fk": {
+          "name": "inventory_adjustment_lines_warehouse_id_warehouses_id_fk",
+          "tableFrom": "inventory_adjustment_lines",
+          "tableTo": "warehouses",
+          "columnsFrom": ["warehouse_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "inventory_adjustment_lines_bin_id_bins_id_fk": {
+          "name": "inventory_adjustment_lines_bin_id_bins_id_fk",
+          "tableFrom": "inventory_adjustment_lines",
+          "tableTo": "bins",
+          "columnsFrom": ["bin_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.inventory_adjustments": {
+      "name": "inventory_adjustments",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "adjustment_date": {
+          "name": "adjustment_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reference": {
+          "name": "reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "inv_adj_org_idx": {
+          "name": "inv_adj_org_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "inventory_adjustments_organization_id_organizations_id_fk": {
+          "name": "inventory_adjustments_organization_id_organizations_id_fk",
+          "tableFrom": "inventory_adjustments",
+          "tableTo": "organizations",
+          "columnsFrom": ["organization_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.sales_order_lines": {

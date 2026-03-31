@@ -104,3 +104,36 @@ export const salesOrderLinesRelations = relations(salesOrderLines, ({ one }) => 
 
 export type SalesOrder = typeof salesOrders.$inferSelect;
 export type SalesOrderLine = typeof salesOrderLines.$inferSelect;
+
+/**
+ * Zod Validation Schemas
+ * Strictly enforces snapshot integrity for financial data.
+ */
+import { z } from 'zod';
+
+export const salesOrderLineSchema = z.object({
+  productId: z.uuid(),
+  quantity: z
+    .string()
+    .transform((v) => Number(v))
+    .refine((v) => v > 0, 'Quantity must be positive'),
+  unitPrice: z
+    .string()
+    .transform((v) => Number(v))
+    .refine((v) => v >= 0, 'Price cannot be negative'),
+  taxRateAtOrder: z
+    .string()
+    .transform((v) => Number(v))
+    .refine((v) => v >= 0, 'Tax rate cannot be negative'),
+  taxAmount: z
+    .string()
+    .transform((v) => Number(v))
+    .refine((v) => v >= 0, 'Tax amount cannot be negative'),
+});
+
+export const salesOrderSchema = z.object({
+  customerId: z.uuid(),
+  documentNumber: z.string().min(1, 'Document number is required'),
+  status: z.enum(['draft', 'approved', 'shipped', 'cancelled']).default('draft'),
+  lines: z.array(salesOrderLineSchema).min(1, 'Order must have at least one line'),
+});

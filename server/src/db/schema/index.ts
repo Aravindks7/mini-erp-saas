@@ -4,6 +4,7 @@ export * from './auth.js';
 export * from './common.js';
 export * from './master.js';
 export * from './inventory.js';
+export * from './inventory-adjustments.js';
 export * from './sales.js';
 export * from './purchasing.js';
 export * from './sequences.js';
