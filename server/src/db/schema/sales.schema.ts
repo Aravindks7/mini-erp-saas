@@ -9,9 +9,11 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
-import { timestamps, userTracking, versioning } from './base.schema.js';
-import { organizations, baseColumns } from './core.js';
-import { customers, products } from './master.js';
+import { baseColumns } from './base.schema.js';
+import { timestamps, userTracking, versioning } from './audit.schema.js';
+import { organizations } from './organizations.schema.js';
+import { products } from './master.schema.js';
+import { customers } from './customers.schema.js';
 
 export const salesOrderStatusEnum = pgEnum('sales_order_status', [
   'draft',

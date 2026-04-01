@@ -1,7 +1,7 @@
 import { db } from '../../db/index.js';
-import { customers } from '../../db/schema/master.js';
+import { customers } from '../../db/schema/customers.schema.js';
 import { and, eq, sql } from 'drizzle-orm';
-import { CreateCustomerInput, UpdateCustomerInput } from './customers.schema.js';
+import { CreateCustomerInput, UpdateCustomerInput } from '@shared/contracts/customers.contract.js';
 
 import { BaseService } from '../../lib/base.service.js';
 

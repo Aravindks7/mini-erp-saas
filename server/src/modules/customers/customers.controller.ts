@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { customersService } from './customers.service.js';
-import { createCustomerSchema, updateCustomerSchema } from './customers.schema.js';
+import {
+  createCustomerSchema,
+  updateCustomerSchema,
+} from '@shared/contracts/customers.contract.js';
 import { logger } from '../../utils/logger.js';
 
 export async function listCustomers(req: Request, res: Response) {

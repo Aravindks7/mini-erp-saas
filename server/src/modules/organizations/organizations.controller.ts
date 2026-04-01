@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { organizationsService } from './organizations.service.js';
-import { createOrganizationSchema } from './organizations.schema.js';
+import { createOrganizationSchema } from '../../../../shared/contracts/organizations.contract.js';
 import { logger } from '../../utils/logger.js';
 
 export async function createOrganization(req: Request, res: Response) {

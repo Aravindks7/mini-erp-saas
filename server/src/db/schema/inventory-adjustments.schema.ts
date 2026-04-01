@@ -1,9 +1,10 @@
 import { pgTable, uuid, text, index, timestamp, numeric } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { timestamps, userTracking, versioning, lifecycle } from './base.schema.js';
-import { organizations, baseColumns } from './core.js';
-import { products, warehouses } from './master.js';
-import { bins } from './inventory.js';
+import { baseColumns } from './base.schema.js';
+import { timestamps, userTracking, versioning, lifecycle } from './audit.schema.js';
+import { organizations } from './organizations.schema.js';
+import { products, warehouses } from './master.schema.js';
+import { bins } from './inventory.schema.js';
 
 /**
  * Inventory Adjustment Header: Records the "Why" and "When" of a stock correction.
