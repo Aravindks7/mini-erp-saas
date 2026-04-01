@@ -2,10 +2,10 @@ import { betterAuth } from 'better-auth';
 import { dash } from '@better-auth/infra';
 import { organization } from 'better-auth/plugins';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { db } from '../db/index.js';
-import * as schema from '../db/schema/index.js';
+import { db } from '../../db/index.js';
+import * as schema from '../../db/schema/index.js';
 
-import { organizationsService } from '../modules/organizations/organizations.service.js';
+import { organizationsService } from '../organizations/organizations.service.js';
 
 /**
  * Central Better Auth instance.
@@ -20,7 +20,6 @@ export const auth = betterAuth({
     provider: 'pg',
     schema: {
       // Explicitly map Better Auth's internal model names → our Drizzle table objects.
-      // This is required when defining the tables manually (not via `generate`).
       user: schema.user,
       session: schema.session,
       account: schema.account,

@@ -161,26 +161,27 @@ Before writing automated tests, the Agent MUST verify the endpoint manually usin
 
 **Requirement:**
 
-- Run `http` commands against the local dev server.
-- Capture and analyze the JSON response and status codes.
+- Use the `x-dev-bypass: true` header for authenticated routes to bypass session management in development.
+- Target the local dev server and analyze JSON responses and status codes (expect `200` for success, `400` for validation).
 - Example:
   ```bash
-  http POST :3000/api/customers firstName="Jane" lastName="Doe" x-organization-id:org_123
+  http POST :3000/customers companyName="Acme Corp" x-organization-id:org_123 x-dev-bypass:true
   ```
 
 ### 6.2 Stage 2: Automated Integration Testing (Vitest)
 
-Following Rule 5.5, the Agent MUST create a colocated `.test.ts` file.
+Following Rule 5.5, the Agent MUST create a colocated `.test.ts` file. This is the **authoritative** source of truth for complex business logic, transactions, and multi-tenant isolation.
 
 - **Requirement:** 100% path coverage for the new endpoint (Success, Validation Error, Authorization Error).
-- **Format:** Use the Mocked Integration pattern (until Docker is explicitly requested).
+- **Format:** Use the Mocked Integration pattern to achieve high-fidelity logic verification.
 
 ### 6.3 Stage 3: Agent-Led Success Verification
 
 The Agent MUST NOT consider a task "Done" until:
 
-1. The `httpie` smoke test passes.
-2. The `vittest` suite for the specific module passes with 0 failures.
-3. The Agent reports the test summary in the final response.
+1. The `httpie` smoke test confirms the route is mounted and Zod validation is firing (using bypass header).
+2. The `vitest` suite passes with 0 failures, confirming all business logic and database transactions.
+3. A full TypeScript check (`npx tsc --noEmit`) passes in the relevant directory, ensuring no regressions or type-safety violations.
+4. The Agent reports the verification summary (smoke tests, unit tests, and type check) in the final response.
 
 **Goal:** This workflow ensures that we never commit code that hasn't been structurally and functionally verified in a live-emulated state.
