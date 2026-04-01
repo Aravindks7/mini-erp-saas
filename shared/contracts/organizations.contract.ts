@@ -9,4 +9,7 @@ export const createOrganizationSchema = z.object({
     .regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens'),
 });
 
+export const updateOrganizationSchema = createOrganizationSchema.partial();
+
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
+export type UpdateOrganizationInput = z.infer<typeof updateOrganizationSchema>;

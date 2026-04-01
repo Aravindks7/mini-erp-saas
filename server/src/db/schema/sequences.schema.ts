@@ -1,7 +1,8 @@
 import { pgTable, text, uuid, integer, uniqueIndex } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { timestamps, userTracking } from './base.schema.js';
-import { organizations, baseColumns } from './core.js';
+import { baseColumns } from './base.schema.js';
+import { timestamps, userTracking } from './audit.schema.js';
+import { organizations } from './organizations.schema.js';
 
 /**
  * Document Sequencing System

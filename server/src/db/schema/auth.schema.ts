@@ -9,8 +9,8 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { timestamps } from './base.schema.js';
-import { organizations } from './core.js';
+import { timestamps } from './audit.schema.js';
+import { organizations } from './organizations.schema.js';
 
 // ---------------------------------------------------------------------------
 // Better Auth — required tables (manually defined for Drizzle Kit ownership)

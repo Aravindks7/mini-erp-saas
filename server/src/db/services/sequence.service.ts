@@ -1,5 +1,5 @@
 import { db } from '../index.js';
-import { documentSequences } from '../schema/sequences.js';
+import { documentSequences } from '../schema/sequences.schema.js';
 import { eq, and } from 'drizzle-orm';
 
 /**

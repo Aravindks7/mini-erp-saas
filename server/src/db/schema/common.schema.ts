@@ -1,6 +1,6 @@
 import { pgTable, text, index } from 'drizzle-orm/pg-core';
-import { timestamps, userTracking } from './base.schema.js';
-import { baseColumns } from './core.js';
+import { baseColumns } from './base.schema.js';
+import { timestamps, userTracking } from './audit.schema.js';
 
 /**
  * Single Source of Truth for all Address data.

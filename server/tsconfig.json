@@ -9,7 +9,7 @@
     "moduleResolution": "NodeNext",
 
     /* Project structure */
-    "rootDir": "src",
+    "rootDir": "..",
     "outDir": "dist",
 
     /* Type safety */
@@ -28,8 +28,14 @@
     "skipLibCheck": true,
 
     /* Environment types */
-    "types": ["node"]
+    "types": ["node"],
+
+    /* Path aliases */
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["../shared/*"]
+    }
   },
-  "include": ["src"],
+  "include": ["src", "../shared"],
   "exclude": ["src/__tests__", "src/**/*.test.ts"]
 }

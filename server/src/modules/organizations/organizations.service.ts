@@ -6,12 +6,13 @@ import {
   organizationInvites,
 } from '../../db/schema/index.js';
 import { and, eq, sql } from 'drizzle-orm';
+import { CreateOrganizationInput } from '../../../../shared/contracts/organizations.contract.js';
 
 export class OrganizationsService {
   /**
    * Create a new organization and make the creator its admin.
    */
-  async createOrganization(userId: string, data: { name: string; slug: string }) {
+  async createOrganization(userId: string, data: CreateOrganizationInput) {
     return await db.transaction(async (tx) => {
       // 1. Create the organization
       const [newOrg] = await tx

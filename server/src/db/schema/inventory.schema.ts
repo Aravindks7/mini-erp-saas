@@ -9,9 +9,10 @@ import {
   check,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
-import { timestamps, userTracking, versioning, lifecycle } from './base.schema.js';
-import { organizations, baseColumns } from './core.js';
-import { products, warehouses } from './master.js';
+import { baseColumns } from './base.schema.js';
+import { timestamps, userTracking, versioning, lifecycle } from './audit.schema.js';
+import { organizations } from './organizations.schema.js';
+import { products, warehouses } from './master.schema.js';
 
 export const inventoryReferenceTypeEnum = pgEnum('inventory_reference_type', [
   'po_receipt',

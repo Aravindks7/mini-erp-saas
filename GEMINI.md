@@ -39,3 +39,148 @@ Every line of code is written with the expectation of being audited during a tec
 - **Failure Simulation (Clinical Teardowns):** When pointing out a structural weakness, logical fallacy, or PostgreSQL race condition, do not just list the flaw. Trigger a scenario simulation: walk through a concrete, high-volume edge-case scenario detailing the exact chronological sequence of events where the system fails (from the TanStack Query mutation down to the Drizzle ORM/PostgreSQL database lock).
 - **Architectural Alternatives (Trade-off Analysis):** Always conclude critiques by comparing the current approach with a concrete alternative architecture. Narrate the specific technical debt, scalability limits, and developer experience (DX) trade-offs of each, specifically contextualized for a multi-tenant ERP SaaS environment.
 - **Anti-Hallucination & Efficiency (The Baseline):** Flag deprecated APIs or libraries immediately. Prioritize lean, performant code. Reject heavy third-party dependencies unless they solve a systemic structural problem.
+
+## 5. File Structure & Module Architecture (The “Scalability Contract”)
+
+### 5.1 Core Principle: Feature-Driven Vertical Slicing
+
+The codebase MUST be organized by **business features**, not technical layers.
+
+#### ❌ Strictly Forbidden
+
+- Root-level folders like `controllers/`, `services/`, `routes/`
+- Single `master.ts` schema file
+- Mixing unrelated domain logic in shared folders
+
+#### ✅ Required Structure
+
+client/src/features/<feature>/
+api/ # TanStack Query hooks (data fetching layer)
+components/ # Presentational + container components
+pages/ # Route-level components
+hooks/ # Feature-specific hooks
+index.ts # Public API (exports)
+
+server/src/modules/<feature>/
+<feature>.controller.ts # HTTP layer (req/res handling only)
+<feature>.service.ts # Business logic
+<feature>.routes.ts # Route definitions
+<feature>.test.ts # Colocated tests
+
+---
+
+### 5.2 Database Schema Organization
+
+Each table MUST be defined in its own file.
+
+server/src/db/schema/
+customers.ts
+users.ts
+organizations.ts
+index.ts # Re-export all schemas
+
+#### Rules:
+
+- One file per table
+- No “master schema” files
+- Explicit relationships via imports
+- Keep files under ~300 lines
+
+---
+
+### 5.3 Shared Contracts (Frontend ↔ Backend Boundary)
+
+The `shared` directory MUST only contain API contracts.
+
+shared/contracts/
+customers.contract.ts
+
+#### Rules:
+
+- Only Zod schemas and inferred TypeScript types
+- Represents API request/response shapes
+- NO database logic (Drizzle ORM forbidden)
+- NO server-only utilities
+- Frontend-safe only
+
+---
+
+### 5.4 Import Boundaries (Strict Isolation Rules)
+
+- Frontend MUST NOT import from `server`
+- Shared MUST NOT depend on `server`
+- Server MAY import from `shared`
+- Contracts are the ONLY allowed bridge between frontend and backend
+
+---
+
+### 5.5 Testing Strategy (Colocation Rule)
+
+Test files MUST be colocated with implementation.
+
+Example:
+customers.service.ts
+customers.test.ts
+
+#### Rules:
+
+- Use `.test.ts` suffix
+- Tests excluded from production via tsconfig/build tools
+- No central `__tests__` directory unless project scales significantly
+
+---
+
+### 5.6 Abstraction Policy (Avoid Premature Complexity)
+
+- DO NOT introduce repository layers unless complexity demands it
+- Services may directly use Drizzle ORM initially
+- Introduce abstraction ONLY when:
+  - Query reuse emerges
+  - Transactions become complex
+  - Logic duplication appears
+
+---
+
+### 5.7 Anti-Patterns (Immediate Rejection)
+
+- Shared folder containing database schema ❌
+- Massive files (>300 lines) ❌
+- Premature repository abstraction ❌
+- Cross-feature tight coupling ❌
+- Treating DB schema as API contract ❌
+
+---
+
+## 6. API Development & Verification (The “Live Prototype” Workflow)
+
+To maintain clinical precision and ensure "Interview-Ready" reliability, every new API endpoint MUST undergo a three-stage verification process.
+
+### 6.1 Stage 1: Manual Smoke Testing (httpie CLI)
+
+Before writing automated tests, the Agent MUST verify the endpoint manually using `httpie`. This ensures the routing and basic Zod validation are functioning in a live environment.
+
+**Requirement:**
+
+- Run `http` commands against the local dev server.
+- Capture and analyze the JSON response and status codes.
+- Example:
+  ```bash
+  http POST :3000/api/customers firstName="Jane" lastName="Doe" x-organization-id:org_123
+  ```
+
+### 6.2 Stage 2: Automated Integration Testing (Vitest)
+
+Following Rule 5.5, the Agent MUST create a colocated `.test.ts` file.
+
+- **Requirement:** 100% path coverage for the new endpoint (Success, Validation Error, Authorization Error).
+- **Format:** Use the Mocked Integration pattern (until Docker is explicitly requested).
+
+### 6.3 Stage 3: Agent-Led Success Verification
+
+The Agent MUST NOT consider a task "Done" until:
+
+1. The `httpie` smoke test passes.
+2. The `vittest` suite for the specific module passes with 0 failures.
+3. The Agent reports the test summary in the final response.
+
+**Goal:** This workflow ensures that we never commit code that hasn't been structurally and functionally verified in a live-emulated state.
