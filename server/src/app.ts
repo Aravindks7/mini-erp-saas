@@ -4,7 +4,7 @@ import cors from 'cors';
 import { toNodeHandler } from 'better-auth/node';
 import { httpLogger } from './utils/httpLogger.js';
 import { errorMiddleware } from './middleware/error.middleware.js';
-import { auth } from './lib/auth.js';
+import { auth } from './modules/auth/auth.js';
 
 import customersRoutes from './modules/customers/customers.routes.js';
 import organizationsRoutes from './modules/organizations/organizations.routes.js';

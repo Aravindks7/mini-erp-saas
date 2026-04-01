@@ -55,7 +55,7 @@ export async function createCustomer(req: Request, res: Response) {
   } catch (error: any) {
     logger.error({ error, organizationId, userId }, 'Failed to create customer');
     if (error.code === '23505' || (error as any).cause?.code === '23505') {
-      return res.status(409).json({ error: 'Customer with this email already exists' });
+      return res.status(409).json({ error: 'Customer or linked entity already exists' });
     }
     throw error;
   }
@@ -83,9 +83,10 @@ export async function updateCustomer(req: Request, res: Response) {
     }
     res.json(updatedCustomer);
   } catch (error: any) {
+    console.error('DEBUG updateCustomer Error:', error);
     logger.error({ error, organizationId, userId, id }, 'Failed to update customer');
     if (error.code === '23505' || (error as any).cause?.code === '23505') {
-      return res.status(409).json({ error: 'Customer with this email already exists' });
+      return res.status(409).json({ error: 'Customer or linked entity update conflict' });
     }
     throw error;
   }
