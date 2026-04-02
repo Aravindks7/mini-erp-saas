@@ -3,7 +3,7 @@ import { customers } from '../../db/schema/customers.schema.js';
 import { customerAddresses } from '../../db/schema/customer-addresses.schema.js';
 import { customerContacts } from '../../db/schema/customer-contacts.schema.js';
 
-import { addresses, contacts } from '../../db/schema/common.schema.js';
+import { addresses, contacts } from '../../db/schema/index.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { CreateCustomerInput, UpdateCustomerInput } from '@shared/contracts/customers.contract.js';
 

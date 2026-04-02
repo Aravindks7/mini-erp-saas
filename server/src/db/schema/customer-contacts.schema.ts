@@ -2,7 +2,7 @@ import { pgTable, uniqueIndex, uuid, boolean } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import { baseColumns } from './base.schema.js';
 import { timestamps, userTracking } from './audit.schema.js';
-import { contacts } from './common.schema.js';
+import { contacts } from './contacts.schema.js';
 import { customers } from './customers.schema.js';
 
 export const customerContacts = pgTable(

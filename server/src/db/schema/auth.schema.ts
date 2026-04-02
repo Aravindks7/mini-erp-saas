@@ -1,16 +1,7 @@
-import {
-  pgTable,
-  text,
-  uuid,
-  timestamp,
-  boolean,
-  pgEnum,
-  index,
-  uniqueIndex,
-} from 'drizzle-orm/pg-core';
+import { pgTable, text, uuid, timestamp, boolean } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { timestamps } from './audit.schema.js';
-import { organizations } from './organizations.schema.js';
+import { organizationMemberships } from './memberships.schema.js';
+import { organizationInvites } from './invites.schema.js';
 
 // ---------------------------------------------------------------------------
 // Better Auth — required tables (manually defined for Drizzle Kit ownership)
@@ -69,61 +60,6 @@ export const verification = pgTable('verification', {
 });
 
 // ---------------------------------------------------------------------------
-// Multi-Tenancy — bridge table (userId → organizationId + role)
-// Supports users belonging to multiple organisations.
-// ---------------------------------------------------------------------------
-
-export const memberRoleEnum = pgEnum('member_role', ['admin', 'employee']);
-
-export const organizationMemberships = pgTable(
-  'organization_memberships',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
-    organizationId: uuid('organization_id')
-      .notNull()
-      .references(() => organizations.id, { onDelete: 'cascade' }),
-    role: memberRoleEnum('role').notNull().default('employee'),
-    ...timestamps,
-  },
-  (t) => [
-    uniqueIndex('org_member_unique_idx').on(t.userId, t.organizationId),
-    index('org_member_org_idx').on(t.organizationId),
-    index('org_member_user_idx').on(t.userId),
-  ],
-);
-
-// ---------------------------------------------------------------------------
-// Invitation System — track pending invites for non-existent users
-// ---------------------------------------------------------------------------
-
-export const inviteStatusEnum = pgEnum('invite_status', ['pending', 'accepted', 'revoked']);
-
-export const organizationInvites = pgTable(
-  'organization_invites',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    email: text('email').notNull(),
-    organizationId: uuid('organization_id')
-      .notNull()
-      .references(() => organizations.id, { onDelete: 'cascade' }),
-    invitedById: uuid('invited_by_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
-    role: memberRoleEnum('role').notNull().default('employee'),
-    status: inviteStatusEnum('status').notNull().default('pending'),
-    expiresAt: timestamp('expires_at').notNull(),
-    ...timestamps,
-  },
-  (t) => [
-    index('org_invite_email_idx').on(t.email),
-    index('org_invite_org_idx').on(t.organizationId),
-  ],
-);
-
-// ---------------------------------------------------------------------------
 // Relations
 // ---------------------------------------------------------------------------
 
@@ -142,28 +78,6 @@ export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, { fields: [account.userId], references: [user.id] }),
 }));
 
-export const organizationMembershipsRelations = relations(organizationMemberships, ({ one }) => ({
-  user: one(user, {
-    fields: [organizationMemberships.userId],
-    references: [user.id],
-  }),
-  organization: one(organizations, {
-    fields: [organizationMemberships.organizationId],
-    references: [organizations.id],
-  }),
-}));
-
-export const organizationInvitesRelations = relations(organizationInvites, ({ one }) => ({
-  organization: one(organizations, {
-    fields: [organizationInvites.organizationId],
-    references: [organizations.id],
-  }),
-  invitedBy: one(user, {
-    fields: [organizationInvites.invitedById],
-    references: [user.id],
-  }),
-}));
-
 // ---------------------------------------------------------------------------
 // Exported types
 // ---------------------------------------------------------------------------
@@ -174,9 +88,3 @@ export type NewUser = typeof user.$inferInsert;
 export type Session = typeof session.$inferSelect;
 export type Account = typeof account.$inferSelect;
 export type Verification = typeof verification.$inferSelect;
-
-export type OrganizationMembership = typeof organizationMemberships.$inferSelect;
-export type NewOrganizationMembership = typeof organizationMemberships.$inferInsert;
-
-export type OrganizationInvite = typeof organizationInvites.$inferSelect;
-export type NewOrganizationInvite = typeof organizationInvites.$inferInsert;
