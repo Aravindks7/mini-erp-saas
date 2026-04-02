@@ -1,7 +1,7 @@
 import { pgTable, text, uuid } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { timestamps, userTracking } from './audit.schema.js';
-import { organizationMemberships } from './auth.schema.js';
+import { organizationMemberships } from './memberships.schema.js';
 
 // ---------------------------------------------------------------------------
 // Organizations Table

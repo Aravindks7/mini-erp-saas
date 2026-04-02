@@ -1,13 +1,13 @@
-import { pgTable, uuid, text, index, timestamp, numeric } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, index, timestamp as pgTimestamp } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { baseColumns } from './base.schema.js';
 import { timestamps, userTracking, versioning, lifecycle } from './audit.schema.js';
 import { organizations } from './organizations.schema.js';
-import { products, warehouses } from './master.schema.js';
-import { bins } from './inventory.schema.js';
+import { inventoryAdjustmentLines } from './inventory-adjustment-lines.schema.js';
 
 /**
  * Inventory Adjustment Header: Records the "Why" and "When" of a stock correction.
+ * Axiom: High-level document tracking the intent of inventory variance.
  */
 export const inventoryAdjustments = pgTable(
   'inventory_adjustments',
@@ -16,45 +16,16 @@ export const inventoryAdjustments = pgTable(
     ...timestamps,
     ...userTracking,
     ...versioning,
+    ...lifecycle,
 
-    adjustmentDate: timestamp('adjustment_date').defaultNow().notNull(),
+    adjustmentDate: pgTimestamp('adjustment_date').defaultNow().notNull(),
     reason: text('reason').notNull(), // e.g., 'Damage', 'Cycle Count', 'Theft'
     reference: text('reference'), // External document or ticket ID
     status: text('status', { enum: ['draft', 'approved', 'cancelled'] })
       .default('draft')
       .notNull(),
-    ...lifecycle,
   },
   (table) => [index('inv_adj_org_idx').on(table.organizationId)],
-);
-
-/**
- * Inventory Adjustment Lines: The specific product/quantity impact.
- */
-export const inventoryAdjustmentLines = pgTable(
-  'inventory_adjustment_lines',
-  {
-    ...baseColumns,
-    ...timestamps,
-    ...userTracking,
-
-    adjustmentId: uuid('adjustment_id')
-      .notNull()
-      .references(() => inventoryAdjustments.id, { onDelete: 'cascade' }),
-    productId: uuid('product_id')
-      .notNull()
-      .references(() => products.id),
-    warehouseId: uuid('warehouse_id')
-      .notNull()
-      .references(() => warehouses.id),
-    binId: uuid('bin_id').references(() => bins.id),
-
-    quantityChange: numeric('quantity_change', { precision: 18, scale: 8 }).notNull(),
-  },
-  (table) => [
-    index('inv_adj_line_org_idx').on(table.organizationId),
-    index('inv_adj_line_adj_idx').on(table.adjustmentId),
-  ],
 );
 
 export const inventoryAdjustmentsRelations = relations(inventoryAdjustments, ({ one, many }) => ({
@@ -65,24 +36,4 @@ export const inventoryAdjustmentsRelations = relations(inventoryAdjustments, ({ 
   lines: many(inventoryAdjustmentLines),
 }));
 
-export const inventoryAdjustmentLinesRelations = relations(inventoryAdjustmentLines, ({ one }) => ({
-  adjustment: one(inventoryAdjustments, {
-    fields: [inventoryAdjustmentLines.adjustmentId],
-    references: [inventoryAdjustments.id],
-  }),
-  product: one(products, {
-    fields: [inventoryAdjustmentLines.productId],
-    references: [products.id],
-  }),
-  warehouse: one(warehouses, {
-    fields: [inventoryAdjustmentLines.warehouseId],
-    references: [warehouses.id],
-  }),
-  bin: one(bins, {
-    fields: [inventoryAdjustmentLines.binId],
-    references: [bins.id],
-  }),
-}));
-
 export type InventoryAdjustment = typeof inventoryAdjustments.$inferSelect;
-export type InventoryAdjustmentLine = typeof inventoryAdjustmentLines.$inferSelect;

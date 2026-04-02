@@ -1,63 +1,14 @@
-import {
-  pgTable,
-  uuid,
-  pgEnum,
-  numeric,
-  index,
-  check,
-  text,
-  uniqueIndex,
-} from 'drizzle-orm/pg-core';
+import { pgTable, uuid, numeric, index, check } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import { baseColumns } from './base.schema.js';
-import { timestamps, userTracking, versioning } from './audit.schema.js';
+import { timestamps, userTracking, versioning, lifecycle } from './audit.schema.js';
 import { organizations } from './organizations.schema.js';
-import { suppliers, products } from './master.schema.js';
-
-export const purchaseOrderStatusEnum = pgEnum('purchase_order_status', [
-  'draft',
-  'sent',
-  'received',
-  'cancelled',
-]);
-
-export const purchaseOrders = pgTable(
-  'purchase_orders',
-  {
-    ...baseColumns,
-    ...timestamps,
-    ...userTracking,
-    ...versioning,
-
-    supplierId: uuid('supplier_id')
-      .notNull()
-      .references(() => suppliers.id),
-    documentNumber: text('document_number').notNull(),
-    status: purchaseOrderStatusEnum('status').default('draft').notNull(),
-    totalAmount: numeric('total_amount', { precision: 18, scale: 8 }),
-  },
-  (table) => [
-    index('po_org_idx').on(table.organizationId),
-    index('po_supplier_idx').on(table.supplierId),
-    index('po_status_idx').on(table.status),
-    uniqueIndex('po_org_doc_unique').on(table.organizationId, table.documentNumber),
-  ],
-);
-
-export const purchaseOrdersRelations = relations(purchaseOrders, ({ one, many }) => ({
-  organization: one(organizations, {
-    fields: [purchaseOrders.organizationId],
-    references: [organizations.id],
-  }),
-  supplier: one(suppliers, {
-    fields: [purchaseOrders.supplierId],
-    references: [suppliers.id],
-  }),
-  lines: many(purchaseOrderLines),
-}));
+import { products } from './products.schema.js';
+import { purchaseOrders } from './purchase-orders.schema.js';
+import { z } from 'zod';
 
 /**
- * Purchase order lines with absolute numeric precision.
+ * Purchase Order Lines: Atomic procurement fulfillment details.
  * Precision: numeric(18, 8) ensures exact quantity tracking across conversions.
  */
 export const purchaseOrderLines = pgTable(
@@ -66,6 +17,8 @@ export const purchaseOrderLines = pgTable(
     ...baseColumns,
     ...timestamps,
     ...userTracking,
+    ...versioning,
+    ...lifecycle,
 
     purchaseOrderId: uuid('purchase_order_id')
       .notNull()
@@ -103,15 +56,11 @@ export const purchaseOrderLinesRelations = relations(purchaseOrderLines, ({ one 
   }),
 }));
 
-export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
 export type PurchaseOrderLine = typeof purchaseOrderLines.$inferSelect;
 
 /**
- * Zod Validation Schemas
- * Strictly enforces snapshot integrity for financial data.
+ * Validation Axiom: Ensure financial precision at the line level.
  */
-import { z } from 'zod';
-
 export const purchaseOrderLineSchema = z.object({
   productId: z.uuid(),
   quantity: z
@@ -130,11 +79,4 @@ export const purchaseOrderLineSchema = z.object({
     .string()
     .transform((v) => Number(v))
     .refine((v) => v >= 0, 'Tax amount cannot be negative'),
-});
-
-export const purchaseOrderSchema = z.object({
-  supplierId: z.uuid(),
-  documentNumber: z.string().min(1, 'Document number is required'),
-  status: z.enum(['draft', 'sent', 'received', 'cancelled']).default('draft'),
-  lines: z.array(purchaseOrderLineSchema).min(1, 'Order must have at least one line'),
 });

@@ -1,6 +1,6 @@
 import { pgTable, text, index } from 'drizzle-orm/pg-core';
 import { baseColumns } from './base.schema.js';
-import { timestamps, userTracking } from './audit.schema.js';
+import { timestamps, userTracking, versioning, lifecycle } from './audit.schema.js';
 
 /**
  * Single Source of Truth for all Address data.
@@ -12,6 +12,8 @@ export const addresses = pgTable(
     ...baseColumns,
     ...timestamps,
     ...userTracking,
+    ...versioning,
+    ...lifecycle,
 
     name: text('name'), // e.g., 'Headquarters', 'Warehouse A'
     addressLine1: text('address_line1').notNull(),
@@ -24,28 +26,5 @@ export const addresses = pgTable(
   (table) => [index('addresses_org_idx').on(table.organizationId)],
 );
 
-/**
- * Central repository for Person-level data.
- * Supports multi-contact management across customers and suppliers.
- */
-export const contacts = pgTable(
-  'contacts',
-  {
-    ...baseColumns,
-    ...timestamps,
-    ...userTracking,
-
-    firstName: text('first_name').notNull(),
-    lastName: text('last_name').notNull(),
-    email: text('email'),
-    phone: text('phone'),
-    jobTitle: text('job_title'),
-  },
-  (table) => [index('contacts_org_idx').on(table.organizationId)],
-);
-
 export type Address = typeof addresses.$inferSelect;
 export type NewAddress = typeof addresses.$inferInsert;
-
-export type Contact = typeof contacts.$inferSelect;
-export type NewContact = typeof contacts.$inferInsert;
