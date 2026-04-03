@@ -185,3 +185,109 @@ The Agent MUST NOT consider a task "Done" until:
 4. The Agent reports the verification summary (smoke tests, unit tests, and type check) in the final response.
 
 **Goal:** This workflow ensures that we never commit code that hasn't been structurally and functionally verified in a live-emulated state.
+
+---
+
+## 7. Component Design System & Reusability
+
+To ensure consistency, speed, and maintainability across the ERP, all frontend development must adhere to a strict component hierarchy and architectural patterns.
+
+### 7.1 Core Principle: Domain-Agnostic vs. Feature-Specific
+
+- **📁 `client/src/components/shared`**: Domain-agnostic, generic, and reusable. These components MUST NOT contain business logic or API calls.
+- **📁 `client/src/components/shared/domain`**: Domain-agnostic _modular slices_. These are logical pieces (e.g., Address, Contact) that are reused across different feature entities (Customers, Suppliers, Users).
+- **📁 `client/src/features/*/components`**: Feature-specific. These components compose shared components and inject business logic or domain context.
+- **⚠️ Rule**: No mixing. If a UI pattern or logical block is used in more than one feature, it MUST be moved to `shared` and generalized.
+
+### 7.2 Component Taxonomy (The "High-Leverage" List)
+
+#### Core Layout & Structure
+
+- `AppLayout`: Sidebar + Header + Content.
+- `AuthLayout`: Login/Register pages.
+- `FocusLayout`: Minimalist layout for core tasks (e.g., focused data entry).
+- `PageContainer`: Consistent padding, max width.
+- `PageHeader`: Standard titles, breadcrumbs, and primary actions.
+- `Section / Card`: Grouping UI.
+- `Stack / Flex`: Spacing abstraction.
+
+#### Data Display & Dashboards
+
+- `DataTable<T>`: TanStack Table wrapper (sorting, pagination, filters).
+- `DataTableToolbar`: Search + filters + actions (e.g., CSV export).
+- `EmptyState`: No data UX.
+- `SkeletonLoader`: Loading states.
+- `StatusBadge`: Mapped from domain enums (e.g., 'active', 'pending').
+- `StatsCard`: High-level metrics for dashboards.
+- `DashboardGrid`: Responsive layout for analytical widgets.
+- `UserDisplay`: Avatar + name + email for users/customers.
+- `AuditInfo`: Standardized `createdAt` / `updatedAt` display.
+
+#### Forms & Inputs (The ERP Engine)
+
+- `Form`: Wrapper with `react-hook-form` and Zod contract integration.
+- `FormField`: shadcn pattern (Zod-driven).
+- `Input, Textarea, Checkbox, RadioGroup`: Standard primitives.
+- `Select, MultiSelect`: Generic selection widgets.
+- `Combobox`: Searchable selection for large datasets.
+- `DatePicker, DateRangePicker`: Date selection patterns.
+- `AmountInput`: Specialized currency/number entry with formatting.
+- `FileUpload`: Consistent file upload UI with preview.
+
+#### Actions & Feedback
+
+- `Button, IconButton`: Standard action triggers.
+- `DropdownMenu, ContextMenu, Tooltip`: Utility interactions.
+- `Modal / Dialog, ConfirmDialog`: Interruption patterns.
+- `DeleteConfirmDialog`: Specialized safety check for destructive actions.
+- `Toast / Notification, ProgressBar / Spinner`: Visual feedback.
+
+#### Navigation & Control
+
+- `Sidebar, Navbar / Topbar, Breadcrumb`.
+- `RouteTabs`: Page-level navigation mapped to router state.
+- `SearchInput, FilterPanel / FilterDrawer`.
+
+### 7.3 Anti-Patterns (Immediate Rejection)
+
+- **Feature-Locked Tables**: Creating `CustomerTable` separately ❌ (Use `DataTable<T>`).
+- **Field Duplication**: Manually defining `street`, `city`, `zip` in every form ❌ (Use `AddressSection`).
+- **Logic Pollution**: Breeding API calls inside `shared` components ❌ (Keep UI "dumb").
+- **Schema-Atheist Forms**: Creating forms without a Zod contract ❌ (Violates Type Safety).
+- **Hardcoded Colors**: Using `bg-red-500` instead of design tokens (`bg-destructive`) ❌.
+
+### 7.4 The "Brutal Truth" for ERP Development
+
+**80% of your app = tables + forms.**
+The other 20% is the **integration of shared slices**. If the foundational components aren't reusable, the architecture is a failure. Focus on the `Form` system, the `DataTable`, and the `Layout` above all else.
+
+---
+
+### 7.5 The "Contract-First Form" Pattern
+
+All data entry in the ERP MUST follow the Contract-First pattern to ensure 100% type safety and automatic validation.
+
+1.  **Contract Definition**: Define a Zod schema in `shared/contracts` (e.g., `createCustomerSchema`).
+2.  **Type Inference**: Infer the input type from the schema (`z.infer<typeof schema>`).
+3.  **Form Integration**: Use the generic `Form` component:
+    ```tsx
+    <Form<T, typeof schema> schema={schema} onSubmit={...}>
+      {(form) => (
+        <FormField name="fieldName" label="...">
+          {({ field }) => <Input {...field} />}
+        </FormField>
+      )}
+    </Form>
+    ```
+4.  **Benefits**: Centralized validation, field-level type checking, and shared business rules across frontend/backend.
+
+### 7.6 Domain-Specific Shared Abstractions
+
+Complex, recurring data structures (e.g., Addresses, Contact Details, Bank Accounts) MUST be abstracted into `shared/domain` components.
+
+- **Structure**: These components accept the `form.control` and the field `name` as props.
+- **Example (`AddressSection.tsx`)**:
+  ```tsx
+  <AddressSection control={form.control} name="addresses" />
+  ```
+- **Rationale**: Ensures that an "Address" looks and behaves identically whether it's on a Customer, a Supplier, or an Employee record.
