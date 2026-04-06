@@ -1,10 +1,21 @@
 import { and, eq, sql } from 'drizzle-orm';
-import { PgTable } from 'drizzle-orm/pg-core';
+import { PgColumn, PgTable } from 'drizzle-orm/pg-core';
 
 /**
  * Base service class providing common utilities for multi-tenancy and audit logging.
+ *
+ * TTable must include organizationId and lifecycle columns (id, deletedAt, etc.).
  */
-export abstract class BaseService<TTable extends PgTable<any>> {
+export abstract class BaseService<
+  TTable extends PgTable<any> & {
+    id: PgColumn<any>;
+    organizationId: PgColumn<any>;
+    deletedAt: PgColumn<any>;
+    updatedAt: PgColumn<any>;
+    updatedBy: PgColumn<any>;
+    createdBy?: PgColumn<any>;
+  },
+> {
   constructor(protected table: TTable) {}
 
   /**
@@ -12,12 +23,12 @@ export abstract class BaseService<TTable extends PgTable<any>> {
    */
   protected getTenantWhere(organizationId: string, id?: string) {
     const conditions = [
-      eq((this.table as any).organizationId, organizationId),
-      sql`${(this.table as any).deletedAt} IS NULL`,
+      eq(this.table.organizationId, organizationId),
+      sql`${this.table.deletedAt} IS NULL`,
     ];
 
     if (id) {
-      conditions.push(eq((this.table as any).id, id));
+      conditions.push(eq(this.table.id, id));
     }
 
     return and(...conditions);
@@ -26,17 +37,23 @@ export abstract class BaseService<TTable extends PgTable<any>> {
   /**
    * Helper to inject audit fields into insert/update data.
    */
-  protected withAudit<TData>(data: TData, userId: string, isUpdate = false) {
-    const auditData: any = {
-      ...data,
+  protected withAudit<TData extends Record<string, any>>(
+    data: TData,
+    userId: string,
+    isUpdate = false,
+  ): TData & { updatedBy: string; updatedAt: Date; createdBy?: string } {
+    const auditFields: { updatedBy: string; updatedAt: Date; createdBy?: string } = {
       updatedBy: userId,
       updatedAt: new Date(),
     };
 
     if (!isUpdate) {
-      auditData.createdBy = userId;
+      auditFields.createdBy = userId;
     }
 
-    return auditData;
+    return {
+      ...data,
+      ...auditFields,
+    };
   }
 }

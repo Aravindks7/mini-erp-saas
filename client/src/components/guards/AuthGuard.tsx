@@ -3,12 +3,18 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 export const AuthGuard = ({ children }: { children: ReactNode }) => {
-  const { data: session, isPending } = useAuth();
+  const { data: session, isPending, isError, error } = useAuth();
   const location = useLocation();
 
+  // CLINICAL OBSERVABILITY: Monitor the session state transition in development
+  console.log('[AuthGuard] Checking session:', {
+    isAuthenticated: !!session?.user,
+    isPending,
+    isError,
+    userId: session?.user?.id,
+  });
+
   if (isPending) {
-    // Return a minimal loading state while standardizing auth checks.
-    // This is especially important after sign-in/register when we invalidate the session.
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
         <div className="flex flex-col items-center gap-2">
@@ -21,8 +27,11 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
     );
   }
 
-  // Redirect unauthenticated users to Login, maintaining their intended destination
-  if (!session) {
+  // REDIRECT IF UNAUTHENTICATED OR FETCH FAILED
+  // We strictly check for session.user. If the query finished (isPending=false)
+  // and we still don't have a user, it's an unauthorized state.
+  if (isError || !session?.user) {
+    if (isError) console.error('[AuthGuard] Session check failed:', error);
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

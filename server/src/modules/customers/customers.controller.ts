@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { customersService } from './customers.service.js';
-import { createCustomerSchema, updateCustomerSchema } from './customers.schema.js';
+import {
+  createCustomerSchema,
+  updateCustomerSchema,
+} from '@shared/contracts/customers.contract.js';
 import { logger } from '../../utils/logger.js';
 
 export async function listCustomers(req: Request, res: Response) {
@@ -48,11 +51,20 @@ export async function createCustomer(req: Request, res: Response) {
       userId,
       parseResult.data,
     );
+
+    if (!newCustomer) {
+      logger.error(
+        { organizationId, userId, data: parseResult.data },
+        'Service failed to return new customer after creation',
+      );
+      return res.status(500).json({ error: 'Failed to retrieve created customer record' });
+    }
+
     res.status(201).json(newCustomer);
   } catch (error: any) {
     logger.error({ error, organizationId, userId }, 'Failed to create customer');
     if (error.code === '23505' || (error as any).cause?.code === '23505') {
-      return res.status(409).json({ error: 'Customer with this email already exists' });
+      return res.status(409).json({ error: 'Customer or linked entity already exists' });
     }
     throw error;
   }
@@ -75,14 +87,19 @@ export async function updateCustomer(req: Request, res: Response) {
       id as string,
       parseResult.data,
     );
+
     if (!updatedCustomer) {
-      return res.status(404).json({ error: 'Customer not found' });
+      // 404 is technically handled by Service returning null if record not found,
+      // but double check here for clinical precision.
+      return res.status(404).json({ error: 'Customer not found or update failed' });
     }
+
     res.json(updatedCustomer);
   } catch (error: any) {
+    console.error('DEBUG updateCustomer Error:', error);
     logger.error({ error, organizationId, userId, id }, 'Failed to update customer');
     if (error.code === '23505' || (error as any).cause?.code === '23505') {
-      return res.status(409).json({ error: 'Customer with this email already exists' });
+      return res.status(409).json({ error: 'Customer or linked entity update conflict' });
     }
     throw error;
   }

@@ -6,22 +6,49 @@ import {
   organizationInvites,
 } from '../../db/schema/index.js';
 import { and, eq, sql } from 'drizzle-orm';
+import { CreateOrganizationInput } from '../../../../shared/contracts/organizations.contract.js';
 
 export class OrganizationsService {
   /**
    * Create a new organization and make the creator its admin.
    */
-  async createOrganization(userId: string, data: { name: string; slug: string }) {
+  async createOrganization(userId: string, data: CreateOrganizationInput) {
     return await db.transaction(async (tx) => {
-      // 1. Create the organization
+      // 1. Generate unique slug if not provided
+      let slug = data.slug || this.generateSlug(data.name);
+
+      // Check for collisions and append suffix if needed
+      let isUnique = false;
+      let counter = 0;
+      let finalSlug = slug;
+
+      while (!isUnique) {
+        const existing = await tx.query.organizations.findFirst({
+          where: eq(organizations.slug, finalSlug),
+        });
+
+        if (!existing) {
+          isUnique = true;
+        } else {
+          counter++;
+          // Append a short random-ish suffix for collision resolution
+          const suffix = Math.random().toString(36).substring(2, 6);
+          finalSlug = `${slug}-${suffix}`;
+
+          // Circuit breaker to prevent infinite loops
+          if (counter > 5) throw new Error('Could not generate a unique slug');
+        }
+      }
+
+      // 2. Create the organization
       const [newOrg] = await tx
         .insert(organizations)
-        .values({ name: data.name, slug: data.slug })
+        .values({ name: data.name, slug: finalSlug })
         .returning();
 
       if (!newOrg) throw new Error('Failed to create organization');
 
-      // 2. Link the current user as an 'admin'
+      // 3. Link the current user as an 'admin'
       await tx.insert(organizationMemberships).values({
         userId: userId,
         organizationId: newOrg.id,
@@ -30,6 +57,18 @@ export class OrganizationsService {
 
       return newOrg;
     });
+  }
+
+  /**
+   * Simple slug generator: lowercase and replace non-alphanumeric with hyphens.
+   */
+  private generateSlug(name: string): string {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
   }
 
   /**

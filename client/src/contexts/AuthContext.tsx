@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from 'react';
-import { useAuthSession } from '../hooks/use-auth-session';
+import { useAuthSession } from '@/features/auth/hooks/auth.hooks';
 
 // Define the shape of our authentication context
 type AuthContextType = ReturnType<typeof useAuthSession>;
