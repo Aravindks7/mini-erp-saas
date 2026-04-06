@@ -4,14 +4,16 @@ import { useForm } from 'react-hook-form';
 import type { Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Save, X, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { useCustomer, useCreateCustomer, useUpdateCustomer } from '../hooks/customers.hooks';
 import { CustomerForm } from '../components/CustomerForm';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
+import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 
 import type { CreateCustomerInput } from '@shared/contracts/customers.contract';
 import { createCustomerSchema } from '@shared/contracts/customers.contract';
@@ -61,14 +63,21 @@ export default function CustomerEditPage() {
   }, [customer, form]);
 
   const onSubmit = async (data: CreateCustomerInput) => {
+    const toastId = toast.loading(isEditing ? 'Updating customer...' : 'Creating customer...');
     try {
       if (isEditing && id) {
         await updateCustomer({ id, data });
+        toast.success(`Customer ${data.companyName} updated successfully`, { id: toastId });
+        navigate(`/customers/${id}`);
       } else {
-        await createCustomer(data);
+        const result = await createCustomer(data);
+        toast.success(`Customer ${data.companyName} created successfully`, { id: toastId });
+        navigate(`/customers/${result.id}`);
       }
-      navigate('/customers');
     } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Something went wrong. Please try again.';
+      toast.error(message, { id: toastId });
       console.error('Submission failed:', error);
     }
   };
@@ -77,17 +86,15 @@ export default function CustomerEditPage() {
     if (form.formState.isDirty) {
       setShowCancelConfirm(true);
     } else {
-      navigate('/customers');
+      navigate(isEditing ? `/customers/${id}` : '/customers');
     }
   };
 
   if (isEditing && isLoading) {
     return (
       <PageContainer>
-        <div className="space-y-6">
-          <Skeleton className="h-10 w-[200px]" />
-          <Skeleton className="h-[600px] w-full" />
-        </div>
+        <Breadcrumbs isLoading={true} overrides={{ [id as string]: '...' }} />
+        <SkeletonLoader variant="form" rows={3} />
       </PageContainer>
     );
   }
@@ -95,7 +102,7 @@ export default function CustomerEditPage() {
   if (isEditing && isError) {
     return (
       <PageContainer>
-        <div className="flex flex-col items-center justify-center h-[400px] space-y-4">
+        <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
           <AlertCircle className="h-12 w-12 text-destructive" />
           <h2 className="text-xl font-bold">Failed to load customer</h2>
           <Button variant="outline" onClick={() => navigate('/customers')}>
@@ -108,6 +115,13 @@ export default function CustomerEditPage() {
 
   return (
     <PageContainer>
+      <Breadcrumbs
+        overrides={{
+          [id || '']: customer?.companyName,
+          new: 'Add Customer',
+          edit: 'Edit',
+        }}
+      />
       <PageHeader
         title={isEditing ? `Edit ${customer?.companyName || 'Customer'}` : 'New Customer'}
         description={
@@ -140,12 +154,12 @@ export default function CustomerEditPage() {
         ]}
       />
 
-      <CustomerForm form={form as any} onSubmit={onSubmit} formId={FORM_ID} />
+      <CustomerForm form={form} onSubmit={onSubmit} formId={FORM_ID} />
 
       <ConfirmDialog
         isOpen={showCancelConfirm}
         onClose={() => setShowCancelConfirm(false)}
-        onConfirm={() => navigate('/customers')}
+        onConfirm={() => navigate(isEditing ? `/customers/${id}` : '/customers')}
         title="Discard Changes?"
         description="You have unsaved changes. Are you sure you want to discard them and leave this page?"
         confirmLabel="Discard Changes"

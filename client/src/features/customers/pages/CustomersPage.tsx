@@ -7,11 +7,14 @@ import { CustomerList } from '../components/CustomerList';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { PageHeader } from '@/components/shared/PageHeader';
 
+import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
+
 export default function CustomersPage() {
   const navigate = useNavigate();
 
   return (
     <PageContainer>
+      <Breadcrumbs />
       <PageHeader title="Customers" description="Manage your client base and their details.">
         <Button onClick={() => navigate('/customers/new')}>
           <Plus className="mr-2 h-4 w-4" /> Add Customer

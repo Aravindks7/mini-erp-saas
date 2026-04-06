@@ -51,6 +51,15 @@ export async function createCustomer(req: Request, res: Response) {
       userId,
       parseResult.data,
     );
+
+    if (!newCustomer) {
+      logger.error(
+        { organizationId, userId, data: parseResult.data },
+        'Service failed to return new customer after creation',
+      );
+      return res.status(500).json({ error: 'Failed to retrieve created customer record' });
+    }
+
     res.status(201).json(newCustomer);
   } catch (error: any) {
     logger.error({ error, organizationId, userId }, 'Failed to create customer');
@@ -78,9 +87,13 @@ export async function updateCustomer(req: Request, res: Response) {
       id as string,
       parseResult.data,
     );
+
     if (!updatedCustomer) {
-      return res.status(404).json({ error: 'Customer not found' });
+      // 404 is technically handled by Service returning null if record not found,
+      // but double check here for clinical precision.
+      return res.status(404).json({ error: 'Customer not found or update failed' });
     }
+
     res.json(updatedCustomer);
   } catch (error: any) {
     console.error('DEBUG updateCustomer Error:', error);

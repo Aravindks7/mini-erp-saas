@@ -34,6 +34,13 @@ import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { DataTablePagination } from './DataTablePagination';
 import { DataTableToolbar } from './DataTableToolbar';
 
+export interface BulkAction<TData> {
+  label: string;
+  onAction: (rows: TData[]) => void;
+  icon?: React.ReactNode;
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost';
+}
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
@@ -44,6 +51,7 @@ interface DataTableProps<TData, TValue> {
     description?: string;
   };
   onRowClick?: (data: TData) => void;
+  bulkActions?: BulkAction<TData>[];
 }
 
 export function DataTable<TData, TValue>({
@@ -53,6 +61,7 @@ export function DataTable<TData, TValue>({
   isLoading,
   emptyState,
   onRowClick,
+  bulkActions = [],
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
@@ -85,17 +94,23 @@ export function DataTable<TData, TValue>({
     return <SkeletonLoader variant="table" rows={5} />;
   }
 
+  const isActuallyEmpty = data.length === 0;
+
   return (
     <div className="space-y-4">
-      <DataTableToolbar table={table} searchKey={searchKey} />
-      <div className="rounded-md border bg-background">
+      <DataTableToolbar table={table} searchKey={searchKey} bulkActions={bulkActions} />
+      <div className="rounded-md border bg-background overflow-hidden">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="bg-muted/30">
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
+                    <TableHead
+                      key={header.id}
+                      colSpan={header.colSpan}
+                      className="h-10 text-xs uppercase font-bold tracking-wider"
+                    >
                       {header.isPlaceholder
                         ? null
                         : flexRender(header.column.columnDef.header, header.getContext())}
@@ -112,10 +127,13 @@ export function DataTable<TData, TValue>({
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
                   onClick={() => onRowClick?.(row.original)}
-                  className={cn(onRowClick && 'cursor-pointer hover:bg-muted/50 transition-colors')}
+                  className={cn(
+                    'group transition-colors',
+                    onRowClick ? 'cursor-pointer hover:bg-primary/5' : 'hover:bg-muted/50',
+                  )}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className="py-3 px-4">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -123,10 +141,18 @@ export function DataTable<TData, TValue>({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center border-none">
+                <TableCell colSpan={columns.length} className="h-64 text-center border-none">
                   <EmptyState
-                    title={emptyState?.title}
-                    description={emptyState?.description}
+                    title={
+                      isActuallyEmpty
+                        ? emptyState?.title || 'No data found'
+                        : 'No results match your search'
+                    }
+                    description={
+                      isActuallyEmpty
+                        ? emptyState?.description || 'Get started by creating a new record.'
+                        : 'Try adjusting your filters or search terms to find what you are looking for.'
+                    }
                     className="border-none bg-transparent"
                   />
                 </TableCell>

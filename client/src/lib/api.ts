@@ -51,12 +51,23 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
   }
 
   // Parse JSON if possible
+  const text = await response.text();
   const isJson = response.headers.get('content-type')?.includes('application/json');
-  const data = isJson ? await response.json() : await response.text();
+  let data: unknown;
+
+  try {
+    data = isJson && text ? JSON.parse(text) : text;
+  } catch (err) {
+    console.error('Failed to parse API response:', { err, text });
+    data = text;
+  }
 
   if (!response.ok) {
+    const errorData = data as Record<string, unknown>; // Narrowing for error extraction
+    const errorMessage =
+      (errorData?.message as string) || (errorData?.error as string) || response.statusText;
     // Standardize error throwing for React Query to catch
-    throw new ApiError(response.status, data?.message || data?.error || response.statusText, data);
+    throw new ApiError(response.status, errorMessage, data);
   }
 
   return data as T;
