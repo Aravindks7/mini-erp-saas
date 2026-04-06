@@ -29,8 +29,8 @@ export class CustomersService extends BaseService<typeof customers> {
     });
   }
 
-  async getCustomerById(organizationId: string, id: string) {
-    return await db.query.customers.findFirst({
+  async getCustomerById(organizationId: string, id: string, tx: any = db) {
+    return await tx.query.customers.findFirst({
       where: this.getTenantWhere(organizationId, id),
       with: {
         addresses: {
@@ -140,7 +140,7 @@ export class CustomersService extends BaseService<typeof customers> {
         }
       }
 
-      return await this.getCustomerById(organizationId, newCustomer.id);
+      return await this.getCustomerById(organizationId, newCustomer.id, tx);
     });
   }
 
@@ -321,7 +321,7 @@ export class CustomersService extends BaseService<typeof customers> {
         }
       }
 
-      return await this.getCustomerById(organizationId, id);
+      return await this.getCustomerById(organizationId, id, tx);
     });
   }
 
