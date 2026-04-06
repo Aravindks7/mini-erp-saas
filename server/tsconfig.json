@@ -33,7 +33,8 @@
     /* Path aliases */
     "baseUrl": ".",
     "paths": {
-      "@shared/*": ["../shared/*"]
+      "@shared/*": ["../shared/*"],
+      "zod": ["node_modules/zod"]
     }
   },
   "include": ["src", "../shared"],

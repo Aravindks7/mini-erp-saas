@@ -61,11 +61,13 @@ export class CustomersService extends BaseService<typeof customers> {
       if (addressData && addressData.length > 0) {
         // Enforce exactly one primary by picking the first one marked primary, or defaulting to the first in the list
         let primaryFound = false;
-        const processedAddresses = addressData.map((a) => {
-          const isPrimary = a.isPrimary && !primaryFound;
-          if (isPrimary) primaryFound = true;
-          return { ...a, isPrimary };
-        });
+        const processedAddresses = addressData.map(
+          (a: NonNullable<CreateCustomerInput['addresses']>[number]) => {
+            const isPrimary = a.isPrimary && !primaryFound;
+            if (isPrimary) primaryFound = true;
+            return { ...a, isPrimary };
+          },
+        );
         if (!primaryFound && processedAddresses.length > 0) {
           processedAddresses[0]!.isPrimary = true;
         }
@@ -103,11 +105,13 @@ export class CustomersService extends BaseService<typeof customers> {
       if (contactData && contactData.length > 0) {
         // Enforce exactly one primary
         let primaryFound = false;
-        const processedContacts = contactData.map((c) => {
-          const isPrimary = c.isPrimary && !primaryFound;
-          if (isPrimary) primaryFound = true;
-          return { ...c, isPrimary };
-        });
+        const processedContacts = contactData.map(
+          (c: NonNullable<CreateCustomerInput['contacts']>[number]) => {
+            const isPrimary = c.isPrimary && !primaryFound;
+            if (isPrimary) primaryFound = true;
+            return { ...c, isPrimary };
+          },
+        );
         if (!primaryFound && processedContacts.length > 0) {
           processedContacts[0]!.isPrimary = true;
         }
@@ -169,7 +173,9 @@ export class CustomersService extends BaseService<typeof customers> {
         });
 
         // Identify to delete
-        const incomingIds = addressData.map((a) => a.id).filter(Boolean) as string[];
+        const incomingIds = addressData
+          .map((a: NonNullable<UpdateCustomerInput['addresses']>[number]) => a.id)
+          .filter(Boolean) as string[];
         const junctionsToDelete = existingJunctions.filter(
           (j) => !incomingIds.includes(j.addressId),
         );
@@ -188,14 +194,16 @@ export class CustomersService extends BaseService<typeof customers> {
         let incomingPrimaryId: string | null = null;
         let primaryFoundInIncoming = false;
 
-        const processedAddressData = addressData.map((a) => {
-          const isPrimary = a.isPrimary && !primaryFoundInIncoming;
-          if (isPrimary) {
-            primaryFoundInIncoming = true;
-            incomingPrimaryId = a.id || 'NEW';
-          }
-          return { ...a, isPrimary };
-        });
+        const processedAddressData = addressData.map(
+          (a: NonNullable<UpdateCustomerInput['addresses']>[number]) => {
+            const isPrimary = a.isPrimary && !primaryFoundInIncoming;
+            if (isPrimary) {
+              primaryFoundInIncoming = true;
+              incomingPrimaryId = a.id || 'NEW';
+            }
+            return { ...a, isPrimary };
+          },
+        );
 
         // If a primary is designated in the incoming payload, reset ALL existing primaries first
         if (primaryFoundInIncoming) {
@@ -254,7 +262,9 @@ export class CustomersService extends BaseService<typeof customers> {
           where: eq(customerContacts.customerId, id),
         });
 
-        const incomingIds = contactData.map((c) => c.id).filter(Boolean) as string[];
+        const incomingIds = contactData
+          .map((c: NonNullable<UpdateCustomerInput['contacts']>[number]) => c.id)
+          .filter(Boolean) as string[];
         const junctionsToDelete = existingJunctions.filter(
           (j) => !incomingIds.includes(j.contactId),
         );
@@ -268,11 +278,13 @@ export class CustomersService extends BaseService<typeof customers> {
         }
 
         let primaryFoundInIncoming = false;
-        const processedContactData = contactData.map((c) => {
-          const isPrimary = c.isPrimary && !primaryFoundInIncoming;
-          if (isPrimary) primaryFoundInIncoming = true;
-          return { ...c, isPrimary };
-        });
+        const processedContactData = contactData.map(
+          (c: NonNullable<UpdateCustomerInput['contacts']>[number]) => {
+            const isPrimary = c.isPrimary && !primaryFoundInIncoming;
+            if (isPrimary) primaryFoundInIncoming = true;
+            return { ...c, isPrimary };
+          },
+        );
 
         if (primaryFoundInIncoming) {
           await tx
