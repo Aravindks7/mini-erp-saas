@@ -5,8 +5,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@shared/*": ["../shared/*"],
-      "zod": ["node_modules/zod"]
+      "@shared/*": ["../shared/*"]
     }
   }
 }

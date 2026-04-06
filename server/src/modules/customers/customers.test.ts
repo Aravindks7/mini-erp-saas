@@ -41,6 +41,9 @@ const mockSet = vi.fn().mockImplementation(() => {
 
 const mockTx = {
   query: {
+    customers: {
+      findFirst: vi.fn().mockResolvedValue({ id: 'cust-123', companyName: 'Mock Corp' }),
+    },
     customerAddresses: { findMany: vi.fn().mockResolvedValue([]) },
     customerContacts: { findMany: vi.fn().mockResolvedValue([]) },
   },
