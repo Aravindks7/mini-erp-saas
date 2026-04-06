@@ -6,11 +6,11 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/server/src/server.js",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "db:migrate": "node dist/db/migrate.js"
+    "db:migrate": "node dist/server/src/db/migrate.js"
   },
   "keywords": [],
   "author": "",
