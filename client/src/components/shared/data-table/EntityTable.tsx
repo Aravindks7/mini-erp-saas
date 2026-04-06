@@ -1,6 +1,6 @@
 import * as React from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal, Eye, Pencil, Trash2, Plus, Download, Filter } from 'lucide-react';
+import { MoreHorizontal, Eye, Pencil, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { DataTable } from './DataTable';
-import { cn } from '@/lib/utils';
 
 /**
  * Standard action configuration for EntityTable rows.

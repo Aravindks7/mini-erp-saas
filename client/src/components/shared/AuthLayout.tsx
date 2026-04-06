@@ -15,15 +15,23 @@ interface AuthLayoutProps {
  */
 export default function AuthLayout({ children, title, description, className }: AuthLayoutProps) {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-muted/30 p-4 md:p-8">
-      <div className="w-full max-w-[450px] space-y-8 animate-in fade-in zoom-in duration-500">
+    <div className="min-h-screen w-full flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4 md:p-8 relative overflow-hidden">
+      {/* Decorative background elements for premium feel */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none opacity-20 dark:opacity-40">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/20 blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-primary/10 blur-[120px]" />
+      </div>
+
+      <div className="w-full max-w-[450px] space-y-8 relative z-10">
         {/* Branding placeholder */}
         <div className="flex flex-col items-center justify-center space-y-2 text-center">
-          <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 mb-2">
-            <span className="text-primary-foreground font-bold text-xl">ERP</span>
+          <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center shadow-2xl shadow-primary/40 mb-4 ring-4 ring-primary/10">
+            <span className="text-primary-foreground font-black text-2xl tracking-tighter">
+              ERP
+            </span>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-            CloudERP <span className="text-primary">SaaS</span>
+          <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-5xl">
+            CloudERP <span className="text-primary italic">SaaS</span>
           </h1>
           <p className="text-muted-foreground text-sm max-w-xs">
             Manage your organization with clinical precision and enterprise-grade tools.
@@ -39,13 +47,12 @@ export default function AuthLayout({ children, title, description, className }: 
               )}
             </CardHeader>
           )}
-          <CardContent>{children}</CardContent>
+          <CardContent className="p-0">{children}</CardContent>
         </Card>
 
         {/* Footer info */}
         <p className="text-center text-xs text-muted-foreground/60 px-8">
-          By continuing, you agree to our Terms of Service and Privacy Policy. Built with 100% type
-          safety.
+          By continuing, you agree to our Terms of Service and Privacy Policy.
         </p>
       </div>
     </div>

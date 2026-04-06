@@ -1,6 +1,5 @@
 'use client';
 
-import * as React from 'react';
 import { cn } from '@/lib/utils';
 // Import modern shadcn primitives
 import {
@@ -22,7 +21,6 @@ interface ComboboxProps {
   value?: string;
   onChange: (value: string | undefined) => void;
   placeholder?: string;
-  searchPlaceholder?: string;
   emptyMessage?: string;
   className?: string;
   disabled?: boolean;
@@ -38,7 +36,6 @@ export function Combobox({
   value,
   onChange,
   placeholder = 'Select option...',
-  searchPlaceholder = 'Search...',
   emptyMessage = 'No results found.',
   className,
   disabled = false,

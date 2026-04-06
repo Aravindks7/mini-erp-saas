@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '@/lib/api';
 import type {
   CreateCustomerInput,
   UpdateCustomerInput,
 } from '@shared/contracts/customers.contract';
+import { customersApi } from '../api/customers.api';
 
 export const customerKeys = {
   all: ['customers'] as const,
@@ -13,28 +13,17 @@ export const customerKeys = {
   detail: (id: string) => [...customerKeys.details(), id] as const,
 };
 
-export interface CustomerResponse {
-  id: string;
-  companyName: string;
-  taxNumber?: string | null;
-  status: 'active' | 'inactive';
-  createdAt: string;
-  updatedAt: string;
-  addresses: any[]; // These are specific address types, but for now we can keep as array
-  contacts: any[];
-}
-
 export function useCustomers() {
   return useQuery({
     queryKey: customerKeys.lists(),
-    queryFn: () => apiFetch<CustomerResponse[]>('/customers'),
+    queryFn: customersApi.fetchCustomers,
   });
 }
 
 export function useCustomer(id: string | undefined) {
   return useQuery({
     queryKey: customerKeys.detail(id || ''),
-    queryFn: () => apiFetch<CustomerResponse>(`/customers/${id}`),
+    queryFn: () => customersApi.fetchCustomer(id!),
     enabled: !!id,
   });
 }
@@ -43,11 +32,7 @@ export function useCreateCustomer() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateCustomerInput) =>
-      apiFetch<CustomerResponse>('/customers', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
+    mutationFn: (data: CreateCustomerInput) => customersApi.createCustomer(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: customerKeys.lists() });
     },
@@ -59,10 +44,7 @@ export function useUpdateCustomer() {
 
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateCustomerInput }) =>
-      apiFetch<CustomerResponse>(`/customers/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      }),
+      customersApi.updateCustomer(id, data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: customerKeys.lists() });
       queryClient.invalidateQueries({ queryKey: customerKeys.detail(data.id) });
@@ -74,10 +56,7 @@ export function useDeleteCustomer() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) =>
-      apiFetch<{ message: string }>(`/customers/${id}`, {
-        method: 'DELETE',
-      }),
+    mutationFn: (id: string) => customersApi.deleteCustomer(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: customerKeys.lists() });
     },
