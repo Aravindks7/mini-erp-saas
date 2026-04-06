@@ -1,6 +1,6 @@
 import { DataTable } from '@/components/shared/data-table/DataTable';
 import { columns } from './columns';
-import { useCustomers } from '../api/customers';
+import { useCustomers } from '../hooks/customers.hooks';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export function CustomerList() {

@@ -3,7 +3,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
 import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
 
-import type { CustomerResponse } from '../api/customers';
+import type { CustomerResponse } from '../api/customers.api';
 import { CustomerRowActions } from './CustomerRowActions';
 
 const customerStatusMap: StatusMap<string> = {

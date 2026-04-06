@@ -99,7 +99,9 @@ export function DeleteConfirmDialog({
             </p>
             <Input
               value={confirmationInput}
-              onChange={(e) => setConfirmationInput(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setConfirmationInput(e.target.value)
+              }
               placeholder={requireConfirmationText}
               className={cn(
                 'h-10',

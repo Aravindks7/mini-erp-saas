@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { LoadingOverlay } from './LoadingOverlay';
+import LoadingOverlay from './LoadingOverlay';
 import { SkeletonLoader } from './SkeletonLoader';
 import { ErrorBoundary } from './ErrorBoundary';
 
@@ -8,6 +8,7 @@ interface SuspenseWrapperProps {
   fallback?: React.ReactNode;
   variant?: 'overlay' | 'skeleton' | 'none';
   errorFallback?: React.ReactNode;
+  message?: string;
 }
 
 /**
@@ -20,12 +21,13 @@ export const SuspenseWrapper = ({
   fallback,
   variant = 'skeleton',
   errorFallback,
+  message,
 }: SuspenseWrapperProps) => {
   const defaultFallback =
     variant === 'skeleton' ? (
       <SkeletonLoader variant="card" />
     ) : variant === 'overlay' ? (
-      <LoadingOverlay />
+      <LoadingOverlay isVisible={true} message={message} />
     ) : null;
 
   return (

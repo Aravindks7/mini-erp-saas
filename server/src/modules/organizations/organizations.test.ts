@@ -36,11 +36,17 @@ vi.mock('../../db/index.js', () => ({
           organizationInvites: {
             findMany: vi.fn().mockResolvedValue([]),
           },
+          organizations: {
+            findFirst: vi.fn().mockResolvedValue(null),
+          },
         },
       };
       return await cb(tx);
     }),
     query: {
+      organizations: {
+        findFirst: vi.fn(),
+      },
       organizationMemberships: {
         findFirst: vi.fn(),
         findMany: vi.fn(),

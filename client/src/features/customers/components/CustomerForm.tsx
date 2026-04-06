@@ -1,7 +1,6 @@
-import { useNavigate } from 'react-router-dom';
-import { Loader2, Save } from 'lucide-react';
+import type { UseFormReturn } from 'react-hook-form';
+import { Building, Info } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
@@ -18,39 +17,32 @@ import { ContactSection } from '@/components/shared/domain/ContactSection';
 
 import type { CreateCustomerInput } from '@shared/contracts/customers.contract';
 import { createCustomerSchema } from '@shared/contracts/customers.contract';
-import type { CustomerResponse } from '../api/customers';
 
 interface CustomerFormProps {
-  initialData?: CustomerResponse;
+  form: UseFormReturn<CreateCustomerInput, unknown>;
   onSubmit: (data: CreateCustomerInput) => Promise<void>;
-  isSubmitting: boolean;
+  formId?: string;
 }
 
-export function CustomerForm({ initialData, onSubmit, isSubmitting }: CustomerFormProps) {
-  const navigate = useNavigate();
-
-  const defaultValues: Partial<CreateCustomerInput> = initialData || {
-    companyName: '',
-    status: 'active',
-    taxNumber: '',
-    addresses: [],
-    contacts: [],
-  };
-
+export function CustomerForm({ form, onSubmit, formId }: CustomerFormProps) {
   return (
     <Form<CreateCustomerInput, typeof createCustomerSchema>
-      schema={createCustomerSchema}
-      defaultValues={defaultValues as any}
+      form={form}
       onSubmit={onSubmit}
+      id={formId}
+      className="space-y-8"
     >
-      {(form) => (
+      {() => (
         <div className="space-y-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Global Information</CardTitle>
+          <Card className="border-muted-foreground/20">
+            <CardHeader className="bg-muted/30 pb-4">
+              <div className="flex items-center gap-2">
+                <Building className="h-4 w-4 text-primary" />
+                <CardTitle className="text-lg">Global Information</CardTitle>
+              </div>
               <CardDescription>Basic details about the customer company.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 pt-6">
               <div className="grid gap-6 sm:grid-cols-2">
                 <FormField name="companyName" label="Company Name">
                   {({ field }) => <Input {...field} placeholder="e.g. Acme Corp" />}
@@ -63,52 +55,33 @@ export function CustomerForm({ initialData, onSubmit, isSubmitting }: CustomerFo
                 </FormField>
               </div>
 
-              <FormField name="status" label="Status" className="sm:max-w-[240px]">
-                {({ field }) => (
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              </FormField>
+              <div className="grid gap-6 sm:grid-cols-2">
+                <FormField name="status" label="Status">
+                  {({ field }) => (
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </FormField>
+              </div>
             </CardContent>
           </Card>
 
-          <AddressSection control={form.control} name="addresses" />
-
-          <ContactSection control={form.control} name="contacts" />
-
-          <div className="flex items-center justify-end space-x-4 sticky bottom-0 bg-background/80 backdrop-blur-sm p-4 border-t z-10 -mx-6 px-6">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate('/customers')}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="min-w-[140px] shadow-lg shadow-primary/20"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Customer
-                </>
-              )}
-            </Button>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 px-1">
+              <Info className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Domain Details
+              </h3>
+            </div>
+            <AddressSection control={form.control} name="addresses" />
+            <ContactSection control={form.control} name="contacts" />
           </div>
         </div>
       )}

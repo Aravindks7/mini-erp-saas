@@ -6,12 +6,14 @@ import { Button } from '@/components/ui/button';
 
 export interface PageHeaderAction {
   label: string;
-  onClick: () => void;
+  onClick?: () => void;
   icon?: React.ReactNode;
   variant?: 'default' | 'outline' | 'secondary' | 'ghost' | 'destructive';
   className?: string;
   disabled?: boolean;
   isLoading?: boolean;
+  type?: 'button' | 'submit';
+  form?: string;
 }
 
 export interface PageHeaderProps {
@@ -99,6 +101,8 @@ export function PageHeader({
               variant={action.variant || 'default'}
               onClick={action.onClick}
               disabled={action.disabled || action.isLoading}
+              type={action.type || 'button'}
+              form={action.form}
               className={cn('h-9 gap-2', action.className)}
             >
               {action.icon && <span>{action.icon}</span>}

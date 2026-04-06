@@ -1,13 +1,96 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useTenant } from '../../contexts/TenantContext';
+import { useOrganizations } from '@/features/organizations/hooks/organizations.hooks';
 
 export const TenantGuard = ({ children }: { children: ReactNode }) => {
-  const { activeOrganizationId } = useTenant();
+  const { activeOrganizationId, setActiveOrganizationId } = useTenant();
   const location = useLocation();
 
-  // If the user has not selected an organization, force them to do so
-  if (!activeOrganizationId) {
+  const { data: organizations, isLoading, isFetching, isError, error } = useOrganizations();
+
+  // CLINICAL OBSERVABILITY: Monitor the tenant-state transition in development
+  console.log('[TenantGuard] Checking Tenant State:', {
+    id: activeOrganizationId,
+    organizationsFound: organizations?.length || 0,
+    isFetching,
+    isLoading,
+    isError,
+  });
+
+  // AUTO-SELECTION LOGIC: Snap to the first organization if none is selected
+  useEffect(() => {
+    if (
+      !isLoading &&
+      !isError &&
+      organizations &&
+      organizations.length > 0 &&
+      !activeOrganizationId
+    ) {
+      console.log(
+        '[TenantGuard] Auto-selecting first available organization:',
+        organizations[0].id,
+      );
+      setActiveOrganizationId(organizations[0].id);
+    }
+  }, [isLoading, isError, organizations, activeOrganizationId, setActiveOrganizationId]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+        <div className="flex flex-col items-center gap-2">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <div className="text-sm text-muted-foreground animate-pulse font-medium">
+            Verifying organization access...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // FAIL-FAST REDIRECTION
+  if (isError) {
+    console.error('[TenantGuard] Failed to fetch organizations:', error);
+    return <Navigate to="/login" replace />;
+  }
+
+  // AUTOMATED ONBOARDING REDIRECTION
+  if (!organizations || (organizations.length === 0 && !isFetching)) {
+    if (activeOrganizationId) {
+      console.warn(
+        '[TenantGuard] No organizations found for current user. Clearing stale activeOrganizationId.',
+      );
+      setActiveOrganizationId(null);
+    }
+
+    if (location.pathname === '/onboarding') return <>{children}</>;
+    return <Navigate to="/onboarding" state={{ from: location }} replace />;
+  }
+
+  // TENANT ISOLATION VALIDATION
+  const isValidTenant = organizations.some((org) => org.id === activeOrganizationId);
+
+  if (!activeOrganizationId || !isValidTenant) {
+    // If we have organizations but no selection yet, show loading while the useEffect snaps into place
+    if (organizations && organizations.length > 0 && !activeOrganizationId) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <div className="text-sm text-muted-foreground animate-pulse font-medium">
+              Loading workspace...
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeOrganizationId && !isValidTenant) {
+      console.warn('[TenantGuard] Stale organization ID detected. Clearing active organization.');
+      setActiveOrganizationId(null);
+    }
+
+    if (location.pathname === '/select-organization') return <>{children}</>;
     return <Navigate to="/select-organization" state={{ from: location }} replace />;
   }
 

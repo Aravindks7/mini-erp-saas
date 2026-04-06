@@ -1,25 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
-import { apiFetch } from '@/lib/api';
-import { useTenant } from '@/contexts/TenantContext';
-import { Building2, ChevronDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
-
-interface Organization {
-  id: string;
-  name: string;
-  slug: string;
-  role: string;
-}
+import { Building2, ChevronDown } from 'lucide-react';
+import { useTenant } from '@/contexts/TenantContext';
+import { useOrganizations } from '@/features/organizations/hooks/organizations.hooks';
 
 export function OrganizationSwitcher() {
   const { activeOrganizationId, setActiveOrganizationId } = useTenant();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { data: organizations, isLoading } = useQuery<Organization[]>({
-    queryKey: ['my-organizations'],
-    queryFn: () => apiFetch('/organizations'),
-  });
+  const { data: organizations, isLoading } = useOrganizations();
 
   const activeOrg = organizations?.find((org) => org.id === activeOrganizationId);
 

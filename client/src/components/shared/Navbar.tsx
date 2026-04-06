@@ -1,27 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { Bell, LogOut, User } from 'lucide-react';
-import { OrganizationSwitcher } from '@/components/ui/OrganizationSwitcher';
+import { OrganizationSwitcher } from './OrganizationSwitcher';
 import { useAuth } from '@/contexts/AuthContext';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { signOut } from '@/lib/auth-client';
-import { AUTH_QUERY_KEY } from '@/hooks/use-auth-session';
-import { useNavigate } from 'react-router-dom';
+import { useSignOutMutation } from '@/features/auth/hooks/auth.hooks';
 
 export default function Navbar() {
   const { data: session } = useAuth();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-
-  const { mutate: handleSignOut } = useMutation({
-    mutationFn: async () => {
-      await signOut();
-    },
-    onSuccess: async () => {
-      // Clear session from cache and navigate to login
-      await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-      navigate('/login');
-    },
-  });
+  const { mutate: handleSignOut } = useSignOutMutation();
 
   return (
     <header className="h-16 border-b bg-background flex items-center justify-between px-6 sticky top-0 z-30">
