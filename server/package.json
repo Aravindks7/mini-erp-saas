@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "server.js",
+  "imports": {
+    "#shared/*": "./dist/shared/*"
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",

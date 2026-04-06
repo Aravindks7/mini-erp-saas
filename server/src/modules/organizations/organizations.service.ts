@@ -6,7 +6,7 @@ import {
   organizationInvites,
 } from '../../db/schema/index.js';
 import { and, eq, sql } from 'drizzle-orm';
-import { CreateOrganizationInput } from '../../../../shared/contracts/organizations.contract.js';
+import { CreateOrganizationInput } from '#shared/contracts/organizations.contract.js';
 
 export class OrganizationsService {
   /**
