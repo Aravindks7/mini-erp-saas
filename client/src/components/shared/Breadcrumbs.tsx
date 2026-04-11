@@ -1,7 +1,6 @@
 import * as React from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useMatches, Link } from 'react-router-dom';
 import { Home } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -10,60 +9,35 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import { Skeleton } from '@/components/ui/skeleton';
+import type { AppUIMatch } from '@/lib/router-utils';
 
 interface BreadcrumbsProps {
   className?: string;
   homeLabel?: string;
-  /**
-   * Explicitly override path segments with custom labels or components.
-   * Useful for replacing UUIDs with names or 'new' with 'Add Customer'.
-   */
-  overrides?: Record<string, React.ReactNode>;
-  /**
-   * If true, dynamic segments that match a UUID pattern (or specific overrides)
-   * will show a skeleton instead of the raw value.
-   */
-  isLoading?: boolean;
 }
 
 /**
  * Standard Breadcrumbs for ERP SaaS.
- * Auto-generates path navigation from URL hierarchy with support for dynamic overrides.
- * Provides a clinical, structured wayfinding experience.
+ * Native implementation using Route-Driven Metadata Architecture.
+ * Leverages React Router's `handle` property for declarative navigation.
  */
-export function Breadcrumbs({
-  className,
-  homeLabel = 'Dashboard',
-  overrides = {},
-  isLoading = false,
-}: BreadcrumbsProps) {
-  const location = useLocation();
-  const pathnames = location.pathname.split('/').filter((x) => x);
+export function Breadcrumbs({ className, homeLabel = 'Dashboard' }: BreadcrumbsProps) {
+  const matches = useMatches() as AppUIMatch[];
 
-  /**
-   * Formats a URL segment into a clinical label if no override is provided.
-   */
-  const formatLabel = (name: string) => {
-    if (overrides[name]) return overrides[name];
+  // Filter matches that have a crumb defined in their handle
+  const crumbs = matches
+    .filter((match) => Boolean(match.handle?.crumb))
+    .map((match) => {
+      const { handle, data, pathname } = match;
+      const crumb = handle.crumb;
+      const label = typeof crumb === 'function' ? crumb(data) : crumb;
+      return { pathname, label };
+    });
 
-    // Handle database IDs (e.g., uuid-like strings)
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (uuidRegex.test(name)) {
-      if (isLoading) return <Skeleton className="h-4 w-24" />;
-      return 'Detail View';
-    }
-
-    if (name.length > 32) return name.substring(0, 12) + '...';
-
-    return name
-      .split('-')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
+  if (crumbs.length === 0) return null;
 
   return (
-    <Breadcrumb className={cn('mb-4', className)}>
+    <Breadcrumb className={className}>
       <BreadcrumbList>
         <BreadcrumbItem>
           <BreadcrumbLink asChild>
@@ -79,34 +53,24 @@ export function Breadcrumbs({
           </BreadcrumbLink>
         </BreadcrumbItem>
 
-        {pathnames.map((name, index) => {
-          const routeTo = `/${pathnames.slice(0, index + 1).join('/')}`;
-          const isLast = index === pathnames.length - 1;
-          const label = formatLabel(name);
-
-          // If it's a dynamic segment and we are loading, show skeleton if no custom label exists yet
-          const content =
-            isLoading && !overrides[name] && /^[0-9a-f]{8,}/i.test(name) ? (
-              <Skeleton className="h-4 w-20" />
-            ) : (
-              label
-            );
+        {crumbs.map((crumb, index) => {
+          const isLast = index === crumbs.length - 1;
 
           return (
-            <React.Fragment key={routeTo}>
+            <React.Fragment key={crumb.pathname}>
               <BreadcrumbSeparator />
               <BreadcrumbItem className="animate-in slide-in-from-left-1 duration-200">
                 {isLast ? (
                   <BreadcrumbPage className="truncate max-w-[200px] font-semibold text-foreground">
-                    {content}
+                    {crumb.label as React.ReactNode}
                   </BreadcrumbPage>
                 ) : (
                   <BreadcrumbLink asChild>
                     <Link
-                      to={routeTo}
+                      to={crumb.pathname}
                       className="truncate max-w-[150px] transition-colors hover:text-foreground"
                     >
-                      {content}
+                      {crumb.label as React.ReactNode}
                     </Link>
                   </BreadcrumbLink>
                 )}

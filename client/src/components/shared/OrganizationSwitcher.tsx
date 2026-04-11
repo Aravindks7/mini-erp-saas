@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Building2, ChevronDown } from 'lucide-react';
+import { Building2, ChevronsUpDown } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useOrganizations } from '@/features/organizations/hooks/organizations.hooks';
+import { Button } from '../ui/button';
 
 export function OrganizationSwitcher() {
   const { activeOrganizationId, setActiveOrganizationId } = useTenant();
@@ -24,22 +25,25 @@ export function OrganizationSwitcher() {
   }, []);
 
   if (isLoading) {
-    return <div className="h-10 w-48 animate-pulse rounded-md bg-muted/50" />;
+    return <div className="h-10 w-full animate-pulse rounded-md bg-muted/50" />;
   }
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      <button
+    <div className="relative w-full" ref={dropdownRef}>
+      <Button
+        variant="outline"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-10 items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        className="h-10 w-full justify-between gap-2 active:translate-none"
       >
-        <Building2 className="h-4 w-4 text-muted-foreground" />
-        <span className="truncate max-w-[120px]">{activeOrg?.name || 'Select Organization'}</span>
-        <ChevronDown className="h-4 w-4 text-muted-foreground opacity-50" />
-      </button>
+        <div className="flex items-center gap-2 overflow-hidden">
+          <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="truncate font-medium">{activeOrg?.name || 'Select Organization'}</span>
+        </div>
+        <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-50" />
+      </Button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in zoom-in-95">
+        <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in zoom-in-95">
           <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
             Organizations
           </div>

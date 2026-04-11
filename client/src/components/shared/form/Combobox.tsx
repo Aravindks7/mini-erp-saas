@@ -27,7 +27,7 @@ interface ComboboxProps {
 }
 
 /**
- * Standard Combobox (Searchable Select) for ERP SaaS.
+ * Standard Combobox (Searchable Select)
  * Refactored to use modern shadcn headless primitives powered by @base-ui/react.
  * Provides a highly accessible, clinical, and performant searchable interface.
  */
@@ -42,38 +42,31 @@ export function Combobox({
 }: ComboboxProps) {
   return (
     <ComboboxRoot
+      items={options}
       value={value}
       onValueChange={(val) => {
-        // Handle clear case (empty string)
-        onChange(val === '' ? undefined : (val as string));
+        onChange(val === null ? undefined : (val as string));
       }}
       disabled={disabled}
     >
-      <div className="relative">
-        <ComboboxInput
-          placeholder={placeholder}
-          aria-label={placeholder}
-          className={cn('w-full h-9 bg-background', className)}
-          showClear={!!value}
-        />
-      </div>
-
-      <ComboboxContent align="start" className="z-50 min-w-[200px]">
-        {/* Note: The new ComboboxInput in the registry handles search internally when used correctly */}
+      <ComboboxInput
+        placeholder={placeholder}
+        aria-label={placeholder}
+        className={cn('w-full h-11 bg-background', className)}
+        showClear={!!value}
+      />
+      <ComboboxContent align="start">
+        <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
         <ComboboxList>
-          <ComboboxEmpty className="py-6 text-center text-xs text-muted-foreground italic">
-            {emptyMessage}
-          </ComboboxEmpty>
-          {options.map((option) => (
+          {(option: ComboboxOption) => (
             <ComboboxItem
               key={option.value}
               value={option.value}
-              className="px-3 py-2 cursor-pointer transition-colors hover:bg-accent"
+              className="px-3 py-2 cursor-pointer transition-colors"
             >
-              <span className="truncate flex-1">{option.label}</span>
-              {/* Note: UI primitive already provides CheckIcon via Indicator */}
+              {option.label}
             </ComboboxItem>
-          ))}
+          )}
         </ComboboxList>
       </ComboboxContent>
     </ComboboxRoot>

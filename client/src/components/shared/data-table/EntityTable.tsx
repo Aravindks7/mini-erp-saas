@@ -1,5 +1,21 @@
+'use no memo';
+
 import * as React from 'react';
-import type { ColumnDef } from '@tanstack/react-table';
+import type {
+  ColumnDef,
+  ColumnFiltersState,
+  SortingState,
+  VisibilityState,
+} from '@tanstack/react-table';
+import {
+  getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from '@tanstack/react-table';
 import { MoreHorizontal, Eye, Pencil, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -11,6 +27,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { DataTable } from './DataTable';
+import { DataTableToolbar } from './DataTableToolbar';
+import { DataTableSearch } from './DataTableSearch';
 
 /**
  * Standard action configuration for EntityTable rows.
@@ -60,6 +78,11 @@ export function EntityTable<TData, TValue>({
   description,
   emptyState,
 }: EntityTableProps<TData, TValue>) {
+  const [rowSelection, setRowSelection] = React.useState({});
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+
   // Memoize augmented columns to include the global Actions column
   const augmentedColumns = React.useMemo(() => {
     const hasActions = !!actions || !!renderRowActions;
@@ -121,6 +144,28 @@ export function EntityTable<TData, TValue>({
     return [...columns, actionColumn];
   }, [columns, actions, renderRowActions]);
 
+  const table = useReactTable({
+    data,
+    columns: augmentedColumns,
+    state: {
+      sorting,
+      columnVisibility,
+      rowSelection,
+      columnFilters,
+    },
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
+  });
+
   return (
     <div className="space-y-4">
       {(title || description || headerActions) && (
@@ -133,13 +178,17 @@ export function EntityTable<TData, TValue>({
         </div>
       )}
 
-      <DataTable
-        columns={augmentedColumns}
-        data={data}
-        searchKey={searchKey}
-        isLoading={isLoading}
-        emptyState={emptyState}
-      />
+      <DataTable table={table} isLoading={isLoading} emptyState={emptyState}>
+        <DataTableToolbar table={table}>
+          {searchKey && (
+            <DataTableSearch
+              searchKey={searchKey}
+              value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ''}
+              onChange={(value) => table.getColumn(searchKey)?.setFilterValue(value)}
+            />
+          )}
+        </DataTableToolbar>
+      </DataTable>
     </div>
   );
 }

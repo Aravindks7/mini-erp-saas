@@ -2,12 +2,49 @@ import { type ReactNode, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useTenant } from '../../contexts/TenantContext';
 import { useOrganizations } from '@/features/organizations/hooks/organizations.hooks';
+import type { OrganizationResponse } from '@/features/organizations/api/organizations.api';
+
+/**
+ * Hook to synchronize the full activeOrganization object when the ID or data changes.
+ */
+function useSyncActiveOrg(
+  organizations: OrganizationResponse[] | undefined,
+  activeId: string | null,
+  activeOrg: OrganizationResponse | null,
+  setActiveOrg: (org: OrganizationResponse | null) => void,
+) {
+  useEffect(() => {
+    if (!organizations || !activeId) {
+      if (activeOrg) setActiveOrg(null);
+      return;
+    }
+
+    const currentOrg = organizations.find((o) => o.id === activeId);
+    if (!currentOrg) {
+      if (activeOrg) setActiveOrg(null);
+      return;
+    }
+
+    // Only update if it's a different organization to prevent render loops
+    if (activeOrg?.id !== currentOrg.id) {
+      setActiveOrg(currentOrg);
+    }
+  }, [organizations, activeId, activeOrg, setActiveOrg]);
+}
 
 export const TenantGuard = ({ children }: { children: ReactNode }) => {
-  const { activeOrganizationId, setActiveOrganizationId } = useTenant();
+  const {
+    activeOrganizationId,
+    setActiveOrganizationId,
+    activeOrganization,
+    setActiveOrganization,
+  } = useTenant();
   const location = useLocation();
 
   const { data: organizations, isLoading, isFetching, isError, error } = useOrganizations();
+
+  // Sync the full organization object to the context
+  useSyncActiveOrg(organizations, activeOrganizationId, activeOrganization, setActiveOrganization);
 
   // CLINICAL OBSERVABILITY: Monitor the tenant-state transition in development
   console.log('[TenantGuard] Checking Tenant State:', {

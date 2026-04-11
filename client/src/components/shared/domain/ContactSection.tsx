@@ -51,16 +51,15 @@ export function ContactSection<TFieldValues extends FieldValues>({
 
       {fields.map((field, index) => (
         <Card key={field.id} className="relative overflow-hidden border-muted-foreground/20">
-          <CardHeader className="bg-muted/30 pb-3">
+          <CardHeader className="bg-muted/30 py-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                 Contact #{index + 1}
               </CardTitle>
               <Button
                 type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
+                variant="destructive"
+                size="icon-sm"
                 onClick={() => remove(index)}
               >
                 <Trash2 className="h-4 w-4" />

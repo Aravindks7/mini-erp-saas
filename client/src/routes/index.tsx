@@ -17,6 +17,8 @@ import OnboardingPage from '@/features/auth/pages/Onboarding';
 
 import AuthLayout from '@/components/shared/AuthLayout';
 import { RouteErrorBoundary } from '@/components/shared/RouteErrorBoundary';
+import { queryClient } from '@/lib/query-client';
+import { customerDetailQuery } from '@/features/customers/hooks/customers.hooks';
 
 export const router = createBrowserRouter([
   {
@@ -87,13 +89,16 @@ export const router = createBrowserRouter([
       {
         path: 'users',
         element: <UsersPage />,
+        handle: { crumb: 'Users' },
       },
       {
         path: 'settings',
         element: <SettingsPage />,
+        handle: { crumb: 'Settings' },
       },
       {
         path: 'customers',
+        handle: { crumb: 'Customers' },
         children: [
           {
             index: true,
@@ -102,14 +107,29 @@ export const router = createBrowserRouter([
           {
             path: 'new',
             element: <CustomerEditPage />,
+            handle: { crumb: 'Add Customer' },
           },
           {
             path: ':id',
             element: <CustomerDetailsPage />,
+            loader: async ({ params }) => {
+              if (!params.id) throw new Error('No id provided');
+              return queryClient.ensureQueryData(customerDetailQuery(params.id));
+            },
+            handle: {
+              crumb: (data: any) => data?.companyName ?? 'Details',
+            },
           },
           {
             path: ':id/edit',
             element: <CustomerEditPage />,
+            loader: async ({ params }) => {
+              if (!params.id) throw new Error('No id provided');
+              return queryClient.ensureQueryData(customerDetailQuery(params.id));
+            },
+            handle: {
+              crumb: (data: any) => (data ? `Edit ${data.companyName}` : 'Edit'),
+            },
           },
         ],
       },

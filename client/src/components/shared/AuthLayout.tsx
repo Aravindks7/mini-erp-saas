@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -16,6 +17,11 @@ interface AuthLayoutProps {
 export default function AuthLayout({ children, title, description, className }: AuthLayoutProps) {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4 md:p-8 relative overflow-hidden">
+      {/* Absolute theme toggle location for auth screens */}
+      <div className="absolute top-4 right-4 z-50 md:top-8 md:right-8">
+        <ThemeToggle variant="compact" />
+      </div>
+
       {/* Decorative background elements for premium feel */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none opacity-20 dark:opacity-40">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/20 blur-[120px]" />
