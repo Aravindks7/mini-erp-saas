@@ -10,7 +10,6 @@ import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
 import { AddressCard, type Address } from '@/components/shared/domain/AddressCard';
 import { ContactCard, type Contact } from '@/components/shared/domain/ContactCard';
-import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
 
@@ -27,7 +26,6 @@ export default function CustomerDetailsPage() {
   if (isLoading) {
     return (
       <PageContainer>
-        <Breadcrumbs isLoading={true} />
         <SkeletonLoader variant="form" rows={3} />
       </PageContainer>
     );
@@ -57,8 +55,6 @@ export default function CustomerDetailsPage() {
 
   return (
     <PageContainer>
-      <Breadcrumbs overrides={{ [customer.id]: customer.companyName }} />
-
       <PageHeader
         title={customer.companyName}
         description={`Manage details, addresses, and contacts for ${customer.companyName}.`}
@@ -76,12 +72,6 @@ export default function CustomerDetailsPage() {
           <StatusBadge value={customer.status} statusMap={customerStatusMap} />
         </div>
       </PageHeader>
-
-      <div className="flex flex-col gap-1 -mt-4 mb-6">
-        <p className="text-xs font-mono text-muted-foreground bg-muted w-fit px-2 py-0.5 rounded border">
-          ID: {customer.id}
-        </p>
-      </div>
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full grid-cols-3 lg:w-[400px] h-11 bg-muted/50 p-1">

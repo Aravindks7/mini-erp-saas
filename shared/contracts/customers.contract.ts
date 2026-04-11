@@ -5,12 +5,18 @@ export const customerStatusEnumSchema = z.enum(['active', 'inactive']);
 export const addressSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().max(100).optional().nullable(),
-  addressLine1: z.string().min(1, 'Address line 1 is required').max(200),
+  addressLine1: z
+    .string({ message: 'Address line 1 is required' })
+    .min(1, 'Address line 1 is required')
+    .max(200),
   addressLine2: z.string().max(200).optional().nullable(),
-  city: z.string().min(1, 'City is required').max(100),
+  city: z.string({ message: 'City is required' }).min(1, 'City is required').max(100),
   state: z.string().max(100).optional().nullable(),
   postalCode: z.string().max(20).optional().nullable(),
-  country: z.string().min(1, 'Country is required').max(100),
+  country: z
+    .string({ message: 'Please select a country' })
+    .min(1, 'Please select a country')
+    .max(100),
   isPrimary: z.boolean().default(false),
   addressType: z.string().max(50).optional().nullable(),
 });

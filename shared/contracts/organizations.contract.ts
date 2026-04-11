@@ -8,6 +8,9 @@ export const createOrganizationSchema = z.object({
     .max(100)
     .regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens')
     .optional(),
+  defaultCountry: z
+    .string({ message: 'Please select a default country' })
+    .min(1, 'Please select a default country'),
 });
 
 export const updateOrganizationSchema = createOrganizationSchema.partial();

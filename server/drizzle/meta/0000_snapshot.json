@@ -1,5 +1,5 @@
 {
-  "id": "d7801fcd-d426-4b37-8afc-18dcd22a036d",
+  "id": "bb62b315-0df3-4c81-ab4a-6565490af252",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1144,6 +1144,12 @@
         },
         "slug": {
           "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "default_country": {
+          "name": "default_country",
           "type": "text",
           "primaryKey": false,
           "notNull": true

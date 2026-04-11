@@ -2,6 +2,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import {
   createOrganizationSchema,
   type CreateOrganizationInput,
@@ -17,6 +18,10 @@ import {
   organizationKeys,
 } from '@/features/organizations/hooks/organizations.hooks';
 import type { OrganizationResponse } from '@/features/organizations/api/organizations.api';
+import { Combobox } from '@/components/shared/form/Combobox';
+import { COUNTRIES } from '@shared/utils/countries';
+
+const countryOptions = COUNTRIES.map((c) => ({ label: c.name, value: c.name }));
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
@@ -28,8 +33,32 @@ export default function OnboardingPage() {
     resolver: zodResolver(createOrganizationSchema),
     defaultValues: {
       name: '',
+      defaultCountry: '', // No longer hardcoded; will be filled by IP geo-lookup
     },
   });
+
+  // PRE-FILL COUNTRY BASED ON IP
+  useEffect(() => {
+    const fetchGeoLocation = async () => {
+      try {
+        const response = await fetch('https://ipapi.co/json/');
+        const data = await response.json();
+
+        // Only update if the user hasn't manually touched the field yet
+        if (data.country_name && !form.formState.dirtyFields.defaultCountry) {
+          const matchedCountry = COUNTRIES.find((c) => c.name === data.country_name);
+          if (matchedCountry) {
+            form.setValue('defaultCountry', matchedCountry.name, { shouldValidate: true });
+          }
+        }
+      } catch (error) {
+        // Silent failure for IP lookup as per resilient ERP principles
+        console.warn('[Onboarding] Geo-lookup failed:', error);
+      }
+    };
+
+    fetchGeoLocation();
+  }, [form]);
 
   const isPending = createStatus === 'pending';
 
@@ -84,6 +113,28 @@ export default function OnboardingPage() {
                     aria-invalid={fieldState.invalid}
                     autoComplete="off"
                     autoFocus
+                  />
+                  {fieldState.invalid && fieldState.error && (
+                    <FieldError errors={[{ message: fieldState.error.message || '' }]} />
+                  )}
+                </Field>
+              )}
+            />
+          </FieldGroup>
+
+          <FieldGroup>
+            <Controller
+              name="defaultCountry"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor="default-country">Default Country</FieldLabel>
+                  <Combobox
+                    options={countryOptions}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Select primary market..."
+                    className="h-11"
                   />
                   {fieldState.invalid && fieldState.error && (
                     <FieldError errors={[{ message: fieldState.error.message || '' }]} />

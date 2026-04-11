@@ -1,10 +1,50 @@
-import { DataTable } from '@/components/shared/data-table/DataTable';
-import { columns } from './columns';
-import { useCustomers } from '../hooks/customers.hooks';
+import * as React from 'react';
+import { z } from 'zod';
+import {
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from '@tanstack/react-table';
 import { AlertCircle } from 'lucide-react';
+
+import { DataTable } from '@/components/shared/data-table/DataTable';
+import { DataTableToolbar } from '@/components/shared/data-table/DataTableToolbar';
+import { DataTableSearch } from '@/components/shared/data-table/DataTableSearch';
+import { DataTableFilter } from '@/components/shared/data-table/DataTableFilter';
+import { useDataTableState } from '@/hooks/useDataTableState';
+
+import { columns, customerStatusOptions } from './columns';
+import { useCustomers } from '../hooks/customers.hooks';
+
+const searchSchema = z.object({
+  companyName: z.string().optional(),
+  status: z.string().optional(),
+});
 
 export function CustomerList() {
   const { data: customers, isLoading, isError } = useCustomers();
+  const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
+  const [rowSelection, setRowSelection] = React.useState({});
+
+  const table = useReactTable({
+    data: customers || [],
+    columns,
+    state: {
+      ...tableState,
+      rowSelection,
+    },
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
+    onPaginationChange: tableSetters.onPaginationChange,
+    onSortingChange: tableSetters.onSortingChange,
+    onColumnFiltersChange: tableSetters.onColumnFiltersChange,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
 
   if (isError) {
     return (
@@ -21,25 +61,39 @@ export function CustomerList() {
 
   return (
     <DataTable
-      columns={columns}
-      data={customers || []}
-      searchKey="companyName"
+      table={table}
       isLoading={isLoading}
       emptyState={{
         title: 'Customer Directory is empty',
         description: 'You haven\'t added any customers yet. Click "Add Customer" to get started.',
       }}
-      bulkActions={[
-        {
-          label: 'Delete Selected',
-          onAction: (rows) =>
-            console.log(
-              'Bulk delete:',
-              rows.map((r) => r.id),
-            ),
-          variant: 'destructive',
-        },
-      ]}
-    />
+    >
+      <DataTableToolbar
+        table={table}
+        onReset={resetAll}
+        bulkActions={[
+          {
+            label: 'Delete Selected',
+            onAction: (rows) =>
+              console.log(
+                'Bulk delete:',
+                rows.map((r) => (r as any).id),
+              ),
+            variant: 'destructive',
+          },
+        ]}
+      >
+        <DataTableSearch
+          searchKey="companyName"
+          value={(table.getColumn('companyName')?.getFilterValue() as string) ?? ''}
+          onChange={(value) => table.getColumn('companyName')?.setFilterValue(value)}
+        />
+        <DataTableFilter
+          column={table.getColumn('status')}
+          title="Status"
+          options={customerStatusOptions}
+        />
+      </DataTableToolbar>
+    </DataTable>
   );
 }

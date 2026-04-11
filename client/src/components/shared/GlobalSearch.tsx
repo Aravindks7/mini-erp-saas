@@ -24,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { useModifierKey } from '@/hooks/useModifierKey';
 
 interface GlobalSearchProps {
   className?: string;
@@ -52,6 +53,7 @@ export function GlobalSearch({ className, onSearch }: GlobalSearchProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const navigate = useNavigate();
+  const modifierKey = useModifierKey();
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -83,7 +85,7 @@ export function GlobalSearch({ className, onSearch }: GlobalSearchProps) {
         <Search className="h-4 w-4 shrink-0 opacity-40" />
         <span className="flex-1 text-left">Search anything...</span>
         <kbd className="pointer-events-none hidden h-5 select-none items-center gap-0.5 rounded-md border border-border/60 bg-background px-1.5 font-mono text-[10px] font-semibold text-muted-foreground sm:flex">
-          <span className="text-[11px] leading-none">⌘</span>K
+          <span className="text-[11px] leading-none">{modifierKey}</span>K
         </kbd>
       </Button>
 

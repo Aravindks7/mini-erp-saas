@@ -1,42 +1,45 @@
 'use no memo';
 
+import * as React from 'react';
 import type { Table } from '@tanstack/react-table';
 import { X, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import type { BulkAction } from './DataTable';
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
-  searchKey?: string;
+  children?: React.ReactNode;
   bulkActions?: BulkAction<TData>[];
+  onReset?: () => void;
 }
 
 export function DataTableToolbar<TData>({
   table,
-  searchKey,
+  children,
   bulkActions = [],
+  onReset,
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
   const selectedRows = table.getFilteredSelectedRowModel().rows;
   const hasSelection = selectedRows.length > 0;
 
+  const handleReset = () => {
+    if (onReset) {
+      onReset();
+    } else {
+      table.resetColumnFilters();
+    }
+  };
+
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="flex flex-1 items-center space-x-2">
-        {searchKey && (
-          <Input
-            placeholder="Search..."
-            value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ''}
-            onChange={(event) => table.getColumn(searchKey)?.setFilterValue(event.target.value)}
-            className="h-8 w-[150px] lg:w-[250px] focus-visible:ring-primary/20"
-          />
-        )}
+        {children}
         {isFiltered && (
           <Button
             variant="ghost"
-            onClick={() => table.resetColumnFilters()}
+            onClick={handleReset}
             className="h-8 px-2 lg:px-3 text-muted-foreground hover:text-foreground"
           >
             Reset

@@ -43,7 +43,11 @@ export class OrganizationsService {
       // 2. Create the organization
       const [newOrg] = await tx
         .insert(organizations)
-        .values({ name: data.name, slug: finalSlug })
+        .values({
+          name: data.name,
+          slug: finalSlug,
+          defaultCountry: data.defaultCountry,
+        })
         .returning();
 
       if (!newOrg) throw new Error('Failed to create organization');

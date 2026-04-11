@@ -2,22 +2,8 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import type {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
-} from '@tanstack/react-table';
-import {
-  flexRender,
-  getCoreRowModel,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
+import type { Table as TanstackTable } from '@tanstack/react-table';
+import { flexRender } from '@tanstack/react-table';
 
 import {
   Table,
@@ -30,9 +16,7 @@ import {
 
 import { EmptyState } from '@/components/shared/EmptyState';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
-
 import { DataTablePagination } from './DataTablePagination';
-import { DataTableToolbar } from './DataTableToolbar';
 
 export interface BulkAction<TData> {
   label: string;
@@ -41,64 +25,34 @@ export interface BulkAction<TData> {
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost';
 }
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
-  data: TData[];
-  searchKey?: string;
+interface DataTableProps<TData> {
+  table: TanstackTable<TData>;
   isLoading?: boolean;
   emptyState?: {
     title?: string;
     description?: string;
   };
   onRowClick?: (data: TData) => void;
-  bulkActions?: BulkAction<TData>[];
+  children?: React.ReactNode;
 }
 
-export function DataTable<TData, TValue>({
-  columns,
-  data,
-  searchKey,
+export function DataTable<TData>({
+  table,
   isLoading,
   emptyState,
   onRowClick,
-  bulkActions = [],
-}: DataTableProps<TData, TValue>) {
-  const [rowSelection, setRowSelection] = React.useState({});
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-
-  const table = useReactTable({
-    data,
-    columns,
-    state: {
-      sorting,
-      columnVisibility,
-      rowSelection,
-      columnFilters,
-    },
-    enableRowSelection: true,
-    onRowSelectionChange: setRowSelection,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
-  });
-
+  children,
+}: DataTableProps<TData>) {
   if (isLoading) {
     return <SkeletonLoader variant="table" rows={5} />;
   }
 
-  const isActuallyEmpty = data.length === 0;
+  const isActuallyEmpty =
+    table.getCoreRowModel().rows.length === 0 && table.getState().columnFilters.length === 0;
 
   return (
     <div className="space-y-4">
-      <DataTableToolbar table={table} searchKey={searchKey} bulkActions={bulkActions} />
+      {children}
       <div className="rounded-md border bg-background overflow-hidden">
         <Table>
           <TableHeader>
@@ -141,7 +95,10 @@ export function DataTable<TData, TValue>({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-64 text-center border-none">
+                <TableCell
+                  colSpan={table.getAllColumns().length}
+                  className="h-64 text-center border-none"
+                >
                   <EmptyState
                     title={
                       isActuallyEmpty

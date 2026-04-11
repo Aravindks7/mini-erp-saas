@@ -69,7 +69,7 @@ export function ConfirmDialog({
             variant="ghost"
             onClick={onClose}
             disabled={activeLoading}
-            className="flex-1 sm:flex-none border-border/60 hover:bg-muted"
+            className="flex-1 sm:flex-none"
           >
             {cancelLabel}
           </Button>
@@ -77,11 +77,7 @@ export function ConfirmDialog({
             onClick={handleConfirm}
             disabled={activeLoading}
             variant={variant}
-            className={cn(
-              'flex-1 sm:flex-none min-w-[100px]',
-              variant === 'destructive' &&
-                'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-            )}
+            className={cn('flex-1 sm:flex-none min-w-[100px]')}
           >
             {activeLoading ? <LoadingSpinner size="sm" variant="white" className="mr-2" /> : null}
             {confirmLabel}
