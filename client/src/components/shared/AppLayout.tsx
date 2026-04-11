@@ -16,7 +16,7 @@ export default function AppLayout({ children, className }: AppLayoutProps) {
       <div className="flex flex-1 flex-col overflow-hidden">
         <Navbar />
 
-        <main className={cn('flex-1 overflow-y-auto bg-muted/40', className)}>{children}</main>
+        <main className={cn('flex-1 overflow-y-auto bg-background', className)}>{children}</main>
       </div>
     </div>
   );

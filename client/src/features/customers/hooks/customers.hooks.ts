@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
 import type {
   CreateCustomerInput,
   UpdateCustomerInput,
@@ -13,6 +13,12 @@ export const customerKeys = {
   detail: (id: string) => [...customerKeys.details(), id] as const,
 };
 
+export const customerDetailQuery = (id: string) =>
+  queryOptions({
+    queryKey: customerKeys.detail(id),
+    queryFn: () => customersApi.fetchCustomer(id),
+  });
+
 export function useCustomers() {
   return useQuery({
     queryKey: customerKeys.lists(),
@@ -22,8 +28,7 @@ export function useCustomers() {
 
 export function useCustomer(id: string | undefined) {
   return useQuery({
-    queryKey: customerKeys.detail(id || ''),
-    queryFn: () => customersApi.fetchCustomer(id!),
+    ...customerDetailQuery(id || ''),
     enabled: !!id,
   });
 }

@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 
 import type { CreateCustomerInput } from '@shared/contracts/customers.contract';
@@ -50,14 +49,8 @@ export default function CustomerEditPage() {
         companyName: customer.companyName,
         status: customer.status as CreateCustomerInput['status'],
         taxNumber: customer.taxNumber || '',
-        addresses: (customer.addresses || []).map((a) => ({
-          ...a,
-          addressType: a.addressType || null,
-        })),
-        contacts: (customer.contacts || []).map((c) => ({
-          ...c,
-          jobTitle: c.jobTitle || null,
-        })),
+        addresses: customer.addresses || [],
+        contacts: customer.contacts || [],
       });
     }
   }, [customer, form]);
@@ -93,7 +86,6 @@ export default function CustomerEditPage() {
   if (isEditing && isLoading) {
     return (
       <PageContainer>
-        <Breadcrumbs isLoading={true} overrides={{ [id as string]: '...' }} />
         <SkeletonLoader variant="form" rows={3} />
       </PageContainer>
     );
@@ -115,13 +107,6 @@ export default function CustomerEditPage() {
 
   return (
     <PageContainer>
-      <Breadcrumbs
-        overrides={{
-          [id || '']: customer?.companyName,
-          new: 'Add Customer',
-          edit: 'Edit',
-        }}
-      />
       <PageHeader
         title={isEditing ? `Edit ${customer?.companyName || 'Customer'}` : 'New Customer'}
         description={
@@ -154,7 +139,7 @@ export default function CustomerEditPage() {
         ]}
       />
 
-      <CustomerForm form={form} onSubmit={onSubmit} formId={FORM_ID} />
+      <CustomerForm form={form} onSubmit={onSubmit} formId={FORM_ID} isEdit={isEditing} />
 
       <ConfirmDialog
         isOpen={showCancelConfirm}

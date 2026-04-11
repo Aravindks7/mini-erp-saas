@@ -9,11 +9,15 @@ export async function createOrganization(req: Request, res: Response) {
     return res.status(400).json({ error: parseResult.error.flatten() });
   }
 
-  const { name, slug } = parseResult.data;
+  const { name, slug, defaultCountry } = parseResult.data;
   const userId = req.authSession.user.id;
 
   try {
-    const newOrg = await organizationsService.createOrganization(userId, { name, slug });
+    const newOrg = await organizationsService.createOrganization(userId, {
+      name,
+      slug,
+      defaultCountry,
+    });
     res.status(201).json(newOrg);
   } catch (error: any) {
     logger.error({ error, userId }, 'Failed to create organization');

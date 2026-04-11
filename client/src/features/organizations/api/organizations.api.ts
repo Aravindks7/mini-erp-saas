@@ -5,6 +5,7 @@ export interface OrganizationResponse {
   id: string;
   name: string;
   slug: string;
+  defaultCountry: string;
   role?: string;
 }
 

@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Users, Settings } from 'lucide-react';
 import { UserProfileDropdown } from './UserProfileDropdown';
+import { OrganizationSwitcher } from './OrganizationSwitcher';
 
 const navItems = [
   {
@@ -27,12 +28,9 @@ const navItems = [
 
 export default function Sidebar() {
   return (
-    <aside className="w-64 border-r bg-background flex flex-col h-full">
-      <div className="p-6 font-semibold text-lg flex items-center gap-2">
-        <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground">
-          <LayoutDashboard size={18} />
-        </div>
-        <span>ERP Admin</span>
+    <aside className="w-64 border-r border-border bg-background flex flex-col h-full">
+      <div className="px-4 py-6 font-semibold text-lg flex items-center gap-2">
+        <OrganizationSwitcher />
       </div>
 
       <nav className="flex-1 space-y-2 px-4 py-4">

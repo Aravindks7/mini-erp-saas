@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { formatFullDate } from '@shared/utils/date';
 import { History, UserCircle, Clock } from 'lucide-react';
 
 interface AuditInfoProps {
@@ -14,10 +14,6 @@ interface AuditInfoProps {
  * Provides transparency on record lifecycle with clinical precision.
  */
 export function AuditInfo({ createdAt, updatedAt, createdBy, className }: AuditInfoProps) {
-  const formatDate = (date: Date | string) => {
-    return format(new Date(date), 'PPP p');
-  };
-
   const hasBeenUpdated =
     updatedAt && new Date(updatedAt).getTime() !== new Date(createdAt).getTime();
 
@@ -38,7 +34,7 @@ export function AuditInfo({ createdAt, updatedAt, createdBy, className }: AuditI
           <Clock className="size-3.5 mt-0.5 opacity-50" />
           <div className="flex flex-col">
             <span className="font-semibold text-foreground/70">Created</span>
-            <span className="tabular-nums">{formatDate(createdAt)}</span>
+            <span className="tabular-nums">{formatFullDate(createdAt)}</span>
             {createdBy && (
               <span className="flex items-center gap-1 mt-1 font-medium text-primary/70">
                 <UserCircle className="size-3" />
@@ -53,7 +49,7 @@ export function AuditInfo({ createdAt, updatedAt, createdBy, className }: AuditI
             <Clock className="size-3.5 mt-0.5 opacity-50" />
             <div className="flex flex-col">
               <span className="font-semibold text-foreground/70">Last Modified</span>
-              <span className="tabular-nums">{formatDate(updatedAt!)}</span>
+              <span className="tabular-nums">{formatFullDate(updatedAt!)}</span>
             </div>
           </div>
         )}

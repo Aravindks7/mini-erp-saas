@@ -12,6 +12,7 @@ export const organizations = pgTable('organizations', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   slug: text('slug').unique().notNull(),
+  defaultCountry: text('default_country').notNull(),
   ...timestamps,
   ...userTracking,
 });
