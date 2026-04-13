@@ -1,6 +1,6 @@
 import { useTheme } from 'next-themes';
 import { Moon, Sun, Monitor } from 'lucide-react';
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
 interface ThemeToggleProps {
@@ -8,9 +8,21 @@ interface ThemeToggleProps {
   className?: string;
 }
 
+interface ViewTransition {
+  ready: Promise<void>;
+  finished: Promise<void>;
+  updateCallbackDone: Promise<void>;
+  skipTransition: () => void;
+}
+
+declare global {
+  interface Document {
+    startViewTransition(callback: () => Promise<void> | void): ViewTransition;
+  }
+}
+
 export function ThemeToggle({ variant = 'compact', className }: ThemeToggleProps) {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
 
   /**
    * Orchestrates a smooth circular reveal transition when switching themes.
@@ -41,7 +53,7 @@ export function ThemeToggle({ variant = 'compact', className }: ThemeToggleProps
         Math.max(y, window.innerHeight - y),
       );
 
-      const transition = (document as any).startViewTransition(async () => {
+      const transition = document.startViewTransition(async () => {
         setTheme(newTheme);
       });
 
@@ -60,13 +72,6 @@ export function ThemeToggle({ variant = 'compact', className }: ThemeToggleProps
     },
     [setTheme],
   );
-
-  // Avoid hydration mismatch
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) return null;
 
   if (variant === 'compact') {
     return (

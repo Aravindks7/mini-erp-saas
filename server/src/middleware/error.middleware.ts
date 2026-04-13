@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { logger } from '../utils/logger.js';
 import { AppError } from '../utils/AppError.js';
+import type { DbError } from '../types/db.js';
 
 export function errorMiddleware(
   err: Error | AppError | ZodError | unknown,
@@ -43,18 +44,22 @@ export function errorMiddleware(
   }
 
   // Safe Database Error handling
-  const isDbError = (e: any): e is { code: string } => {
+  const isDbError = (e: unknown): e is DbError => {
+    if (e === null || typeof e !== 'object') return false;
+    const obj = e as Record<string, unknown>;
     return (
-      e !== null &&
-      typeof e === 'object' &&
-      ('code' in e || (e.cause && typeof e.cause === 'object' && 'code' in e.cause))
+      'code' in obj ||
+      ('cause' in obj &&
+        obj.cause !== null &&
+        typeof obj.cause === 'object' &&
+        'code' in (obj.cause as Record<string, unknown>))
     );
   };
 
   if (isDbError(err)) {
-    const dbErrCode = (err as any).code || (err as any).cause?.code;
-    const dbErrMessage = (err as any).message || (err as any).cause?.message || 'Database error';
-    const dbErrDetail = (err as any).detail || (err as any).cause?.detail || '';
+    const dbErrCode = err.code || err.cause?.code;
+    const dbErrMessage = err.message || err.cause?.message || 'Database error';
+    const dbErrDetail = err.detail || err.cause?.detail || '';
 
     // 23505: Unique constraint violation
     if (dbErrCode === '23505') {

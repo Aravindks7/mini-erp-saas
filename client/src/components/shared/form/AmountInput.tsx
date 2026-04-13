@@ -11,6 +11,13 @@ interface AmountInputProps {
   className?: string;
 }
 
+function formatCurrency(val: number, curr: string) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: curr,
+  }).format(val);
+}
+
 /**
  * Standard Amount Input for ERP SaaS.
  * Requires a mandatory currency prop and uses Intl.NumberFormat for precision.
@@ -37,14 +44,7 @@ export function AmountInput({
     } else if (displayValue !== '') {
       setDisplayValue('');
     }
-  }, [value, currency]);
-
-  function formatCurrency(val: number, curr: string) {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: curr,
-    }).format(val);
-  }
+  }, [value, currency, displayValue]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;

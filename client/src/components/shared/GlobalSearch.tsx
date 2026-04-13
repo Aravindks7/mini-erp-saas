@@ -77,14 +77,14 @@ export function GlobalSearch({ className, onSearch }: GlobalSearchProps) {
       <Button
         variant="outline"
         className={cn(
-          'relative h-9 w-full justify-start gap-2 rounded-lg bg-muted/40 text-sm font-normal text-muted-foreground shadow-none hover:bg-muted/70 hover:text-foreground transition-colors border-border/50 md:w-64 lg:w-[420px] pl-3 pr-3',
+          'relative h-9 w-9 justify-center p-0 lg:w-64 xl:w-[420px] lg:justify-start lg:gap-2 lg:rounded-lg lg:px-3 bg-muted/40 text-sm font-normal text-muted-foreground shadow-none hover:bg-muted/70 hover:text-foreground transition-colors border-border/50',
           className,
         )}
         onClick={() => setOpen(true)}
       >
         <Search className="h-4 w-4 shrink-0 opacity-40" />
-        <span className="flex-1 text-left">Search anything...</span>
-        <kbd className="pointer-events-none hidden h-5 select-none items-center gap-0.5 rounded-md border border-border/60 bg-background px-1.5 font-mono text-[10px] font-semibold text-muted-foreground sm:flex">
+        <span className="hidden lg:inline flex-1 text-left">Search anything...</span>
+        <kbd className="pointer-events-none hidden h-5 select-none items-center gap-0.5 rounded-md border border-border/60 bg-background px-1.5 font-mono text-[10px] font-semibold text-muted-foreground xl:flex">
           <span className="text-[11px] leading-none">{modifierKey}</span>K
         </kbd>
       </Button>

@@ -97,7 +97,7 @@ describe('Organizations Module Integration', () => {
 
       const response = await request(app)
         .post('/organizations')
-        .send({ name: 'New Org', slug: 'new-org' });
+        .send({ name: 'New Org', slug: 'new-org', defaultCountry: 'US' });
 
       expect(response.status).toBe(201);
       expect(response.body.name).toBe('Test Org'); // from our mock

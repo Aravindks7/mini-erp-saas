@@ -1,5 +1,5 @@
 import { useFieldArray } from 'react-hook-form';
-import type { Control, FieldValues, Path, ArrayPath } from 'react-hook-form';
+import type { Control, FieldValues, Path, ArrayPath, FieldArrayPathValue } from 'react-hook-form';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,7 +42,7 @@ export function ContactSection<TFieldValues extends FieldValues>({
               email: '',
               phone: '',
               isPrimary: fields.length === 0,
-            } as any)
+            } as FieldArrayPathValue<TFieldValues, ArrayPath<TFieldValues>>[number])
           }
         >
           <Plus className="mr-2 h-4 w-4" /> Add Contact

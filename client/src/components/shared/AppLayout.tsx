@@ -1,6 +1,7 @@
 import Sidebar from '@/components/shared/Sidebar';
 import Navbar from '@/components/shared/Navbar';
 import { cn } from '@/lib/utils';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -8,10 +9,11 @@ interface AppLayoutProps {
 }
 
 export default function AppLayout({ children, className }: AppLayoutProps) {
+  const isDesktop = useBreakpoint('lg');
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
-      {/* Sidebar remains fixed/sticky depending on its internal implementation */}
-      <Sidebar />
+      {isDesktop && <Sidebar />}
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <Navbar />

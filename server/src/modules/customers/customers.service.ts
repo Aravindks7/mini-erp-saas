@@ -4,10 +4,12 @@ import { customerAddresses } from '../../db/schema/customer-addresses.schema.js'
 import { customerContacts } from '../../db/schema/customer-contacts.schema.js';
 
 import { addresses, contacts } from '../../db/schema/index.js';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { CreateCustomerInput, UpdateCustomerInput } from '#shared/contracts/customers.contract.js';
 
 import { BaseService } from '../../lib/base.service.js';
+
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export class CustomersService extends BaseService<typeof customers> {
   constructor() {
@@ -29,7 +31,7 @@ export class CustomersService extends BaseService<typeof customers> {
     });
   }
 
-  async getCustomerById(organizationId: string, id: string, tx: any = db) {
+  async getCustomerById(organizationId: string, id: string, tx: Transaction | typeof db = db) {
     return await tx.query.customers.findFirst({
       where: this.getTenantWhere(organizationId, id),
       with: {
@@ -191,7 +193,6 @@ export class CustomersService extends BaseService<typeof customers> {
 
         // Upsert
         // Pre-process incoming data to ensure internal consistency (only one primary)
-        let incomingPrimaryId: string | null = null;
         let primaryFoundInIncoming = false;
 
         const processedAddressData = addressData.map(
@@ -199,7 +200,6 @@ export class CustomersService extends BaseService<typeof customers> {
             const isPrimary = a.isPrimary && !primaryFoundInIncoming;
             if (isPrimary) {
               primaryFoundInIncoming = true;
-              incomingPrimaryId = a.id || 'NEW';
             }
             return { ...a, isPrimary };
           },
