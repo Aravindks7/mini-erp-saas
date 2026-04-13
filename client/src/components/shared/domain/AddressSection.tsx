@@ -153,6 +153,7 @@ function AddressItem({
         <FormField name={`${name}.${index}.country`} label="Country">
           {({ field }) => (
             <Combobox
+              id={field.id}
               options={countryOptions}
               value={field.value}
               onChange={(val) => field.onChange(val)}

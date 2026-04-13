@@ -54,7 +54,6 @@ export default function LoginPage() {
                   {({ field }) => (
                     <Input
                       {...field}
-                      id="login-email"
                       type="email"
                       placeholder="name@example.com"
                       className="h-11"
@@ -66,7 +65,6 @@ export default function LoginPage() {
                   {({ field }) => (
                     <Input
                       {...field}
-                      id="login-password"
                       type="password"
                       placeholder="••••••••"
                       className="h-11"

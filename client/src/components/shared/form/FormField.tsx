@@ -6,10 +6,11 @@ import { cn } from '@/lib/utils';
 interface FormFieldProps<TFieldValues extends FieldValues> {
   name: Path<TFieldValues>;
   label?: string;
+  id?: string;
   description?: string;
   className?: string;
   children: (props: {
-    field: ControllerRenderProps<TFieldValues, Path<TFieldValues>>;
+    field: ControllerRenderProps<TFieldValues, Path<TFieldValues>> & { id?: string };
   }) => React.ReactNode;
 }
 
@@ -20,11 +21,13 @@ interface FormFieldProps<TFieldValues extends FieldValues> {
 export function FormField<TFieldValues extends FieldValues>({
   name,
   label,
+  id: externalId,
   description,
   className,
   children,
 }: FormFieldProps<TFieldValues>) {
   const { control } = useFormContext<TFieldValues>();
+  const id = externalId || name;
 
   return (
     <Controller
@@ -32,8 +35,8 @@ export function FormField<TFieldValues extends FieldValues>({
       control={control as unknown as Control<TFieldValues>}
       render={({ field, fieldState }) => (
         <Field className={cn('space-y-2', className)} data-invalid={fieldState.invalid}>
-          {label && <FieldLabel>{label}</FieldLabel>}
-          {children({ field })}
+          {label && <FieldLabel htmlFor={id}>{label}</FieldLabel>}
+          {children({ field: { ...field, id } })}
           {description && <FieldDescription>{description}</FieldDescription>}
           <FieldError errors={[{ message: fieldState.error?.message }]} />
         </Field>

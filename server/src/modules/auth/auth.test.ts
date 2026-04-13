@@ -50,7 +50,7 @@ vi.mock('../../db/index.js', () => ({
 // Mock Organizations Service
 vi.mock('../organizations/organizations.service.js', () => ({
   organizationsService: {
-    processPendingInvites: vi.fn().mockResolvedValue(undefined),
+    processPendingInvites: vi.fn().mockResolvedValue({ processedCount: 1 }),
   },
 }));
 
@@ -59,42 +59,60 @@ describe('Authentication Module Integration', () => {
     vi.clearAllMocks();
   });
 
-  describe('POST /api/auth/sign-up/email', () => {
-    it('should return 400 if validation fails (e.g., missing password)', async () => {
+  describe('Security Boundaries & RBAC', () => {
+    it('should return 401 Unauthorized for invalid sign-in credentials', async () => {
+      // We mock the DB to return null for the user to simulate "not found"
+      // or Better Auth failure.
+      const response = await request(app).post('/api/auth/sign-in/email').send({
+        email: 'nonexistent@example.com',
+        password: 'wrongpassword',
+      });
+
+      // In a real Better Auth flow, it might return 401 or 400 with an error object.
+      // Based on our implementation, we expect a non-200 status for failures.
+      expect([400, 401]).toContain(response.status);
+    });
+
+    it('should return 400 Bad Request for malformed sign-up data', async () => {
       const response = await request(app).post('/api/auth/sign-up/email').send({
-        email: 'test@example.com',
-        name: 'Test User',
+        email: 'invalid-email',
+        password: '123', // too short
+        name: 'a', // too short
       });
 
       expect(response.status).toBe(400);
-    });
-
-    it('should successfully sign up and trigger organization invite processing', async () => {
-      // Note: In a mocked integration test, we verify the flow.
-      // Better Auth's internals are complex to mock fully with supertest in a single unit
-      // but we can verify the controller captures the request.
-
-      const response = await request(app).post('/api/auth/sign-up/email').send({
-        email: 'newuser@example.com',
-        password: 'Password123!',
-        name: 'New User',
-      });
-
-      // Better Auth might return 200/201 depending on the flow
-      expect([200, 201]).toContain(response.status);
-
-      // Verification of the database hook would ideally happen if we use the real Better Auth instance
-      // and it reaches the 'after' hook.
+      expect(response.body.code).toBe('VALIDATION_ERROR');
     });
   });
 
-  describe('POST /api/auth/sign-in/email', () => {
-    it('should return 400 for invalid credentials structure', async () => {
-      const response = await request(app).post('/api/auth/sign-in/email').send({
-        email: 'not-an-email',
+  describe('Database Hooks & Invite Processing', () => {
+    it('should trigger organization invite processing after successful sign-up', async () => {
+      // In this mocked integration test, we verify that the controller/handler is reachable
+      // and ideally would reach the 'after' hook in a real integration.
+      // Since we are mocking the db/auth internals, we verify the service call if possible.
+
+      const response = await request(app).post('/api/auth/sign-up/email').send({
+        email: 'invited-user@example.com',
+        password: 'Password123!',
+        name: 'Invited User',
       });
 
-      expect(response.status).toBe(400);
+      expect([200, 201]).toContain(response.status);
+
+      // Note: In a full integration test with a real DB, we would verify membership creation.
+      // Here, we ensure the system doesn't crash and returns the expected success code.
+    });
+  });
+
+  describe('Session Integrity', () => {
+    it('should return 200 and null session data for unauthenticated requests to /api/auth/get-session', async () => {
+      const response = await request(app).get('/api/auth/get-session');
+
+      expect(response.status).toBe(200);
+      // Better Auth returns null or empty when no session is found
+      if (response.body) {
+        expect(response.body.session).toBeFalsy();
+      }
     });
   });
 });

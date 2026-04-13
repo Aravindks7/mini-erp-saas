@@ -24,6 +24,7 @@ interface ComboboxProps {
   emptyMessage?: string;
   className?: string;
   disabled?: boolean;
+  id?: string;
 }
 
 /**
@@ -39,6 +40,7 @@ export function Combobox({
   emptyMessage = 'No results found.',
   className,
   disabled = false,
+  id,
 }: ComboboxProps) {
   return (
     <ComboboxRoot
@@ -50,8 +52,8 @@ export function Combobox({
       disabled={disabled}
     >
       <ComboboxInput
+        id={id}
         placeholder={placeholder}
-        aria-label={placeholder}
         className={cn('w-full h-11 bg-background', className)}
         showClear={!!value}
       />

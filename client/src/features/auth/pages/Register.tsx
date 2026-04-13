@@ -53,20 +53,13 @@ export default function RegisterPage() {
               <FieldGroup>
                 <FormField name="name" label="Full Name">
                   {({ field }) => (
-                    <Input
-                      {...field}
-                      id="register-name"
-                      placeholder="John Doe"
-                      className="h-11"
-                      autoComplete="name"
-                    />
+                    <Input {...field} placeholder="John Doe" className="h-11" autoComplete="name" />
                   )}
                 </FormField>
                 <FormField name="email" label="Email">
                   {({ field }) => (
                     <Input
                       {...field}
-                      id="register-email"
                       type="email"
                       placeholder="name@example.com"
                       className="h-11"
@@ -78,7 +71,6 @@ export default function RegisterPage() {
                   {({ field }) => (
                     <Input
                       {...field}
-                      id="register-password"
                       type="password"
                       placeholder="••••••••"
                       className="h-11"

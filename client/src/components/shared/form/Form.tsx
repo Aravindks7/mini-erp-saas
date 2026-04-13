@@ -10,10 +10,9 @@ import type {
 import type { z } from 'zod';
 import { cn } from '@/lib/utils';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 interface FormProps<
   TFieldValues extends FieldValues,
-  TSchema extends z.ZodType<TFieldValues, any, any>,
+  TSchema extends z.ZodType<TFieldValues, any, any> | z.ZodTypeAny,
 > {
   children: (form: UseFormReturn<TFieldValues, unknown>) => React.ReactNode;
   onSubmit: SubmitHandler<TFieldValues>;
@@ -28,10 +27,9 @@ interface FormProps<
  * Standard Form Wrapper for ERP SaaS.
  * Supports both internally initialized and externally controlled form states.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function Form<
   TFieldValues extends FieldValues,
-  TSchema extends z.ZodType<TFieldValues, any, any>,
+  TSchema extends z.ZodType<TFieldValues, any, any> | z.ZodTypeAny,
 >({
   children,
   onSubmit,
@@ -43,7 +41,10 @@ export function Form<
 }: FormProps<TFieldValues, TSchema>) {
   // Use external form if provided, otherwise initialize internal one
   const internalForm = useForm<TFieldValues>({
-    resolver: schema ? (zodResolver(schema) as unknown as Resolver<TFieldValues>) : undefined,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: schema
+      ? (zodResolver(schema as any) as unknown as Resolver<TFieldValues>)
+      : undefined,
     defaultValues,
   });
 

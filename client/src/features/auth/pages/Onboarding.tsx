@@ -112,7 +112,6 @@ export default function OnboardingPage() {
                   {({ field }) => (
                     <Input
                       {...field}
-                      id="org-name"
                       placeholder="e.g. Acme Corp"
                       className="h-11"
                       autoComplete="off"
@@ -126,6 +125,7 @@ export default function OnboardingPage() {
                 <FormField name="defaultCountry" label="Default Country">
                   {({ field }) => (
                     <Combobox
+                      id={field.id}
                       options={countryOptions}
                       value={field.value}
                       onChange={field.onChange}
