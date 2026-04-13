@@ -1,4 +1,4 @@
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -10,7 +10,7 @@ import {
 import { useTenant } from '@/contexts/TenantContext';
 import { Button } from '@/components/ui/button';
 import { CardContent, CardFooter } from '@/components/ui/card';
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { FieldGroup } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Building2, ArrowRight, Loader2 } from 'lucide-react';
 import {
@@ -20,6 +20,8 @@ import {
 import type { OrganizationResponse } from '@/features/organizations/api/organizations.api';
 import { Combobox } from '@/components/shared/form/Combobox';
 import { COUNTRIES } from '@shared/utils/countries';
+import { Form } from '@/components/shared/form/Form';
+import { FormField } from '@/components/shared/form/FormField';
 
 const countryOptions = COUNTRIES.map((c) => ({ label: c.name, value: c.name }));
 
@@ -62,7 +64,7 @@ export default function OnboardingPage() {
 
   const isPending = createStatus === 'pending';
 
-  const onSubmit = form.handleSubmit(async (data) => {
+  const onSubmit = async (data: CreateOrganizationInput) => {
     try {
       const newOrg = await createOrg(data);
       const queryKey = organizationKeys.mine();
@@ -82,7 +84,7 @@ export default function OnboardingPage() {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create organization';
       form.setError('root', { message: errorMessage });
     }
-  });
+  };
 
   return (
     <>
@@ -97,59 +99,51 @@ export default function OnboardingPage() {
           </p>
         </div>
 
-        <form id="onboarding-form" onSubmit={onSubmit} className="space-y-5">
-          <FieldGroup>
-            <Controller
-              name="name"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="org-name">Organization Name</FieldLabel>
-                  <Input
-                    {...field}
-                    id="org-name"
-                    placeholder="e.g. Acme Corp"
-                    className="h-11"
-                    aria-invalid={fieldState.invalid}
-                    autoComplete="off"
-                    autoFocus
-                  />
-                  {fieldState.invalid && fieldState.error && (
-                    <FieldError errors={[{ message: fieldState.error.message || '' }]} />
+        <Form<CreateOrganizationInput, typeof createOrganizationSchema>
+          form={form}
+          onSubmit={onSubmit}
+          id="onboarding-form"
+          className="space-y-5"
+        >
+          {() => (
+            <>
+              <FieldGroup>
+                <FormField name="name" label="Organization Name">
+                  {({ field }) => (
+                    <Input
+                      {...field}
+                      placeholder="e.g. Acme Corp"
+                      className="h-11"
+                      autoComplete="off"
+                      autoFocus
+                    />
                   )}
-                </Field>
-              )}
-            />
-          </FieldGroup>
+                </FormField>
+              </FieldGroup>
 
-          <FieldGroup>
-            <Controller
-              name="defaultCountry"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="default-country">Default Country</FieldLabel>
-                  <Combobox
-                    options={countryOptions}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Select primary market..."
-                    className="h-11"
-                  />
-                  {fieldState.invalid && fieldState.error && (
-                    <FieldError errors={[{ message: fieldState.error.message || '' }]} />
+              <FieldGroup>
+                <FormField name="defaultCountry" label="Default Country">
+                  {({ field }) => (
+                    <Combobox
+                      id={field.id}
+                      options={countryOptions}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Select primary market..."
+                      className="h-11"
+                    />
                   )}
-                </Field>
-              )}
-            />
-          </FieldGroup>
+                </FormField>
+              </FieldGroup>
 
-          {form.formState.errors.root && (
-            <div className="text-sm font-medium text-destructive text-center mt-2 py-2 px-3 bg-destructive/10 rounded-md border border-destructive/20 animate-in fade-in slide-in-from-top-1">
-              {form.formState.errors.root.message}
-            </div>
+              {form.formState.errors.root && (
+                <div className="text-sm font-medium text-destructive text-center mt-2 py-2 px-3 bg-destructive/10 rounded-md border border-destructive/20 animate-in fade-in slide-in-from-top-1">
+                  {form.formState.errors.root.message}
+                </div>
+              )}
+            </>
           )}
-        </form>
+        </Form>
       </CardContent>
 
       <CardFooter className="flex-col gap-4 border-t bg-zinc-50/50 dark:bg-zinc-900/50 p-6">

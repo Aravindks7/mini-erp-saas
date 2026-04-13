@@ -6,6 +6,10 @@ import type {
   ColumnFiltersState,
   SortingState,
   VisibilityState,
+  Table,
+  OnChangeFn,
+  PaginationState,
+  TableState,
 } from '@tanstack/react-table';
 import {
   getCoreRowModel,
@@ -26,7 +30,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { DataTable } from './DataTable';
+import { DataTable, type BulkAction } from './DataTable';
 import { DataTableToolbar } from './DataTableToolbar';
 import { DataTableSearch } from './DataTableSearch';
 
@@ -47,12 +51,30 @@ interface EntityTableProps<TData, TValue> {
   data: TData[];
   searchKey?: string;
   isLoading?: boolean;
+  viewMode?: 'list' | 'grid';
+  onViewModeChange?: (view: 'list' | 'grid') => void;
+  onAddClick?: () => void;
   /** High-level action configuration for standard ERP operations */
   actions?: EntityActionConfig<TData>;
   /** Escape hatch for custom row actions or additional menu items */
   renderRowActions?: (data: TData) => React.ReactNode;
   /** Global table actions (e.g., Add New, Export) */
   headerActions?: React.ReactNode;
+  /** Custom content to inject into the toolbar (e.g., specialized filters) */
+  toolbarContent?: (table: Table<TData>) => React.ReactNode;
+  /** Actions that can be performed on multiple selected rows */
+  bulkActions?: BulkAction<TData>[];
+  /** Callback for when the table state is reset */
+  onReset?: () => void;
+  /** External state override for controlled tables (e.g., URL-synced) */
+  state?: Partial<TableState>;
+  /** External state setters for controlled tables */
+  onStateChange?: {
+    onPaginationChange?: OnChangeFn<PaginationState>;
+    onSortingChange?: OnChangeFn<SortingState>;
+    onColumnFiltersChange?: OnChangeFn<ColumnFiltersState>;
+    onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
+  };
   title?: string;
   description?: string;
   emptyState?: {
@@ -71,9 +93,17 @@ export function EntityTable<TData, TValue>({
   data,
   searchKey,
   isLoading,
+  viewMode,
+  onViewModeChange,
+  onAddClick,
   actions,
   renderRowActions,
   headerActions,
+  toolbarContent,
+  bulkActions,
+  onReset,
+  state: externalState,
+  onStateChange,
   title,
   description,
   emptyState,
@@ -89,9 +119,12 @@ export function EntityTable<TData, TValue>({
 
     if (!hasActions) return columns;
 
-    const actionColumn: ColumnDef<TData, any> = {
+    const actionColumn: ColumnDef<TData, unknown> = {
       id: 'actions',
       enableHiding: false,
+      meta: {
+        variant: 'actions',
+      },
       cell: ({ row }) => {
         const entity = row.original;
 
@@ -144,6 +177,7 @@ export function EntityTable<TData, TValue>({
     return [...columns, actionColumn];
   }, [columns, actions, renderRowActions]);
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns: augmentedColumns,
@@ -152,18 +186,21 @@ export function EntityTable<TData, TValue>({
       columnVisibility,
       rowSelection,
       columnFilters,
+      ...externalState,
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
+    onSortingChange: onStateChange?.onSortingChange || setSorting,
+    onColumnFiltersChange: onStateChange?.onColumnFiltersChange || setColumnFilters,
+    onColumnVisibilityChange: onStateChange?.onColumnVisibilityChange || setColumnVisibility,
+    onPaginationChange: onStateChange?.onPaginationChange,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    autoResetPageIndex: externalState?.pagination ? false : undefined,
   });
 
   return (
@@ -178,9 +215,22 @@ export function EntityTable<TData, TValue>({
         </div>
       )}
 
-      <DataTable table={table} isLoading={isLoading} emptyState={emptyState}>
-        <DataTableToolbar table={table}>
-          {searchKey && (
+      <DataTable
+        table={table}
+        isLoading={isLoading}
+        emptyState={emptyState}
+        viewMode={viewMode}
+        onAddClick={onAddClick}
+      >
+        <DataTableToolbar
+          table={table}
+          viewMode={viewMode}
+          onViewModeChange={onViewModeChange}
+          bulkActions={bulkActions}
+          onReset={onReset}
+        >
+          {toolbarContent?.(table)}
+          {searchKey && !toolbarContent && (
             <DataTableSearch
               searchKey={searchKey}
               value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ''}

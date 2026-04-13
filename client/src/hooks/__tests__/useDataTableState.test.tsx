@@ -17,6 +17,7 @@ describe('useDataTableState', () => {
     expect(result.current.parsedParams).toEqual({
       page: 1,
       pageSize: 10,
+      view: 'list',
     });
     expect(result.current.tableState.pagination.pageIndex).toBe(0);
   });

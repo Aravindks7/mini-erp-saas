@@ -5,6 +5,7 @@ import {
   updateCustomerSchema,
 } from '#shared/contracts/customers.contract.js';
 import { logger } from '../../utils/logger.js';
+import type { DbError } from '../../types/db.js';
 
 export async function listCustomers(req: Request, res: Response) {
   const organizationId = req.organizationId;
@@ -61,9 +62,10 @@ export async function createCustomer(req: Request, res: Response) {
     }
 
     res.status(201).json(newCustomer);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const dbError = error as DbError;
     logger.error({ error, organizationId, userId }, 'Failed to create customer');
-    if (error.code === '23505' || (error as any).cause?.code === '23505') {
+    if (dbError.code === '23505' || dbError.cause?.code === '23505') {
       return res.status(409).json({ error: 'Customer or linked entity already exists' });
     }
     throw error;
@@ -95,10 +97,11 @@ export async function updateCustomer(req: Request, res: Response) {
     }
 
     res.json(updatedCustomer);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const dbError = error as DbError;
     console.error('DEBUG updateCustomer Error:', error);
     logger.error({ error, organizationId, userId, id }, 'Failed to update customer');
-    if (error.code === '23505' || (error as any).cause?.code === '23505') {
+    if (dbError.code === '23505' || dbError.cause?.code === '23505') {
       return res.status(409).json({ error: 'Customer or linked entity update conflict' });
     }
     throw error;

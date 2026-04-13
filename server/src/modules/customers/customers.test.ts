@@ -96,6 +96,9 @@ describe('Customers Module Integration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset mockTx implementations to default to avoid leak between tests
+    (mockTx.update as any).mockReturnValue({ set: mockSet });
+    (mockTx.delete as any).mockReturnValue({ where: mockWhere });
   });
 
   describe('Authentication & Multi-Tenancy', () => {
@@ -258,6 +261,40 @@ describe('Customers Module Integration', () => {
       expect(response.body[0].addresses).toBeDefined();
     });
 
+    describe('Cross-Tenant Security Boundaries', () => {
+      it('should return 404 when attempting to access a customer belonging to another organization', async () => {
+        // Mock db to return null when searching for this ID within Org A's context
+        // even if the ID exists in the database under Org B.
+        (db.query.customers.findFirst as any).mockResolvedValue(null);
+
+        const otherOrgCustomerId = 'other-org-cust-uuid';
+        const response = await request(app)
+          .get(`/customers/${otherOrgCustomerId}`)
+          .set('x-organization-id', mockOrgId);
+
+        expect(response.status).toBe(404);
+      });
+
+      it('should return 404 when attempting to update a customer belonging to another organization', async () => {
+        // Mock the transactional update to return an empty array (simulating 0 rows matched due to multi-tenant WHERE clause)
+        (mockTx.update as any).mockReturnValue({
+          set: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([]),
+            }),
+          }),
+        });
+
+        const otherOrgCustomerId = 'other-org-cust-uuid';
+        const response = await request(app)
+          .patch(`/customers/${otherOrgCustomerId}`)
+          .send({ companyName: 'Hack Attempt' })
+          .set('x-organization-id', mockOrgId);
+
+        expect(response.status).toBe(404);
+      });
+    });
+
     it('should fail if companyName is missing', async () => {
       const response = await request(app)
         .post('/customers')
@@ -265,6 +302,38 @@ describe('Customers Module Integration', () => {
         .set('x-organization-id', mockOrgId);
 
       expect(response.status).toBe(400);
+    });
+
+    describe('Transactional Atomicity', () => {
+      it('should rollback customer creation if address insertion fails', async () => {
+        // Force a failure on the second insert (which would be addresses in the transaction)
+        mockTx.insert
+          .mockImplementationOnce(() => ({
+            values: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ id: 'cust-123' }]),
+            }),
+          }))
+          .mockImplementationOnce(() => {
+            throw new Error('DATABASE_CRASH_ON_ADDRESS');
+          });
+
+        const payload = {
+          companyName: 'Atomic Corp',
+          addresses: [{ addressLine1: 'Fail St', city: 'Fail', country: 'USA' }],
+        };
+
+        const response = await request(app)
+          .post('/customers')
+          .send(payload)
+          .set('x-organization-id', mockOrgId);
+
+        // Expect a 500 error from the global error handler because of our forced crash
+        expect(response.status).toBe(500);
+
+        // In a real DB test, we'd verify 'Atomic Corp' was NOT created.
+        // In our mock, we just verify the transaction was called and failed.
+        expect(db.transaction).toHaveBeenCalled();
+      });
     });
 
     describe('Primary Record Normalization', () => {

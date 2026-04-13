@@ -1,22 +1,12 @@
 'use no memo';
 
 import * as React from 'react';
-import { cn } from '@/lib/utils';
 import type { Table as TanstackTable } from '@tanstack/react-table';
-import { flexRender } from '@tanstack/react-table';
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-
-import { EmptyState } from '@/components/shared/EmptyState';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { DataTablePagination } from './DataTablePagination';
+import { DataTableView } from './DataTableView';
+import { DataCardView } from './DataCardView';
 
 export interface BulkAction<TData> {
   label: string;
@@ -28,6 +18,8 @@ export interface BulkAction<TData> {
 interface DataTableProps<TData> {
   table: TanstackTable<TData>;
   isLoading?: boolean;
+  viewMode?: 'list' | 'grid';
+  onAddClick?: () => void;
   emptyState?: {
     title?: string;
     description?: string;
@@ -39,85 +31,46 @@ interface DataTableProps<TData> {
 export function DataTable<TData>({
   table,
   isLoading,
+  viewMode = 'list',
+  onAddClick,
   emptyState,
   onRowClick,
   children,
 }: DataTableProps<TData>) {
   if (isLoading) {
+    if (viewMode === 'grid') {
+      return (
+        <div className="space-y-4">
+          {children}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <SkeletonLoader key={i} variant="card" />
+            ))}
+          </div>
+        </div>
+      );
+    }
     return <SkeletonLoader variant="table" rows={5} />;
   }
-
-  const isActuallyEmpty =
-    table.getCoreRowModel().rows.length === 0 && table.getState().columnFilters.length === 0;
 
   return (
     <div className="space-y-4">
       {children}
-      <div className="rounded-md border bg-background overflow-hidden">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="bg-muted/30">
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead
-                      key={header.id}
-                      colSpan={header.colSpan}
-                      className="h-10 text-xs uppercase font-bold tracking-wider"
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
-                  onClick={() => onRowClick?.(row.original)}
-                  className={cn(
-                    'group transition-colors',
-                    onRowClick ? 'cursor-pointer hover:bg-primary/5' : 'hover:bg-muted/50',
-                  )}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-3 px-4">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={table.getAllColumns().length}
-                  className="h-64 text-center border-none"
-                >
-                  <EmptyState
-                    title={
-                      isActuallyEmpty
-                        ? emptyState?.title || 'No data found'
-                        : 'No results match your search'
-                    }
-                    description={
-                      isActuallyEmpty
-                        ? emptyState?.description || 'Get started by creating a new record.'
-                        : 'Try adjusting your filters or search terms to find what you are looking for.'
-                    }
-                    className="border-none bg-transparent"
-                  />
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      {viewMode === 'grid' ? (
+        <DataCardView
+          table={table}
+          onRowClick={onRowClick}
+          emptyState={emptyState}
+          onAddClick={onAddClick}
+        />
+      ) : (
+        <DataTableView
+          table={table}
+          onRowClick={onRowClick}
+          onAddClick={onAddClick}
+          emptyState={emptyState}
+        />
+      )}
       <DataTablePagination table={table} />
     </div>
   );

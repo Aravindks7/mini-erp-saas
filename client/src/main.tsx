@@ -8,7 +8,7 @@ import { queryClient } from './lib/query-client';
 import { AuthProvider } from './contexts/AuthContext';
 import { TenantProvider } from './contexts/TenantContext';
 import { TooltipProvider } from './components/ui/tooltip';
-import { router } from './routes';
+import { router } from './app-router';
 import './index.css';
 
 createRoot(document.getElementById('root')!).render(

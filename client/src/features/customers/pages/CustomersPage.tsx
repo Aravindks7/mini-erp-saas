@@ -29,7 +29,7 @@ export default function CustomersPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
-          <CustomerList />
+          <CustomerList onAddClick={() => navigate('/customers/new')} />
         </CardContent>
       </Card>
     </PageContainer>
