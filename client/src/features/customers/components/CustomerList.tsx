@@ -1,50 +1,27 @@
-import * as React from 'react';
 import { z } from 'zod';
-import {
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
 import { AlertCircle } from 'lucide-react';
 
-import { DataTable } from '@/components/shared/data-table/DataTable';
-import { DataTableToolbar } from '@/components/shared/data-table/DataTableToolbar';
+import { EntityTable } from '@/components/shared/data-table/EntityTable';
 import { DataTableSearch } from '@/components/shared/data-table/DataTableSearch';
 import { DataTableFilter } from '@/components/shared/data-table/DataTableFilter';
 import { useDataTableState } from '@/hooks/useDataTableState';
 
 import { columns, customerStatusOptions } from './columns';
 import { useCustomers } from '../hooks/customers.hooks';
+import type { CustomerResponse } from '../api/customers.api';
 
 const searchSchema = z.object({
   companyName: z.string().optional(),
   status: z.string().optional(),
 });
 
-export function CustomerList() {
+interface CustomerListProps {
+  onAddClick?: () => void;
+}
+
+export function CustomerList({ onAddClick }: CustomerListProps) {
   const { data: customers, isLoading, isError } = useCustomers();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
-  const [rowSelection, setRowSelection] = React.useState({});
-
-  const table = useReactTable({
-    data: customers || [],
-    columns,
-    state: {
-      ...tableState,
-      rowSelection,
-    },
-    enableRowSelection: true,
-    onRowSelectionChange: setRowSelection,
-    onPaginationChange: tableSetters.onPaginationChange,
-    onSortingChange: tableSetters.onSortingChange,
-    onColumnFiltersChange: tableSetters.onColumnFiltersChange,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-  });
 
   if (isError) {
     return (
@@ -60,40 +37,47 @@ export function CustomerList() {
   }
 
   return (
-    <DataTable
-      table={table}
+    <EntityTable
+      title="Customer Directory"
+      description="Manage your business relationships and customer data."
+      data={customers || []}
+      columns={columns}
       isLoading={isLoading}
+      onAddClick={onAddClick}
+      viewMode={tableState.viewMode}
+      onViewModeChange={tableSetters.setViewMode}
+      state={tableState}
+      onStateChange={tableSetters}
+      onReset={resetAll}
       emptyState={{
         title: 'Customer Directory is empty',
         description: 'You haven\'t added any customers yet. Click "Add Customer" to get started.',
       }}
-    >
-      <DataTableToolbar
-        table={table}
-        onReset={resetAll}
-        bulkActions={[
-          {
-            label: 'Delete Selected',
-            onAction: (rows) =>
-              console.log(
-                'Bulk delete:',
-                rows.map((r) => (r as any).id),
-              ),
-            variant: 'destructive',
-          },
-        ]}
-      >
-        <DataTableSearch
-          searchKey="companyName"
-          value={(table.getColumn('companyName')?.getFilterValue() as string) ?? ''}
-          onChange={(value) => table.getColumn('companyName')?.setFilterValue(value)}
-        />
-        <DataTableFilter
-          column={table.getColumn('status')}
-          title="Status"
-          options={customerStatusOptions}
-        />
-      </DataTableToolbar>
-    </DataTable>
+      bulkActions={[
+        {
+          label: 'Delete Selected',
+          onAction: (rows: CustomerResponse[]) =>
+            console.log(
+              'Bulk delete:',
+              rows.map((r) => r.id),
+            ),
+          variant: 'destructive',
+        },
+      ]}
+      toolbarContent={(table) => (
+        <>
+          <DataTableSearch
+            searchKey="companyName"
+            value={(table.getColumn('companyName')?.getFilterValue() as string) ?? ''}
+            onChange={(value) => table.getColumn('companyName')?.setFilterValue(value)}
+          />
+          <DataTableFilter
+            column={table.getColumn('status')}
+            title="Status"
+            options={customerStatusOptions}
+          />
+        </>
+      )}
+    />
   );
 }

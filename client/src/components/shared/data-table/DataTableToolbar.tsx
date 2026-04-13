@@ -6,12 +6,15 @@ import { X, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import type { BulkAction } from './DataTable';
+import { DataViewToggle } from './DataViewToggle';
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
   children?: React.ReactNode;
   bulkActions?: BulkAction<TData>[];
   onReset?: () => void;
+  viewMode?: 'list' | 'grid';
+  onViewModeChange?: (view: 'list' | 'grid') => void;
 }
 
 export function DataTableToolbar<TData>({
@@ -19,6 +22,8 @@ export function DataTableToolbar<TData>({
   children,
   bulkActions = [],
   onReset,
+  viewMode,
+  onViewModeChange,
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
   const selectedRows = table.getFilteredSelectedRowModel().rows;
@@ -36,6 +41,9 @@ export function DataTableToolbar<TData>({
     <div className="flex items-center justify-between gap-4">
       <div className="flex flex-1 items-center space-x-2">
         {children}
+        {viewMode && onViewModeChange && (
+          <DataViewToggle viewMode={viewMode} onViewModeChange={onViewModeChange} />
+        )}
         {isFiltered && (
           <Button
             variant="ghost"

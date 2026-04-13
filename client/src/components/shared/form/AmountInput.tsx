@@ -11,6 +11,13 @@ interface AmountInputProps {
   className?: string;
 }
 
+function formatCurrency(val: number, curr: string) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: curr,
+  }).format(val);
+}
+
 /**
  * Standard Amount Input for ERP SaaS.
  * Requires a mandatory currency prop and uses Intl.NumberFormat for precision.
@@ -23,28 +30,25 @@ export function AmountInput({
   disabled,
   className,
 }: AmountInputProps) {
+  const [isFocused, setIsFocused] = React.useState(false);
   const [displayValue, setDisplayValue] = React.useState<string>(
     value !== undefined ? formatCurrency(value, currency) : '',
   );
 
   // Sync with external value changes (e.g., form resets)
   React.useEffect(() => {
-    if (value !== undefined) {
-      const formatted = formatCurrency(value, currency);
-      if (formatted !== displayValue) {
-        setDisplayValue(formatted);
+    // Only sync from prop if NOT focused to avoid fighting the user during typing
+    if (!isFocused) {
+      if (value !== undefined) {
+        const formatted = formatCurrency(value, currency);
+        if (formatted !== displayValue) {
+          setDisplayValue(formatted);
+        }
+      } else if (displayValue !== '') {
+        setDisplayValue('');
       }
-    } else if (displayValue !== '') {
-      setDisplayValue('');
     }
-  }, [value, currency]);
-
-  function formatCurrency(val: number, curr: string) {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: curr,
-    }).format(val);
-  }
+  }, [value, currency, displayValue, isFocused]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
@@ -61,6 +65,7 @@ export function AmountInput({
   };
 
   const handleBlur = () => {
+    setIsFocused(false);
     if (value !== undefined) {
       setDisplayValue(formatCurrency(value, currency));
     } else {
@@ -69,6 +74,7 @@ export function AmountInput({
   };
 
   const handleFocus = () => {
+    setIsFocused(true);
     // When focusing, show just the numeric value for easier editing
     if (value !== undefined) {
       setDisplayValue(value.toString());

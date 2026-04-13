@@ -15,6 +15,7 @@ const baseSchema = z.object({
   pageSize: z.coerce.number().catch(10),
   sort: z.string().optional(),
   order: z.enum(['asc', 'desc']).optional(),
+  view: z.enum(['list', 'grid']).catch('list'),
 });
 
 /**
@@ -27,16 +28,18 @@ const baseSchema = z.object({
  * 3. Immediate Pagination: Navigation and sorting updates are applied immediately.
  * 4. Automatic Cleanup: Pending debounced updates are cleared on unmount and during resets.
  */
-export function useDataTableState<T extends z.AnyZodObject>(schema: T) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function useDataTableState<T extends z.ZodObject<any, any>>(schema: T) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const filterTimeoutRef = React.useRef<NodeJS.Timeout>();
+  const filterTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const combinedSchema = useMemo(() => baseSchema.merge(schema), [schema]);
 
   const parsedParams = useMemo(() => {
     const params = Object.fromEntries(searchParams.entries());
     const result = combinedSchema.safeParse(params);
-    return result.success ? result.data : combinedSchema.parse({});
+    const data = result.success ? result.data : combinedSchema.parse({});
+    return data as z.infer<typeof baseSchema> & Record<string, unknown>;
   }, [searchParams, combinedSchema]);
 
   const pagination: PaginationState = useMemo(
@@ -55,7 +58,7 @@ export function useDataTableState<T extends z.AnyZodObject>(schema: T) {
 
   const columnFilters: ColumnFiltersState = useMemo(() => {
     const filters: ColumnFiltersState = [];
-    const baseKeys = ['page', 'pageSize', 'sort', 'order'];
+    const baseKeys = ['page', 'pageSize', 'sort', 'order', 'view'];
     Object.keys(parsedParams).forEach((key) => {
       if (!baseKeys.includes(key) && parsedParams[key] !== undefined && parsedParams[key] !== '') {
         filters.push({ id: key, value: parsedParams[key] });
@@ -82,17 +85,34 @@ export function useDataTableState<T extends z.AnyZodObject>(schema: T) {
         setSearchParams(
           (prev) => {
             const next = new URLSearchParams(prev);
+            let hasChanges = false;
+            let shouldResetPage = false;
+
             Object.entries(updates).forEach(([key, value]) => {
-              if (value === undefined || value === '') {
-                next.delete(key);
-              } else {
-                next.set(key, value);
+              const currentValue = prev.get(key) ?? '';
+              const newValue = value ?? '';
+
+              if (currentValue !== newValue) {
+                hasChanges = true;
+                if (value === undefined || value === '') {
+                  next.delete(key);
+                } else {
+                  next.set(key, value);
+                }
+
+                // If any non-pagination/non-view key changes, we should reset page
+                if (key !== 'page' && key !== 'pageSize' && key !== 'view') {
+                  shouldResetPage = true;
+                }
               }
             });
-            // Reset to page 1 on any filter/sort change unless it's a pagination change
-            if (!('page' in updates)) {
+
+            if (!hasChanges) return prev;
+
+            if (shouldResetPage && !('page' in updates)) {
               next.set('page', '1');
             }
+
             return next;
           },
           { replace },
@@ -180,10 +200,22 @@ export function useDataTableState<T extends z.AnyZodObject>(schema: T) {
     );
   }, [columnFilters, setSearchParams]);
 
+  const setViewMode = useCallback(
+    (view: 'list' | 'grid') => {
+      updateUrl({ view, page: parsedParams.page.toString() }, { replace: true });
+    },
+    [parsedParams.page, updateUrl],
+  );
+
   return {
     parsedParams,
-    tableState: { pagination, sorting, columnFilters },
-    tableSetters: { onPaginationChange, onSortingChange, onColumnFiltersChange },
+    tableState: {
+      pagination,
+      sorting,
+      columnFilters,
+      viewMode: parsedParams.view as 'list' | 'grid',
+    },
+    tableSetters: { onPaginationChange, onSortingChange, onColumnFiltersChange, setViewMode },
     resetAll,
   };
 }
