@@ -15,5 +15,32 @@ export const createOrganizationSchema = z.object({
 
 export const updateOrganizationSchema = createOrganizationSchema.partial();
 
+export const updateMemberRoleSchema = z.object({
+  role: z.enum(['admin', 'employee']),
+});
+
+export const memberResponseSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  role: z.enum(['admin', 'employee']),
+  joinedAt: z.string().datetime(),
+  user: z.object({
+    name: z.string(),
+    email: z.string().email(),
+    image: z.string().url().nullable(),
+  }),
+});
+
+export const inviteResponseSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  role: z.enum(['admin', 'employee']),
+  status: z.enum(['pending', 'accepted', 'cancelled']),
+  expiresAt: z.string().datetime(),
+  createdAt: z.string().datetime(),
+});
+
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
 export type UpdateOrganizationInput = z.infer<typeof updateOrganizationSchema>;
+export type UpdateMemberRoleInput = z.infer<typeof updateMemberRoleSchema>;
