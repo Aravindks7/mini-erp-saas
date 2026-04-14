@@ -14,12 +14,14 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const isDesktop = useBreakpoint('lg');
 
   return (
-    <header className="h-16 border-b border-border bg-background flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
+    <header className="h-16 border-b border-border bg-background flex items-center justify-between px-4 lg:px-6">
       <div className="flex items-center gap-2 lg:gap-4">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
@@ -44,8 +46,12 @@ export default function Navbar() {
       <div className="flex items-center gap-2 lg:gap-3">
         <GlobalSearch />
         <NotificationBell />
-        <div className="h-4 w-px bg-border mx-0.5 lg:mx-1" />
-        <ThemeToggle variant="compact" />
+        {isDesktop && (
+          <>
+            <div className="h-4 w-px bg-border mx-0.5 lg:mx-1" />
+            <ThemeToggle variant="compact" />
+          </>
+        )}
       </div>
     </header>
   );

@@ -114,13 +114,7 @@ export function DeleteConfirmDialog({
         )}
 
         <DialogFooter className="mt-6 flex-col sm:flex-row gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={onClose}
-            disabled={isLoading}
-            className="flex-1 sm:flex-none"
-          >
+          <Button type="button" variant="ghost" onClick={onClose} disabled={isLoading}>
             Cancel
           </Button>
           <Button
@@ -128,7 +122,7 @@ export function DeleteConfirmDialog({
             variant="destructive"
             onClick={onConfirm}
             disabled={isConfirmDisabled}
-            className="flex-1 sm:flex-none px-8"
+            className="px-8"
           >
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             {confirmLabel}
