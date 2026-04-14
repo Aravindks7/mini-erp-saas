@@ -17,9 +17,9 @@ import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import type { CreateCustomerInput } from '@shared/contracts/customers.contract';
 import { createCustomerSchema } from '@shared/contracts/customers.contract';
 
-const FORM_ID = 'customer-edit-form';
+const FORM_ID = 'customer-form';
 
-export default function CustomerEditPage() {
+export default function CustomerFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);

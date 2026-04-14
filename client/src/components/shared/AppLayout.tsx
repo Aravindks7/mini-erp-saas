@@ -12,13 +12,15 @@ export default function AppLayout({ children, className }: AppLayoutProps) {
   const isDesktop = useBreakpoint('lg');
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background">
+    <div className="flex h-dvh w-full overflow-hidden bg-background">
       {isDesktop && <Sidebar />}
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <Navbar />
 
-        <main className={cn('flex-1 overflow-y-auto bg-background', className)}>{children}</main>
+        <main className={cn('flex-1 overflow-y-auto bg-background pb-safe', className)}>
+          {children}
+        </main>
       </div>
     </div>
   );
