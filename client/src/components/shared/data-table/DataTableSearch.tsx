@@ -44,7 +44,7 @@ export function DataTableSearch({
       placeholder={placeholder}
       value={localValue}
       onChange={handleInputChange}
-      className={`h-8 w-[150px] lg:w-[250px] focus-visible:ring-primary/20 ${className || ''}`}
+      className={`h-8 w-full sm:max-w-xs md:max-w-sm lg:w-[250px] focus-visible:ring-primary/20 ${className || ''}`}
     />
   );
 }

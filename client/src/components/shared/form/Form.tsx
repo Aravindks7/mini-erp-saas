@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 
 interface FormProps<
   TFieldValues extends FieldValues,
-  TSchema extends z.ZodType<TFieldValues, any, any> | z.ZodTypeAny,
+  TSchema extends z.ZodType<TFieldValues> | z.ZodTypeAny,
 > {
   children: (form: UseFormReturn<TFieldValues, unknown>) => React.ReactNode;
   onSubmit: SubmitHandler<TFieldValues>;
@@ -29,7 +29,7 @@ interface FormProps<
  */
 export function Form<
   TFieldValues extends FieldValues,
-  TSchema extends z.ZodType<TFieldValues, any, any> | z.ZodTypeAny,
+  TSchema extends z.ZodType<TFieldValues> | z.ZodTypeAny,
 >({
   children,
   onSubmit,

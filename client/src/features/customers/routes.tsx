@@ -1,7 +1,7 @@
 import { Users } from 'lucide-react';
 import type { AppRoute } from '@/lib/types/navigation';
 import CustomersPage from './pages/CustomersPage';
-import CustomerEditPage from './pages/CustomerEditPage';
+import CustomerFormPage from './pages/CustomerFormPage';
 import CustomerDetailsPage from './pages/CustomerDetailsPage';
 import { queryClient } from '@/lib/query-client';
 import { customerDetailQuery } from './hooks/customers.hooks';
@@ -23,7 +23,7 @@ export const customerRoutes: AppRoute[] = [
       },
       {
         path: 'new',
-        element: <CustomerEditPage />,
+        element: <CustomerFormPage />,
         handle: { crumb: 'Add Customer' },
       },
       {
@@ -39,7 +39,7 @@ export const customerRoutes: AppRoute[] = [
       },
       {
         path: ':id/edit',
-        element: <CustomerEditPage />,
+        element: <CustomerFormPage />,
         loader: async ({ params }) => {
           if (!params.id) throw new Error('No id provided');
           return queryClient.ensureQueryData(customerDetailQuery(params.id));

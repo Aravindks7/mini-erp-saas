@@ -34,18 +34,12 @@ export function UserProfileDropdown({ className, isCollapsed }: UserProfileDropd
     : 'U';
 
   return (
-    <div
-      className={cn(
-        'px-4 py-4 mt-auto border-t border-border/50',
-        isCollapsed && 'px-2 py-4',
-        className,
-      )}
-    >
+    <div className={cn('p-3 mt-auto border-t border-border/50', isCollapsed && 'p-2', className)}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             className={cn(
-              'flex items-center gap-3 w-full p-2 rounded-xl hover:bg-muted/50 transition-all duration-200 group text-left outline-none',
+              'flex items-center gap-3 w-full p-2 rounded-lg hover:bg-muted/50 transition-all duration-200 group text-left outline-none',
               isCollapsed && 'justify-center px-0',
             )}
           >

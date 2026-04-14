@@ -291,3 +291,29 @@ Complex, recurring data structures (e.g., Addresses, Contact Details, Bank Accou
   <AddressSection control={form.control} name="addresses" />
   ```
 - **Rationale**: Ensures that an "Address" looks and behaves identically whether it's on a Customer, a Supplier, or an Employee record.
+
+---
+
+## 8. Testing Approach
+
+To ensure code reliability and maintainability, the Agent MUST follow this testing approach after adding new backend or frontend code:
+
+### 8.1 Frontend (client)
+
+- **Vitest:** The primary test runner used for unit and integration testing.
+- **React Testing Library (`@testing-library/react`):** Used for testing UI components by simulating user behavior.
+- **Jest DOM (`@testing-library/jest-dom`):** Provides custom DOM element matchers for Vitest.
+- **User Event (`@testing-library/user-event`):** Used to simulate realistic browser interactions (clicks, typing, etc.).
+- **jsdom:** Provides a browser-like environment in Node.js for running DOM tests.
+
+### 8.2 Backend (server)
+
+- **Vitest:** Also used as the backend test runner for consistency across the monorepo.
+- **Supertest:** Used for high-fidelity testing of Express API endpoints by simulating HTTP requests.
+- **MSW (Mock Service Worker):** Used for mocking API responses and network-level interactions.
+- **Better Auth Infra:** Used for testing authentication flows.
+
+### 8.3 Cross-Cutting & E2E
+
+- **Playwright:** Used for End-to-End (E2E) testing to verify full system workflows.
+- **Zod:** Used extensively across both frontend and backend for contract-first validation and type safety in tests.

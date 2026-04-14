@@ -135,6 +135,9 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none; /* Safari and Chrome */
   }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 @layer base {
