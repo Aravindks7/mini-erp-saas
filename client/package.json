@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "rm -rf dist",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf node_modules dist",
     "preview": "vite preview",
     "test": "vitest run"
   },

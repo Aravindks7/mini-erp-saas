@@ -21,6 +21,7 @@ interface FormProps<
   form?: UseFormReturn<TFieldValues, unknown>; // Optional external form
   className?: string;
   id?: string;
+  mode?: UseFormProps<TFieldValues>['mode'];
 }
 
 /**
@@ -38,13 +39,13 @@ export function Form<
   form: externalForm,
   className,
   id,
+  mode = 'onTouched',
 }: FormProps<TFieldValues, TSchema>) {
   // Use external form if provided, otherwise initialize internal one
   const internalForm = useForm<TFieldValues>({
+    mode,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: schema
-      ? (zodResolver(schema as any) as unknown as Resolver<TFieldValues>)
-      : undefined,
+    resolver: (schema ? zodResolver(schema as any) : undefined) as Resolver<TFieldValues>,
     defaultValues,
   });
 

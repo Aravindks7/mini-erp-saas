@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { useTenant } from '../../contexts/TenantContext';
 import { useOrganizations } from '@/features/organizations/hooks/organizations.hooks';
 import type { OrganizationResponse } from '@/features/organizations/api/organizations.api';
@@ -38,7 +38,9 @@ export const TenantGuard = ({ children }: { children: ReactNode }) => {
     setActiveOrganizationId,
     activeOrganization,
     setActiveOrganization,
+    syncActiveOrganizationId,
   } = useTenant();
+  const { slug } = useParams();
   const location = useLocation();
 
   const { data: organizations, isLoading, isFetching, isError, error } = useOrganizations();
@@ -46,23 +48,50 @@ export const TenantGuard = ({ children }: { children: ReactNode }) => {
   // Sync the full organization object to the context
   useSyncActiveOrg(organizations, activeOrganizationId, activeOrganization, setActiveOrganization);
 
+  /**
+   * RENDER-PHASE SYNCHRONIZATION (Anti-Flicker)
+   * If we have organizations and a slug, ensure the context is synced immediately.
+   * This prevents child components from firing API requests with the "old" tenant ID
+   * during the transition, and avoids the "Switching to..." loading screen flicker.
+   */
+  if (organizations && slug && !isLoading) {
+    const orgBySlug = organizations.find((o) => o.slug === slug);
+    if (orgBySlug && activeOrganizationId !== orgBySlug.id) {
+      console.log('[TenantGuard] Perform Render-Phase Sync for slug:', slug);
+      syncActiveOrganizationId(orgBySlug.id);
+      // We don't return early; we let the rest of the guard logic run with the now-synced ID.
+    }
+  }
+
   // CLINICAL OBSERVABILITY: Monitor the tenant-state transition in development
   console.log('[TenantGuard] Checking Tenant State:', {
     id: activeOrganizationId,
+    slug,
     organizationsFound: organizations?.length || 0,
     isFetching,
     isLoading,
     isError,
   });
 
-  // AUTO-SELECTION LOGIC: Snap to the first organization if none is selected
+  // SLUG SYNCHRONIZATION EFFECT: Backup for non-render-phase updates
+  useEffect(() => {
+    if (!organizations || isLoading || !slug) return;
+
+    const orgBySlug = organizations.find((o) => o.slug === slug);
+    if (orgBySlug && activeOrganizationId !== orgBySlug.id) {
+      setActiveOrganizationId(orgBySlug.id);
+    }
+  }, [slug, organizations, isLoading, activeOrganizationId, setActiveOrganizationId]);
+
+  // AUTO-SELECTION LOGIC: Snap to the first organization if none is selected and NO slug is provided
   useEffect(() => {
     if (
       !isLoading &&
       !isError &&
       organizations &&
       organizations.length > 0 &&
-      !activeOrganizationId
+      !activeOrganizationId &&
+      !slug
     ) {
       console.log(
         '[TenantGuard] Auto-selecting first available organization:',
@@ -70,7 +99,7 @@ export const TenantGuard = ({ children }: { children: ReactNode }) => {
       );
       setActiveOrganizationId(organizations[0].id);
     }
-  }, [isLoading, isError, organizations, activeOrganizationId, setActiveOrganizationId]);
+  }, [isLoading, isError, organizations, activeOrganizationId, setActiveOrganizationId, slug]);
 
   if (isLoading) {
     return (
@@ -104,22 +133,53 @@ export const TenantGuard = ({ children }: { children: ReactNode }) => {
     return <Navigate to="/onboarding" state={{ from: location }} replace />;
   }
 
-  // TENANT ISOLATION VALIDATION
-  const isValidTenant = organizations.some((org) => org.id === activeOrganizationId);
+  // 1. ROOT PATH REDIRECTION: Ensure slug-prefixed URL if user lands on a non-slugged route
+  if (!slug) {
+    const orgToRedirect = organizations?.find((o) => o.id === activeOrganizationId);
+    if (orgToRedirect) {
+      const targetPath =
+        location.pathname === '/'
+          ? `/${orgToRedirect.slug}`
+          : `/${orgToRedirect.slug}${location.pathname}`;
+      console.log('[TenantGuard] Redirecting to slug-prefixed route:', targetPath);
+      return <Navigate to={targetPath} replace />;
+    }
+  }
 
-  if (!activeOrganizationId || !isValidTenant) {
-    // If we have organizations but no selection yet, show loading while the useEffect snaps into place
-    if (organizations && organizations.length > 0 && !activeOrganizationId) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-          <div className="flex flex-col items-center gap-2">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-            <div className="text-sm text-muted-foreground animate-pulse font-medium">
-              Loading workspace...
+  // 2. SLUG VALIDATION: Ensure the slug exists in user's organizations
+  if (slug) {
+    const isValidSlug = organizations.some((org) => org.slug === slug);
+    if (!isValidSlug) {
+      console.warn('[TenantGuard] Invalid slug detected. Redirecting to selection.');
+      return <Navigate to="/select-organization" replace />;
+    }
+  }
+
+  // 3. TENANT ISOLATION VALIDATION: Ensure the activeId matches the slug (if provided)
+  const activeOrgFromId = organizations.find((org) => org.id === activeOrganizationId);
+  const isValidTenant = !!activeOrgFromId;
+  const isSlugMismatch = slug && activeOrgFromId?.slug !== slug;
+
+  if (!activeOrganizationId || !isValidTenant || isSlugMismatch) {
+    // If we have organizations but no selection yet, OR if we have a slug mismatch,
+    // show loading while the useEffect synchronizes the state.
+    if (organizations && organizations.length > 0) {
+      const targetOrg = slug ? organizations.find((o) => o.slug === slug) : null;
+
+      if (!activeOrganizationId || isSlugMismatch) {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+            <div className="flex flex-col items-center gap-2">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              <div className="text-sm text-muted-foreground animate-pulse font-medium">
+                {isSlugMismatch
+                  ? `Switching to ${targetOrg?.name || 'workspace'}...`
+                  : 'Loading workspace...'}
+              </div>
             </div>
           </div>
-        </div>
-      );
+        );
+      }
     }
 
     if (activeOrganizationId && !isValidTenant) {

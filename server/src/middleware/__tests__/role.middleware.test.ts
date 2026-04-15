@@ -5,7 +5,7 @@ import { requireRole } from '../role.middleware.js';
 describe('requireRole Middleware', () => {
   let mockReq: Partial<Request>;
   let mockRes: Partial<Response>;
-  let nextFunction: NextFunction = vi.fn();
+  const nextFunction: NextFunction = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -13,7 +13,7 @@ describe('requireRole Middleware', () => {
       userRole: undefined,
       authSession: {
         user: { id: 'user-123' },
-      } as any,
+      } as unknown as Request['authSession'],
       organizationId: 'org-456',
     };
     mockRes = {

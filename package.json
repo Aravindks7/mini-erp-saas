@@ -4,7 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "type-check": "pnpm -r type-check",
+    "check-all": "pnpm lint && pnpm type-check && pnpm test",
+    "security-check": "pnpm audit",
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "format:check": "prettier --check .",
+    "format:write": "prettier --write .",
     "e2e": "playwright test",
     "prepare": "husky"
   },

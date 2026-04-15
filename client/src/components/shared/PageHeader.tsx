@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useTenantPath } from '@/hooks/useTenantPath';
 
 export interface PageHeaderAction {
   label: string;
@@ -48,12 +49,13 @@ export function PageHeader({
   className,
 }: PageHeaderProps) {
   const navigate = useNavigate();
+  const { getPath } = useTenantPath();
 
   const handleBack = () => {
     if (backButton?.onClick) {
       backButton.onClick();
     } else if (backButton?.href) {
-      navigate(backButton.href);
+      navigate(getPath(backButton.href));
     } else {
       navigate(-1);
     }

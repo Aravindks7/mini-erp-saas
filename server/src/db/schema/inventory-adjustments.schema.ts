@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, index, timestamp as pgTimestamp } from 'drizzle-orm/pg-core';
+import { pgTable, text, index, timestamp as pgTimestamp } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { baseColumns } from './base.schema.js';
 import { timestamps, userTracking, versioning, lifecycle } from './audit.schema.js';
