@@ -12,6 +12,7 @@ import { AddressCard, type Address } from '@/components/shared/domain/AddressCar
 import { ContactCard, type Contact } from '@/components/shared/domain/ContactCard';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { useTenantPath } from '@/hooks/useTenantPath';
 
 const customerStatusMap: StatusMap<string> = {
   active: { label: 'Active', tone: 'success' },
@@ -21,6 +22,7 @@ const customerStatusMap: StatusMap<string> = {
 export default function CustomerDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { getPath } = useTenantPath();
   const { data: customer, isLoading, isError } = useCustomer(id);
 
   if (isLoading) {
@@ -43,7 +45,7 @@ export default function CustomerDetailsPage() {
             The customer record you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate('/customers')}
+            onClick={() => navigate(getPath('/customers'))}
             className="text-primary font-semibold hover:underline"
           >
             Return to Customer Directory
@@ -58,11 +60,11 @@ export default function CustomerDetailsPage() {
       <PageHeader
         title={customer.companyName}
         description={`Manage details, addresses, and contacts for ${customer.companyName}.`}
-        backButton={{ href: '/customers', label: 'Back to Directory' }}
+        backButton={{ href: getPath('/customers'), label: 'Back to Directory' }}
         actions={[
           {
             label: 'Edit Customer',
-            onClick: () => navigate(`/customers/${customer.id}/edit`),
+            onClick: () => navigate(getPath(`/customers/${customer.id}/edit`)),
             icon: <FileEdit className="h-4 w-4" />,
             variant: 'default',
           },

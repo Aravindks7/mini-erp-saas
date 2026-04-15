@@ -100,7 +100,7 @@ export function DataTableView<TData>({
                         }
                       : undefined
                   }
-                  className="border-none bg-transparent"
+                  className="border-none bg-transparent whitespace-normal"
                 />
               </TableCell>
             </TableRow>

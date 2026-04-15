@@ -7,6 +7,11 @@ interface TenantContextProps {
   setActiveOrganizationId: (id: string | null) => void;
   activeOrganization: OrganizationResponse | null;
   setActiveOrganization: (org: OrganizationResponse | null) => void;
+  /**
+   * Directly updates the organization ID in state and local storage.
+   * Useful for immediate synchronization during route transitions.
+   */
+  syncActiveOrganizationId: (id: string | null) => void;
 }
 
 const TenantContext = createContext<TenantContextProps | undefined>(undefined);
@@ -19,7 +24,19 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
   const [activeOrganization, setActiveOrganization] = useState<OrganizationResponse | null>(null);
 
-  // Sync state changes back to local storage
+  /**
+   * Synchronous update for both state and storage to avoid flickering.
+   */
+  const syncActiveOrganizationId = (id: string | null) => {
+    if (id) {
+      localStorage.setItem('erp_active_org_id', id);
+    } else {
+      localStorage.removeItem('erp_active_org_id');
+    }
+    setActiveOrganizationId(id);
+  };
+
+  // Sync state changes back to local storage (for setActiveOrganizationId calls)
   useEffect(() => {
     if (activeOrganizationId) {
       localStorage.setItem('erp_active_org_id', activeOrganizationId);
@@ -35,6 +52,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
         setActiveOrganizationId,
         activeOrganization,
         setActiveOrganization,
+        syncActiveOrganizationId,
       }}
     >
       {children}

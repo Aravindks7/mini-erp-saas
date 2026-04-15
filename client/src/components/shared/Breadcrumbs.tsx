@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useMatches, Link } from 'react-router-dom';
 import { Home } from 'lucide-react';
+import { useTenantPath } from '@/hooks/useTenantPath';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -23,6 +24,7 @@ interface BreadcrumbsProps {
  */
 export function Breadcrumbs({ className, homeLabel = 'Dashboard' }: BreadcrumbsProps) {
   const matches = useMatches() as AppUIMatch[];
+  const { getPath } = useTenantPath();
 
   // Filter matches that have a crumb defined in their handle
   const crumbs = matches
@@ -42,7 +44,7 @@ export function Breadcrumbs({ className, homeLabel = 'Dashboard' }: BreadcrumbsP
         <BreadcrumbItem>
           <BreadcrumbLink asChild>
             <Link
-              to="/"
+              to={getPath('/')}
               className="flex items-center gap-1.5 group transition-colors hover:text-foreground"
             >
               <Home className="size-3.5 group-hover:scale-110 transition-transform" />

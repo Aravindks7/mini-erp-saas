@@ -1,6 +1,10 @@
 import { Request, Response } from 'express';
 import { organizationsService } from './organizations.service.js';
-import { createOrganizationSchema } from '#shared/contracts/organizations.contract.js';
+import {
+  createOrganizationSchema,
+  updateOrganizationSchema,
+  updateMemberRoleSchema,
+} from '#shared/contracts/organizations.contract.js';
 import { logger } from '../../utils/logger.js';
 import type { DbError } from '../../types/db.js';
 
@@ -113,6 +117,198 @@ export async function inviteMember(req: Request, res: Response) {
       return res.status(409).json({ error: 'User is already a member of this organization' });
     }
 
+    throw error;
+  }
+}
+
+export async function updateOrganization(req: Request, res: Response) {
+  const { organizationId } = req.params as { organizationId: string };
+  const adminId = req.authSession.user.id;
+  const parseResult = updateOrganizationSchema.safeParse(req.body);
+
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  try {
+    const updated = await organizationsService.updateOrganization(
+      adminId,
+      organizationId,
+      parseResult.data,
+    );
+    res.json(updated);
+  } catch (error) {
+    const err = error as Error;
+    logger.error({ error, adminId, organizationId }, 'Failed to update organization');
+
+    if (err.message === 'FORBIDDEN') {
+      return res.status(403).json({ error: 'Only admins can update organization details' });
+    }
+    if (err.message === 'NOT_FOUND') {
+      return res.status(404).json({ error: 'Organization not found' });
+    }
+    throw error;
+  }
+}
+
+export async function deleteOrganization(req: Request, res: Response) {
+  const { organizationId } = req.params as { organizationId: string };
+  const adminId = req.authSession.user.id;
+
+  try {
+    await organizationsService.deleteOrganization(adminId, organizationId);
+    res.json({ message: 'Organization deleted successfully' });
+  } catch (error) {
+    const err = error as Error;
+    logger.error({ error, adminId, organizationId }, 'Failed to delete organization');
+
+    if (err.message === 'FORBIDDEN') {
+      return res.status(403).json({ error: 'Only admins can delete the organization' });
+    }
+    if (err.message === 'NOT_FOUND') {
+      return res.status(404).json({ error: 'Organization not found' });
+    }
+    throw error;
+  }
+}
+
+export async function listMembers(req: Request, res: Response) {
+  const { organizationId } = req.params as { organizationId: string };
+
+  try {
+    const members = await organizationsService.listMembers(organizationId);
+    res.json(members);
+  } catch (error) {
+    logger.error({ error, organizationId }, 'Failed to list members');
+    throw error;
+  }
+}
+
+export async function updateMemberRole(req: Request, res: Response) {
+  const { organizationId, userId } = req.params as { organizationId: string; userId: string };
+  const adminId = req.authSession.user.id;
+  const parseResult = updateMemberRoleSchema.safeParse(req.body);
+
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  try {
+    await organizationsService.updateMemberRole({
+      adminId,
+      organizationId,
+      targetUserId: userId,
+      role: parseResult.data.role,
+    });
+    res.json({ message: 'Member role updated successfully' });
+  } catch (error) {
+    const err = error as Error;
+    logger.error({ error, adminId, organizationId, userId }, 'Failed to update member role');
+
+    if (err.message === 'FORBIDDEN') {
+      return res.status(403).json({ error: 'Only admins can update member roles' });
+    }
+    if (err.message === 'NOT_FOUND') {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+    if (err.message === 'LAST_ADMIN_LOCKOUT') {
+      return res.status(400).json({ error: 'Cannot downgrade the last organization admin' });
+    }
+    throw error;
+  }
+}
+
+export async function removeMember(req: Request, res: Response) {
+  const { organizationId, userId } = req.params as { organizationId: string; userId: string };
+  const adminId = req.authSession.user.id;
+
+  try {
+    await organizationsService.removeMember({
+      adminId,
+      organizationId,
+      targetUserId: userId,
+    });
+    res.json({ message: 'Member removed successfully' });
+  } catch (error) {
+    const err = error as Error;
+    logger.error({ error, adminId, organizationId, userId }, 'Failed to remove member');
+
+    if (err.message === 'FORBIDDEN') {
+      return res.status(403).json({ error: 'Only admins can remove members' });
+    }
+    if (err.message === 'NOT_FOUND') {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+    if (err.message === 'LAST_ADMIN_LOCKOUT') {
+      return res.status(400).json({ error: 'Cannot remove the last organization admin' });
+    }
+    throw error;
+  }
+}
+
+export async function resendInvite(req: Request, res: Response) {
+  const { organizationId, inviteId } = req.params as { organizationId: string; inviteId: string };
+  const adminId = req.authSession.user.id;
+
+  try {
+    await organizationsService.resendInvite({
+      adminId,
+      organizationId,
+      inviteId,
+    });
+    res.json({ message: 'Invitation resent successfully' });
+  } catch (error) {
+    const err = error as Error;
+    logger.error({ error, adminId, organizationId, inviteId }, 'Failed to resend invite');
+
+    if (err.message === 'FORBIDDEN') {
+      return res.status(403).json({ error: 'Only admins can resend invitations' });
+    }
+    if (err.message === 'NOT_FOUND') {
+      return res.status(404).json({ error: 'Invitation not found' });
+    }
+    throw error;
+  }
+}
+
+export async function cancelInvite(req: Request, res: Response) {
+  const { organizationId, inviteId } = req.params as { organizationId: string; inviteId: string };
+  const adminId = req.authSession.user.id;
+
+  try {
+    await organizationsService.cancelInvite({
+      adminId,
+      organizationId,
+      inviteId,
+    });
+    res.json({ message: 'Invitation cancelled successfully' });
+  } catch (error) {
+    const err = error as Error;
+    logger.error({ error, adminId, organizationId, inviteId }, 'Failed to cancel invite');
+
+    if (err.message === 'FORBIDDEN') {
+      return res.status(403).json({ error: 'Only admins can cancel invitations' });
+    }
+    if (err.message === 'NOT_FOUND') {
+      return res.status(404).json({ error: 'Invitation not found' });
+    }
+    throw error;
+  }
+}
+
+export async function listInvites(req: Request, res: Response) {
+  const { organizationId } = req.params as { organizationId: string };
+  const adminId = req.authSession.user.id;
+
+  try {
+    const invites = await organizationsService.listInvites(adminId, organizationId);
+    res.json(invites);
+  } catch (error) {
+    const err = error as Error;
+    logger.error({ error, adminId, organizationId }, 'Failed to list invites');
+    if (err.message === 'FORBIDDEN') {
+      return res.status(403).json({ error: 'Only admins can list invitations' });
+    }
     throw error;
   }
 }

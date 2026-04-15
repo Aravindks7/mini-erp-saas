@@ -1,5 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm';
-import { PgColumn, PgTable } from 'drizzle-orm/pg-core';
+import { AnyPgColumn, PgTable } from 'drizzle-orm/pg-core';
 
 /**
  * Base service class providing common utilities for multi-tenancy and audit logging.
@@ -7,13 +7,13 @@ import { PgColumn, PgTable } from 'drizzle-orm/pg-core';
  * TTable must include organizationId and lifecycle columns (id, deletedAt, etc.).
  */
 export abstract class BaseService<
-  TTable extends PgTable<any> & {
-    id: PgColumn<any>;
-    organizationId: PgColumn<any>;
-    deletedAt: PgColumn<any>;
-    updatedAt: PgColumn<any>;
-    updatedBy: PgColumn<any>;
-    createdBy?: PgColumn<any>;
+  TTable extends PgTable & {
+    id: AnyPgColumn;
+    organizationId: AnyPgColumn;
+    deletedAt: AnyPgColumn;
+    updatedAt: AnyPgColumn;
+    updatedBy: AnyPgColumn;
+    createdBy?: AnyPgColumn;
   },
 > {
   constructor(protected table: TTable) {}
@@ -37,7 +37,7 @@ export abstract class BaseService<
   /**
    * Helper to inject audit fields into insert/update data.
    */
-  protected withAudit<TData extends Record<string, any>>(
+  protected withAudit<TData extends Record<string, unknown>>(
     data: TData,
     userId: string,
     isUpdate = false,

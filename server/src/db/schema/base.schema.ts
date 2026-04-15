@@ -1,4 +1,4 @@
-import { timestamp, uuid, integer } from 'drizzle-orm/pg-core';
+import { uuid } from 'drizzle-orm/pg-core';
 import { organizations } from './organizations.schema.js';
 
 // ---------------------------------------------------------------------------

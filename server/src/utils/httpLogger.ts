@@ -17,11 +17,11 @@ export const httpLogger = pinoHttp({
     return 'info';
   },
 
-  customSuccessMessage(req, res) {
+  customSuccessMessage(req) {
     return `${req.method} ${req.url} completed`;
   },
 
-  customErrorMessage(req, res) {
+  customErrorMessage(req) {
     return `${req.method} ${req.url} failed`;
   },
 

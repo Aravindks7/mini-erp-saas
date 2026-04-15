@@ -6,7 +6,7 @@ import { validate } from '../validate.middleware.js';
 describe('validate Middleware', () => {
   let mockReq: Partial<Request>;
   let mockRes: Partial<Response>;
-  let nextFunction: NextFunction = vi.fn();
+  const nextFunction: NextFunction = vi.fn();
 
   const testSchema = z.object({
     name: z.string().min(3),

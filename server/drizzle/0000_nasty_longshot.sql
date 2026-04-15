@@ -533,6 +533,7 @@ CREATE INDEX "org_member_org_idx" ON "organization_memberships" USING btree ("or
 CREATE INDEX "org_member_user_idx" ON "organization_memberships" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "org_invite_email_idx" ON "organization_invites" USING btree ("email");--> statement-breakpoint
 CREATE INDEX "org_invite_org_idx" ON "organization_invites" USING btree ("organization_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "org_invite_email_org_unique_idx" ON "organization_invites" USING btree ("email","organization_id");--> statement-breakpoint
 CREATE INDEX "uom_conv_org_idx" ON "product_uom_conversions" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "uom_conv_product_idx" ON "product_uom_conversions" USING btree ("product_id");--> statement-breakpoint
 CREATE INDEX "uom_org_idx" ON "unit_of_measures" USING btree ("organization_id");--> statement-breakpoint

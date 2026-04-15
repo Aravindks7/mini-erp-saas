@@ -56,6 +56,7 @@ export function Combobox({
         placeholder={placeholder}
         className={cn('w-full h-11 bg-background', className)}
         showClear={!!value}
+        disabled={disabled}
       />
       <ComboboxContent align="start">
         <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>

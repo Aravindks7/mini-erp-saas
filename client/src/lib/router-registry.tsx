@@ -3,7 +3,6 @@ import type { AppRoute } from '@/lib/types/navigation';
 
 import { authRoutes } from '@/features/auth/routes';
 import { dashboardRoutes as coreDashboardRoutes } from '@/features/dashboard/routes';
-import { usersRoutes } from '@/features/users/routes';
 import { customerRoutes } from '@/features/customers/routes';
 import { settingsRoutes } from '@/features/settings/routes';
 
@@ -14,7 +13,6 @@ import { settingsRoutes } from '@/features/settings/routes';
  */
 export const dashboardRoutes: AppRoute[] = [
   ...coreDashboardRoutes,
-  ...usersRoutes,
   ...customerRoutes,
   ...settingsRoutes,
 ];
