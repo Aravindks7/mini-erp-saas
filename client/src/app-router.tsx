@@ -14,6 +14,18 @@ import { dashboardRoutes, publicRoutes } from '@/lib/router-registry';
 export const router = createBrowserRouter([
   ...publicRoutes,
   {
+    path: '/:slug',
+    errorElement: <RouteErrorBoundary />,
+    element: (
+      <AuthGuard>
+        <TenantGuard>
+          <DashboardLayout />
+        </TenantGuard>
+      </AuthGuard>
+    ),
+    children: dashboardRoutes as RouteObject[],
+  },
+  {
     path: '/',
     errorElement: <RouteErrorBoundary />,
     element: (

@@ -1,4 +1,11 @@
-import { pgTable, uuid, text, index, timestamp as pgTimestamp } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  text,
+  index,
+  uniqueIndex,
+  timestamp as pgTimestamp,
+} from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { timestamps, userTracking, versioning } from './audit.schema.js';
 import { user } from './auth.schema.js';
@@ -31,6 +38,7 @@ export const organizationInvites = pgTable(
   (t) => [
     index('org_invite_email_idx').on(t.email),
     index('org_invite_org_idx').on(t.organizationId),
+    uniqueIndex('org_invite_email_org_unique_idx').on(t.email, t.organizationId),
   ],
 );
 

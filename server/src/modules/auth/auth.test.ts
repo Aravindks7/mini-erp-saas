@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import { app } from '../../app.js';
-import { db } from '../../db/index.js';
-import { organizationsService } from '../organizations/organizations.service.js';
 
 const mockResult = {
   returning: vi.fn().mockResolvedValue([{ id: 'mock-id', email: 'test@example.com' }]),

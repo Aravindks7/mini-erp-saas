@@ -1,5 +1,5 @@
 {
-  "id": "bb62b315-0df3-4c81-ab4a-6565490af252",
+  "id": "a637858a-d946-45d1-b5de-f03d3816bfbc",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1451,6 +1451,27 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "org_invite_email_org_unique_idx": {
+          "name": "org_invite_email_org_unique_idx",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}

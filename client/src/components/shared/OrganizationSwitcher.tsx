@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Building2, ChevronsUpDown, Plus } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useOrganizations } from '@/features/organizations/hooks/organizations.hooks';
+import { CreateOrganizationDialog } from '@/features/organizations/components/CreateOrganizationDialog';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
@@ -10,13 +11,20 @@ interface OrganizationSwitcherProps {
   isCollapsed?: boolean;
 }
 
+/**
+ * OrganizationSwitcher Component
+ *
+ * Handles switching between different organizations/tenants.
+ * Uses hard navigation (window.location.href) on switch to guarantee
+ * complete cache clearance and 100% data isolation.
+ */
 export function OrganizationSwitcher({ isCollapsed }: OrganizationSwitcherProps) {
-  const { activeOrganizationId, setActiveOrganizationId } = useTenant();
+  const { activeOrganizationId, syncActiveOrganizationId } = useTenant();
   const [isOpen, setIsOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { data: organizations, isLoading } = useOrganizations();
-
   const activeOrg = organizations?.find((org) => org.id === activeOrganizationId);
 
   // Close dropdown when clicking outside
@@ -29,6 +37,18 @@ export function OrganizationSwitcher({ isCollapsed }: OrganizationSwitcherProps)
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleOrgSwitch = (orgId: string, slug: string) => {
+    setIsOpen(false);
+    if (orgId === activeOrganizationId) return;
+
+    // 1. Sync the ID immediately to avoid x-organization-id header mismatch in next fetch
+    syncActiveOrganizationId(orgId);
+
+    // 2. Hard navigate to the new slug's dashboard to clear all memory caches (QueryClient, etc)
+    // and guarantee 100% data isolation between tenants.
+    window.location.assign(`/${slug}`);
+  };
 
   if (isLoading) {
     return (
@@ -91,10 +111,7 @@ export function OrganizationSwitcher({ isCollapsed }: OrganizationSwitcherProps)
             {organizations?.map((org) => (
               <button
                 key={org.id}
-                onClick={() => {
-                  setActiveOrganizationId(org.id);
-                  setIsOpen(false);
-                }}
+                onClick={() => handleOrgSwitch(org.id, org.slug)}
                 className={cn(
                   'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-accent hover:text-accent-foreground',
                   org.id === activeOrganizationId ? 'bg-accent text-accent-foreground' : '',
@@ -110,8 +127,8 @@ export function OrganizationSwitcher({ isCollapsed }: OrganizationSwitcherProps)
           <div className="mt-1 border-t p-1">
             <button
               onClick={() => {
-                // Future: link to create organization module
                 setIsOpen(false);
+                setIsCreateDialogOpen(true);
               }}
               className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-primary transition-colors hover:bg-accent hover:text-accent-foreground"
             >
@@ -121,6 +138,8 @@ export function OrganizationSwitcher({ isCollapsed }: OrganizationSwitcherProps)
           </div>
         </div>
       )}
+
+      <CreateOrganizationDialog isOpen={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} />
     </div>
   );
 }

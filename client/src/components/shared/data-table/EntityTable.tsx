@@ -127,6 +127,13 @@ export function EntityTable<TData, TValue>({
       },
       cell: ({ row }) => {
         const entity = row.original;
+        const rowActions = renderRowActions?.(entity);
+
+        // Determine if we have any actions to show
+        const hasStandardActions = !!(actions?.onView || actions?.onEdit || actions?.onDelete);
+        const hasCustomActions = !!rowActions;
+
+        if (!hasStandardActions && !hasCustomActions) return null;
 
         return (
           <DropdownMenu>
@@ -154,7 +161,7 @@ export function EntityTable<TData, TValue>({
                 </DropdownMenuItem>
               )}
 
-              {renderRowActions?.(entity)}
+              {rowActions}
 
               {actions?.onDelete && (
                 <>

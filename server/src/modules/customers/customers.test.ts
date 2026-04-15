@@ -3,9 +3,17 @@ import request from 'supertest';
 import { app } from '../../app.js';
 import { auth } from '../auth/auth.js';
 import { db } from '../../db/index.js';
-import { organizationMemberships } from '../../db/schema/index.js';
 import { customerAddresses } from '../../db/schema/customer-addresses.schema.js';
-import { customerContacts } from '../../db/schema/customer-contacts.schema.js';
+
+// --- TYPES FOR MOCKS ---
+type MockSession = { user: { id: string } };
+type MockMembership = { role: string; organization: { id: string } };
+type MockCustomer = {
+  id: string;
+  companyName: string;
+  addresses?: unknown[];
+  contacts?: unknown[];
+};
 
 // --- MOCKS ---
 
@@ -21,12 +29,13 @@ vi.mock('../auth/auth.js', () => ({
 const mockReturning = vi.fn().mockResolvedValue([{ id: 'new-id', companyName: 'Mock Corp' }]);
 
 // Helper to create a mock that supports .returning() and is awaitable
-const mockChained = (val: any) => {
+const mockChained = <T>(val: T) => {
   const m = vi.fn().mockImplementation(() => {
     const p = Promise.resolve(val);
-    (p as any).returning = vi.fn().mockResolvedValue(val);
-    (p as any).onConflictDoNothing = vi.fn().mockReturnValue(p);
-    return p;
+    return Object.assign(p, {
+      returning: vi.fn().mockResolvedValue(val),
+      onConflictDoNothing: vi.fn().mockReturnValue(p),
+    });
   });
   return m;
 };
@@ -34,8 +43,7 @@ const mockChained = (val: any) => {
 const mockValues = mockChained([{ id: 'new-id' }]);
 const mockWhere = mockChained([{ id: 'updated-id' }]);
 const mockSet = vi.fn().mockImplementation(() => {
-  const s = { where: mockWhere };
-  (s as any).returning = mockReturning;
+  const s = { where: mockWhere, returning: mockReturning };
   return s;
 });
 
@@ -97,13 +105,13 @@ describe('Customers Module Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset mockTx implementations to default to avoid leak between tests
-    (mockTx.update as any).mockReturnValue({ set: mockSet });
-    (mockTx.delete as any).mockReturnValue({ where: mockWhere });
+    vi.mocked(mockTx.update).mockReturnValue({ set: mockSet });
+    vi.mocked(mockTx.delete).mockReturnValue({ where: mockWhere });
   });
 
   describe('Authentication & Multi-Tenancy', () => {
     it('should return 401 if unauthorized (no session)', async () => {
-      (auth.api.getSession as any).mockResolvedValue(null);
+      vi.mocked(auth.api.getSession).mockResolvedValue(null);
 
       const response = await request(app).get('/customers').set('x-organization-id', mockOrgId);
 
@@ -112,7 +120,9 @@ describe('Customers Module Integration', () => {
     });
 
     it('should return 400 if x-organization-id header is missing', async () => {
-      (auth.api.getSession as any).mockResolvedValue({ user: { id: mockUserId } });
+      vi.mocked(auth.api.getSession).mockResolvedValue({
+        user: { id: mockUserId },
+      } as unknown as MockSession);
 
       const response = await request(app).get('/customers');
 
@@ -121,8 +131,10 @@ describe('Customers Module Integration', () => {
     });
 
     it('should return 403 if user is not a member of the organization', async () => {
-      (auth.api.getSession as any).mockResolvedValue({ user: { id: mockUserId } });
-      (db.query.organizationMemberships.findFirst as any).mockResolvedValue(null);
+      vi.mocked(auth.api.getSession).mockResolvedValue({
+        user: { id: mockUserId },
+      } as unknown as MockSession);
+      vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue(null);
 
       const response = await request(app).get('/customers').set('x-organization-id', mockOrgId);
 
@@ -133,12 +145,14 @@ describe('Customers Module Integration', () => {
 
   describe('RBAC Enforcement', () => {
     it('should allow employees to list customers', async () => {
-      (auth.api.getSession as any).mockResolvedValue({ user: { id: mockUserId } });
-      (db.query.organizationMemberships.findFirst as any).mockResolvedValue({
+      vi.mocked(auth.api.getSession).mockResolvedValue({
+        user: { id: mockUserId },
+      } as unknown as MockSession);
+      vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue({
         role: 'employee',
         organization: { id: mockOrgId },
-      });
-      (db.query.customers.findMany as any).mockResolvedValue([]);
+      } as unknown as MockMembership);
+      vi.mocked(db.query.customers.findMany).mockResolvedValue([]);
 
       const response = await request(app).get('/customers').set('x-organization-id', mockOrgId);
 
@@ -146,11 +160,13 @@ describe('Customers Module Integration', () => {
     });
 
     it('should forbid employees from deleting customers', async () => {
-      (auth.api.getSession as any).mockResolvedValue({ user: { id: mockUserId } });
-      (db.query.organizationMemberships.findFirst as any).mockResolvedValue({
+      vi.mocked(auth.api.getSession).mockResolvedValue({
+        user: { id: mockUserId },
+      } as unknown as MockSession);
+      vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue({
         role: 'employee',
         organization: { id: mockOrgId },
-      });
+      } as unknown as MockMembership);
 
       const response = await request(app)
         .delete('/customers/cust-123')
@@ -161,17 +177,19 @@ describe('Customers Module Integration', () => {
     });
 
     it('should allow admins to delete customers', async () => {
-      (auth.api.getSession as any).mockResolvedValue({ user: { id: mockUserId } });
-      (db.query.organizationMemberships.findFirst as any).mockResolvedValue({
+      vi.mocked(auth.api.getSession).mockResolvedValue({
+        user: { id: mockUserId },
+      } as unknown as MockSession);
+      vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue({
         role: 'admin',
         organization: { id: mockOrgId },
-      });
+      } as unknown as MockMembership);
 
-      (mockTx.delete as any).mockReturnValue({
+      vi.mocked(mockTx.delete).mockReturnValue({
         where: mockWhere.mockReturnValue({
           returning: mockReturning.mockResolvedValue([{ id: 'cust-123' }]),
         }),
-      });
+      } as unknown as MockCustomer);
 
       const response = await request(app)
         .delete('/customers/cust-123')
@@ -184,11 +202,13 @@ describe('Customers Module Integration', () => {
 
   describe('CRUD Lifecycle', () => {
     it('should successfully update a customer via PATCH', async () => {
-      (auth.api.getSession as any).mockResolvedValue({ user: { id: mockUserId } });
-      (db.query.organizationMemberships.findFirst as any).mockResolvedValue({
+      vi.mocked(auth.api.getSession).mockResolvedValue({
+        user: { id: mockUserId },
+      } as unknown as MockSession);
+      vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue({
         role: 'admin',
         organization: { id: mockOrgId },
-      });
+      } as unknown as MockMembership);
 
       const response = await request(app)
         .patch('/customers/cust-123')
@@ -202,11 +222,13 @@ describe('Customers Module Integration', () => {
 
   describe('Aggregate Root Mutation & Nested Retrieval', () => {
     beforeEach(() => {
-      (auth.api.getSession as any).mockResolvedValue({ user: { id: mockUserId } });
-      (db.query.organizationMemberships.findFirst as any).mockResolvedValue({
+      vi.mocked(auth.api.getSession).mockResolvedValue({
+        user: { id: mockUserId },
+      } as unknown as MockSession);
+      vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue({
         role: 'admin',
         organization: { id: mockOrgId },
-      });
+      } as unknown as MockMembership);
     });
 
     it('should create a customer with nested contacts and addresses', async () => {
@@ -228,12 +250,12 @@ describe('Customers Module Integration', () => {
     });
 
     it('should retrieve a customer with nested data (GET /:id)', async () => {
-      (db.query.customers.findFirst as any).mockResolvedValue({
+      vi.mocked(db.query.customers.findFirst).mockResolvedValue({
         id: 'cust-123',
         companyName: 'Mock Corp',
         addresses: [{ address: { city: 'Springfield' } }],
         contacts: [{ contact: { firstName: 'John' } }],
-      });
+      } as unknown as MockCustomer);
 
       const response = await request(app)
         .get('/customers/cust-123')
@@ -245,14 +267,14 @@ describe('Customers Module Integration', () => {
     });
 
     it('should list customers with nested data (GET /)', async () => {
-      (db.query.customers.findMany as any).mockResolvedValue([
+      vi.mocked(db.query.customers.findMany).mockResolvedValue([
         {
           id: 'cust-1',
           companyName: 'Corp 1',
           addresses: [],
           contacts: [],
         },
-      ]);
+      ] as unknown as MockCustomer[]);
 
       const response = await request(app).get('/customers').set('x-organization-id', mockOrgId);
 
@@ -265,7 +287,7 @@ describe('Customers Module Integration', () => {
       it('should return 404 when attempting to access a customer belonging to another organization', async () => {
         // Mock db to return null when searching for this ID within Org A's context
         // even if the ID exists in the database under Org B.
-        (db.query.customers.findFirst as any).mockResolvedValue(null);
+        vi.mocked(db.query.customers.findFirst).mockResolvedValue(null);
 
         const otherOrgCustomerId = 'other-org-cust-uuid';
         const response = await request(app)
@@ -277,13 +299,13 @@ describe('Customers Module Integration', () => {
 
       it('should return 404 when attempting to update a customer belonging to another organization', async () => {
         // Mock the transactional update to return an empty array (simulating 0 rows matched due to multi-tenant WHERE clause)
-        (mockTx.update as any).mockReturnValue({
+        vi.mocked(mockTx.update).mockReturnValue({
           set: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnValue({
               returning: vi.fn().mockResolvedValue([]),
             }),
           }),
-        });
+        } as unknown as MockCustomer);
 
         const otherOrgCustomerId = 'other-org-cust-uuid';
         const response = await request(app)
@@ -307,12 +329,15 @@ describe('Customers Module Integration', () => {
     describe('Transactional Atomicity', () => {
       it('should rollback customer creation if address insertion fails', async () => {
         // Force a failure on the second insert (which would be addresses in the transaction)
-        mockTx.insert
-          .mockImplementationOnce(() => ({
-            values: vi.fn().mockReturnValue({
-              returning: vi.fn().mockResolvedValue([{ id: 'cust-123' }]),
-            }),
-          }))
+        vi.mocked(mockTx.insert)
+          .mockImplementationOnce(
+            () =>
+              ({
+                values: vi.fn().mockReturnValue({
+                  returning: vi.fn().mockResolvedValue([{ id: 'cust-123' }]),
+                }),
+              }) as unknown as ReturnType<typeof mockTx.insert>,
+          )
           .mockImplementationOnce(() => {
             throw new Error('DATABASE_CRASH_ON_ADDRESS');
           });
@@ -356,10 +381,10 @@ describe('Customers Module Integration', () => {
         // Verification: The service should have processed only one true isPrimary.
         // We can check the mock values or calls.
         // In createCustomer, it loops and calls tx.insert(customerAddresses)
-        const calls = mockTx.insert.mock.calls.filter((c: any) => c[0] === customerAddresses);
-        const primaryValues = calls.map(
-          (c: any) => mockTx.insert().values.mock.results[calls.indexOf(c)].value.isPrimary,
-        );
+        // const _primaryValues = calls.map(
+        //   (c) =>
+        //     vi.mocked(mockTx.insert).mock.results[calls.indexOf(c)].value.isPrimary as unknown,
+        // );
         // This is tricky with current mocking. Let's just verify status for now and assume the service logic is tested.
       });
 

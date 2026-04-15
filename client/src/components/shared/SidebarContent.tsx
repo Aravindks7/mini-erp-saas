@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { Button } from '../ui/button';
 import { dashboardRoutes } from '@/lib/router-registry';
+import { useTenant } from '@/contexts/TenantContext';
 
 interface SidebarContentProps {
   onItemClick?: () => void;
@@ -15,12 +16,22 @@ interface SidebarContentProps {
 
 export function SidebarContent({ onItemClick, isCollapsed, toggle }: SidebarContentProps) {
   const { pathname } = useLocation();
+  const { activeOrganization } = useTenant();
+  const slug = activeOrganization?.slug;
 
   const sidebarItems = dashboardRoutes
-    .filter((route) => route.handle?.showInSidebar)
+    .filter((route) => {
+      if (!route.handle?.showInSidebar) return false;
+      return true;
+    })
     .map((route) => {
-      const path = route.index ? '/' : `/${route.path}`;
-      const isActive = path === '/' ? pathname === '/' : pathname.startsWith(path);
+      // Prefix with slug if available, otherwise fallback to root-relative
+      const routePath = route.index ? '' : `/${route.path}`;
+      const path = slug ? `/${slug}${routePath}` : routePath || '/';
+
+      // For the dashboard (index), we want an exact match or trailing slash
+      // For others, we want to match any sub-route (e.g., /customers/new)
+      const isActive = route.index ? pathname === path : pathname.startsWith(path);
 
       return {
         path,

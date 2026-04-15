@@ -15,7 +15,7 @@ vi.mock('../../utils/logger.js', () => ({
 describe('errorMiddleware', () => {
   let mockReq: Partial<Request>;
   let mockRes: Partial<Response>;
-  let nextFunction: NextFunction = vi.fn();
+  const nextFunction: NextFunction = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -107,7 +107,7 @@ describe('errorMiddleware', () => {
     errorMiddleware(err, mockReq as Request, mockRes as Response, nextFunction);
 
     expect(mockRes.status).toHaveBeenCalledWith(500);
-    const jsonResult = (mockRes.json as any).mock.calls[0][0];
+    const jsonResult = vi.mocked(mockRes.json!).mock.calls[0][0];
     expect(jsonResult.error).toBe('Dev failure');
     expect(jsonResult).toHaveProperty('stack');
 

@@ -33,6 +33,14 @@ describe('TenantGuard (Multi-Tenant Perimeter)', () => {
       <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
           <Route
+            path="/:slug/dashboard"
+            element={
+              <TenantGuard>
+                <ProtectedComponent />
+              </TenantGuard>
+            }
+          />
+          <Route
             path="/dashboard"
             element={
               <TenantGuard>
@@ -98,7 +106,7 @@ describe('TenantGuard (Multi-Tenant Perimeter)', () => {
   });
 
   it('should auto-select the first organization if none selected', () => {
-    const mockOrgs = [{ id: 'org-1', name: 'Org 1' }];
+    const mockOrgs = [{ id: 'org-1', name: 'Org 1', slug: 'org-1' }];
     vi.mocked(useTenant).mockReturnValue({
       activeOrganizationId: null,
       setActiveOrganizationId,
@@ -107,7 +115,7 @@ describe('TenantGuard (Multi-Tenant Perimeter)', () => {
     } as unknown as ReturnType<typeof useTenant>);
     vi.mocked(useOrganizations).mockReturnValue({
       isLoading: false,
-      data: mockOrgs,
+      data: mockOrgs as unknown as OrganizationResponse[],
     } as unknown as ReturnType<typeof useOrganizations>);
 
     renderGuard();
@@ -120,7 +128,7 @@ describe('TenantGuard (Multi-Tenant Perimeter)', () => {
   });
 
   it('should redirect to /select-organization if activeOrganizationId is invalid/stale', () => {
-    const mockOrgs = [{ id: 'org-1', name: 'Org 1' }];
+    const mockOrgs = [{ id: 'org-1', name: 'Org 1', slug: 'org-1' }];
     vi.mocked(useTenant).mockReturnValue({
       activeOrganizationId: 'stale-id',
       setActiveOrganizationId,
@@ -129,7 +137,7 @@ describe('TenantGuard (Multi-Tenant Perimeter)', () => {
     } as unknown as ReturnType<typeof useTenant>);
     vi.mocked(useOrganizations).mockReturnValue({
       isLoading: false,
-      data: mockOrgs,
+      data: mockOrgs as unknown as OrganizationResponse[],
     } as unknown as ReturnType<typeof useOrganizations>);
 
     renderGuard();
@@ -138,7 +146,7 @@ describe('TenantGuard (Multi-Tenant Perimeter)', () => {
   });
 
   it('should render content when authenticated with a valid organization', () => {
-    const mockOrgs = [{ id: 'org-1', name: 'Org 1' }];
+    const mockOrgs = [{ id: 'org-1', name: 'Org 1', slug: 'org-1' }];
     vi.mocked(useTenant).mockReturnValue({
       activeOrganizationId: 'org-1',
       setActiveOrganizationId,
@@ -147,10 +155,11 @@ describe('TenantGuard (Multi-Tenant Perimeter)', () => {
     } as unknown as ReturnType<typeof useTenant>);
     vi.mocked(useOrganizations).mockReturnValue({
       isLoading: false,
-      data: mockOrgs,
+      data: mockOrgs as unknown as OrganizationResponse[],
     } as unknown as ReturnType<typeof useOrganizations>);
 
-    renderGuard();
+    // Use a slug-prefixed path in the test
+    renderGuard('/org-1/dashboard');
     expect(screen.getByText(/Dashboard Content/i)).toBeInTheDocument();
   });
 });

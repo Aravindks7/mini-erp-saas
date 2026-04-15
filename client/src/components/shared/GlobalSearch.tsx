@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useModifierKey } from '@/hooks/useModifierKey';
+import { useTenantPath } from '@/hooks/useTenantPath';
 
 interface GlobalSearchProps {
   className?: string;
@@ -53,6 +54,7 @@ export function GlobalSearch({ className, onSearch }: GlobalSearchProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const navigate = useNavigate();
+  const { getPath } = useTenantPath();
   const modifierKey = useModifierKey();
 
   React.useEffect(() => {
@@ -69,7 +71,7 @@ export function GlobalSearch({ className, onSearch }: GlobalSearchProps) {
 
   const handleSelect = (path: string) => {
     setOpen(false);
-    navigate(path);
+    navigate(getPath(path));
   };
 
   return (
@@ -146,7 +148,10 @@ export function GlobalSearch({ className, onSearch }: GlobalSearchProps) {
               <>
                 <CommandGroup heading="Results">
                   <CommandItem
-                    onSelect={() => navigate(`/search?q=${query}`)}
+                    onSelect={() => {
+                      setOpen(false);
+                      navigate(getPath(`/search?q=${query}`));
+                    }}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer"
                   >
                     <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border bg-primary/10">

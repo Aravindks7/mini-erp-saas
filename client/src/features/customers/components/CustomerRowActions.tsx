@@ -10,6 +10,7 @@ import {
 
 import type { CustomerResponse } from '../api/customers.api';
 import { useDeleteCustomer } from '../hooks/customers.hooks';
+import { useTenantPath } from '@/hooks/useTenantPath';
 
 interface CustomerRowActionsProps {
   row: { original: CustomerResponse };
@@ -17,6 +18,7 @@ interface CustomerRowActionsProps {
 
 export function CustomerRowActions({ row }: CustomerRowActionsProps) {
   const navigate = useNavigate();
+  const { getPath } = useTenantPath();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { mutate: deleteCustomer, status: deleteStatus } = useDeleteCustomer();
   const customer = row.original;
@@ -31,13 +33,13 @@ export function CustomerRowActions({ row }: CustomerRowActionsProps) {
     {
       label: 'View',
       icon: <Eye className="h-4 w-4" />,
-      onClick: () => navigate(`/customers/${customer.id}`),
+      onClick: () => navigate(getPath(`/customers/${customer.id}`)),
       tooltip: 'View Details',
     },
     {
       label: 'Edit',
       icon: <FileEdit className="h-4 w-4" />,
-      onClick: () => navigate(`/customers/${customer.id}/edit`),
+      onClick: () => navigate(getPath(`/customers/${customer.id}/edit`)),
       tooltip: 'Edit Customer',
     },
     {

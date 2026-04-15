@@ -6,14 +6,16 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { CustomerList } from '../components/CustomerList';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { useTenantPath } from '@/hooks/useTenantPath';
 
 export default function CustomersPage() {
   const navigate = useNavigate();
+  const { getPath } = useTenantPath();
 
   return (
     <PageContainer>
       <PageHeader title="Customers" description="Manage your client base and their details.">
-        <Button onClick={() => navigate('/customers/new')}>
+        <Button onClick={() => navigate(getPath('/customers/new'))}>
           <Plus className="mr-2 h-4 w-4" /> Add Customer
         </Button>
       </PageHeader>
@@ -29,7 +31,7 @@ export default function CustomersPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
-          <CustomerList onAddClick={() => navigate('/customers/new')} />
+          <CustomerList onAddClick={() => navigate(getPath('/customers/new'))} />
         </CardContent>
       </Card>
     </PageContainer>
