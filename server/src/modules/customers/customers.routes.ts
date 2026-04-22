@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
+import { requirePermission } from '../../middleware/rbac.middleware.js';
+import { PERMISSIONS } from '#shared/index.js';
 import * as customersController from './customers.controller.js';
-
-import { requireRole } from '../../middleware/role.middleware.js';
 
 const router = Router();
 
@@ -11,8 +11,23 @@ router.use(authMiddleware);
 
 router.get('/', customersController.listCustomers);
 router.get('/:id', customersController.getCustomer);
-router.post('/', customersController.createCustomer);
-router.patch('/:id', customersController.updateCustomer);
-router.delete('/:id', requireRole(['admin']), customersController.deleteCustomer);
+
+router.post(
+  '/',
+  requirePermission(PERMISSIONS.CUSTOMERS.CREATE),
+  customersController.createCustomer,
+);
+
+router.patch(
+  '/:id',
+  requirePermission(PERMISSIONS.CUSTOMERS.UPDATE),
+  customersController.updateCustomer,
+);
+
+router.delete(
+  '/:id',
+  requirePermission(PERMISSIONS.CUSTOMERS.DELETE),
+  customersController.deleteCustomer,
+);
 
 export default router;

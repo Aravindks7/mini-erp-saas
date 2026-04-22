@@ -6,6 +6,7 @@ import {
   type CreateOrganizationInput,
   type UpdateOrganizationInput,
   type UpdateMemberRoleInput,
+  type InviteMemberInput,
 } from '@shared/contracts/organizations.contract';
 
 export type OrganizationMember = z.infer<typeof memberResponseSchema>;
@@ -17,7 +18,8 @@ export interface OrganizationResponse {
   slug: string;
   defaultCountry: string;
   createdAt: string;
-  role?: string;
+  roleId: string;
+  roleName: string;
 }
 
 export const organizationsApi = {
@@ -49,7 +51,7 @@ export const organizationsApi = {
     }),
   fetchInvitations: (organizationId: string) =>
     apiFetch<OrganizationInvite[]>(`/organizations/${organizationId}/invites`),
-  inviteMember: (organizationId: string, data: { userEmail: string; role: 'admin' | 'employee' }) =>
+  inviteMember: (organizationId: string, data: InviteMemberInput) =>
     apiFetch<{ message: string }>(`/organizations/${organizationId}/invites`, {
       method: 'POST',
       body: JSON.stringify(data),

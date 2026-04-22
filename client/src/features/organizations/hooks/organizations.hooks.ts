@@ -4,6 +4,7 @@ import type {
   CreateOrganizationInput,
   UpdateOrganizationInput,
   UpdateMemberRoleInput,
+  InviteMemberInput,
 } from '@shared/contracts/organizations.contract';
 
 export const organizationKeys = {
@@ -94,8 +95,7 @@ export function useInviteMember(orgId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { userEmail: string; role: 'admin' | 'employee' }) =>
-      organizationsApi.inviteMember(orgId, data),
+    mutationFn: (data: InviteMemberInput) => organizationsApi.inviteMember(orgId, data),
     onSuccess: () => {
       return queryClient.invalidateQueries({ queryKey: organizationKeys.invites(orgId) });
     },

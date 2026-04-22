@@ -153,11 +153,49 @@ CREATE TABLE "organizations" (
 	CONSTRAINT "organizations_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
+CREATE TABLE "permission_set_items" (
+	"permission_set_id" uuid NOT NULL,
+	"permission_id" text NOT NULL,
+	CONSTRAINT "permission_set_items_permission_set_id_permission_id_pk" PRIMARY KEY("permission_set_id","permission_id")
+);
+--> statement-breakpoint
+CREATE TABLE "permission_sets" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" text NOT NULL,
+	"organization_id" uuid,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_by" uuid,
+	"updated_by" uuid
+);
+--> statement-breakpoint
+CREATE TABLE "permissions" (
+	"id" text PRIMARY KEY NOT NULL,
+	"description" text
+);
+--> statement-breakpoint
+CREATE TABLE "role_permission_sets" (
+	"role_id" uuid NOT NULL,
+	"permission_set_id" uuid NOT NULL,
+	CONSTRAINT "role_permission_sets_role_id_permission_set_id_pk" PRIMARY KEY("role_id","permission_set_id")
+);
+--> statement-breakpoint
+CREATE TABLE "roles" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" text NOT NULL,
+	"organization_id" uuid,
+	"is_base_role" boolean DEFAULT false NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_by" uuid,
+	"updated_by" uuid
+);
+--> statement-breakpoint
 CREATE TABLE "organization_memberships" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"organization_id" uuid NOT NULL,
-	"role" "member_role" DEFAULT 'employee' NOT NULL,
+	"role_id" uuid NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	"created_by" uuid,
@@ -170,7 +208,7 @@ CREATE TABLE "organization_invites" (
 	"email" text NOT NULL,
 	"organization_id" uuid NOT NULL,
 	"invited_by_id" uuid NOT NULL,
-	"role" "member_role" DEFAULT 'employee' NOT NULL,
+	"role_id" uuid NOT NULL,
 	"status" "invite_status" DEFAULT 'pending' NOT NULL,
 	"expires_at" timestamp NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
@@ -468,10 +506,18 @@ ALTER TABLE "customer_contacts" ADD CONSTRAINT "customer_contacts_organization_i
 ALTER TABLE "customer_contacts" ADD CONSTRAINT "customer_contacts_customer_id_customers_id_fk" FOREIGN KEY ("customer_id") REFERENCES "public"."customers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "customer_contacts" ADD CONSTRAINT "customer_contacts_contact_id_contacts_id_fk" FOREIGN KEY ("contact_id") REFERENCES "public"."contacts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "customers" ADD CONSTRAINT "customers_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "permission_set_items" ADD CONSTRAINT "permission_set_items_permission_set_id_permission_sets_id_fk" FOREIGN KEY ("permission_set_id") REFERENCES "public"."permission_sets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "permission_set_items" ADD CONSTRAINT "permission_set_items_permission_id_permissions_id_fk" FOREIGN KEY ("permission_id") REFERENCES "public"."permissions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "permission_sets" ADD CONSTRAINT "permission_sets_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "role_permission_sets" ADD CONSTRAINT "role_permission_sets_role_id_roles_id_fk" FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "role_permission_sets" ADD CONSTRAINT "role_permission_sets_permission_set_id_permission_sets_id_fk" FOREIGN KEY ("permission_set_id") REFERENCES "public"."permission_sets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "roles" ADD CONSTRAINT "roles_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "organization_memberships" ADD CONSTRAINT "organization_memberships_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "organization_memberships" ADD CONSTRAINT "organization_memberships_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "organization_memberships" ADD CONSTRAINT "organization_memberships_role_id_roles_id_fk" FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "organization_invites" ADD CONSTRAINT "organization_invites_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "organization_invites" ADD CONSTRAINT "organization_invites_invited_by_id_user_id_fk" FOREIGN KEY ("invited_by_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "organization_invites" ADD CONSTRAINT "organization_invites_role_id_roles_id_fk" FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "product_uom_conversions" ADD CONSTRAINT "product_uom_conversions_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "product_uom_conversions" ADD CONSTRAINT "product_uom_conversions_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "product_uom_conversions" ADD CONSTRAINT "product_uom_conversions_from_uom_id_unit_of_measures_id_fk" FOREIGN KEY ("from_uom_id") REFERENCES "public"."unit_of_measures"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -528,6 +574,8 @@ CREATE UNIQUE INDEX "customer_contacts_customer_id_contact_id_key" ON "customer_
 CREATE UNIQUE INDEX "idx_customer_contacts_primary_unique" ON "customer_contacts" USING btree ("customer_id") WHERE "customer_contacts"."is_primary" = true;--> statement-breakpoint
 CREATE INDEX "customers_org_idx" ON "customers" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "customers_status_idx" ON "customers" USING btree ("status");--> statement-breakpoint
+CREATE UNIQUE INDEX "perm_set_name_org_idx" ON "permission_sets" USING btree ("name","organization_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "role_name_org_idx" ON "roles" USING btree ("name","organization_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "org_member_unique_idx" ON "organization_memberships" USING btree ("user_id","organization_id");--> statement-breakpoint
 CREATE INDEX "org_member_org_idx" ON "organization_memberships" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "org_member_user_idx" ON "organization_memberships" USING btree ("user_id");--> statement-breakpoint

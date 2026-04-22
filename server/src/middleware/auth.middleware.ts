@@ -6,14 +6,18 @@ import { organizationMemberships } from '../db/schema/index.js';
 import { eq, and } from 'drizzle-orm';
 import { logger } from '../utils/logger.js';
 import { setTenant } from '../db/setTenant.js';
+import { rbacService } from '../modules/rbac/rbac.service.js';
+import { PermissionResolver } from './rbac.middleware.js';
+import { User, Session } from '../db/schema/auth.schema.js';
 
 /**
  * Tenant-aware authentication middleware.
  *
  * 1. Validates the Better Auth session from the incoming cookie/bearer token.
  * 2. Reads the `x-organization-id` header and verifies the caller has a membership.
- * 3. Sets the PostgreSQL session variable for RLS using `setTenant`.
- * 4. Attaches `req.authSession`, `req.organizationId`, and `req.userRole` for downstream use.
+ * 3. Resolves the user's permissions within the tenant.
+ * 4. Sets the PostgreSQL session variable for RLS using `setTenant`.
+ * 5. Attaches `req.authSession`, `req.organizationId`, and `req.permissions` for downstream use.
  *
  * Apply this middleware to any route that requires a signed-in, tenant-scoped user.
  */
@@ -67,7 +71,7 @@ export async function authMiddleware(
   }
 
   const membership = req.headers['x-dev-bypass']
-    ? { role: 'admin' as const, organization: { id: orgId as string } }
+    ? { roleId: '00000000-0000-0000-0000-000000000001', organization: { id: orgId as string } }
     : await db.query.organizationMemberships.findFirst({
         where: and(
           eq(organizationMemberships.userId, sessionData.user.id),
@@ -87,16 +91,16 @@ export async function authMiddleware(
     return;
   }
 
-  // Step 3 — set PostgreSQL session context for RLS
-  // NOTE: This setting is local to the current session. In a pooled environment,
-  // we rely on the middleware always setting this before any DB operation.
-  // Manual filters (where clauses) in services provide a secondary layer of isolation.
+  // Step 3 — resolve permissions
+  const permissions = await rbacService.getPermissions(sessionData.user.id, orgId);
+
+  // Step 4 — set PostgreSQL session context for RLS
   await setTenant(orgId, sessionData.user.id);
 
-  // Step 4 — attach to request for downstream handlers
-  req.authSession = sessionData;
+  // Step 5 — attach to request for downstream handlers
+  req.authSession = sessionData as { user: User; session: Session };
   req.organizationId = orgId;
-  req.userRole = membership.role;
+  req.permissions = new PermissionResolver(permissions);
 
   next();
 }

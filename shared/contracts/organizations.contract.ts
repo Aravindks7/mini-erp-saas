@@ -18,19 +18,20 @@ export const createOrganizationSchema = z.object({
 export const updateOrganizationSchema = createOrganizationSchema.partial();
 
 export const updateMemberRoleSchema = z.object({
-  role: z.enum(['admin', 'employee']),
+  roleId: z.string().uuid(),
 });
 
 export const inviteMemberSchema = z.object({
   userEmail: z.string().trim().min(1, 'Email is required').email('Invalid email address'),
-  role: z.enum(['admin', 'employee']).default('employee'),
+  roleId: z.string().uuid(),
 });
 
 export const memberResponseSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
   organizationId: z.string().uuid(),
-  role: z.enum(['admin', 'employee']),
+  roleId: z.string().uuid(),
+  roleName: z.string(),
   joinedAt: z.string().datetime(),
   user: z.object({
     name: z.string(),
@@ -42,7 +43,8 @@ export const memberResponseSchema = z.object({
 export const inviteResponseSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
-  role: z.enum(['admin', 'employee']),
+  roleId: z.string().uuid(),
+  roleName: z.string(),
   status: z.enum(['pending', 'accepted', 'revoked']),
   expiresAt: z.string().datetime(),
   createdAt: z.string().datetime(),

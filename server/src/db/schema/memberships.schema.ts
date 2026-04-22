@@ -2,8 +2,8 @@ import { pgTable, uuid, uniqueIndex, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { timestamps, userTracking, versioning } from './audit.schema.js';
 import { user } from './auth.schema.js';
-import { memberRoleEnum } from './auth-enums.schema.js';
 import { organizations } from './organizations.schema.js';
+import { roles } from './roles.schema.js';
 
 /**
  * Multi-Tenancy Bridge: userId ↔ organizationId
@@ -19,7 +19,9 @@ export const organizationMemberships = pgTable(
     organizationId: uuid('organization_id')
       .notNull()
       .references(() => organizations.id, { onDelete: 'cascade' }),
-    role: memberRoleEnum('role').notNull().default('employee'),
+    roleId: uuid('role_id')
+      .notNull()
+      .references(() => roles.id),
 
     ...timestamps,
     ...userTracking,
@@ -40,6 +42,10 @@ export const organizationMembershipsRelations = relations(organizationMembership
   organization: one(organizations, {
     fields: [organizationMemberships.organizationId],
     references: [organizations.id],
+  }),
+  role: one(roles, {
+    fields: [organizationMemberships.roleId],
+    references: [roles.id],
   }),
 }));
 

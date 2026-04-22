@@ -1,37 +1,26 @@
-import 'express';
+import { Session, User } from '../db/schema/auth.schema.js';
+import { PermissionResolver } from '../middleware/rbac.middleware.js';
 
 declare global {
   namespace Express {
     interface Request {
       /**
-       * The verified Better Auth session object.
-       * Populated by authMiddleware — guaranteed non-null on protected routes.
+       * Populated by authMiddleware.
        */
       authSession: {
-        session: {
-          id: string;
-          userId: string;
-          expiresAt: Date;
-          token: string;
-          ipAddress?: string | null | undefined;
-          userAgent?: string | null | undefined;
-          createdAt: Date;
-          updatedAt: Date;
-        };
-        user: {
-          id: string;
-          name: string;
-          email: string;
-          emailVerified: boolean;
-          image?: string | null | undefined;
-          createdAt: Date;
-          updatedAt: Date;
-        };
+        user: User;
+        session: Session;
       };
-      /** The validated organization UUID extracted from x-organization-id header. */
+
+      /**
+       * Current organization ID from header.
+       */
       organizationId: string;
-      /** The caller's role within the active organization. */
-      userRole: 'admin' | 'employee';
+
+      /**
+       * Active permission resolver for the current user/tenant scope.
+       */
+      permissions: PermissionResolver;
     }
   }
 }

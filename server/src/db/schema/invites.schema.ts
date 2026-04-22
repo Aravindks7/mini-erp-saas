@@ -9,8 +9,9 @@ import {
 import { relations } from 'drizzle-orm';
 import { timestamps, userTracking, versioning } from './audit.schema.js';
 import { user } from './auth.schema.js';
-import { memberRoleEnum, inviteStatusEnum } from './auth-enums.schema.js';
+import { inviteStatusEnum } from './auth-enums.schema.js';
 import { organizations } from './organizations.schema.js';
+import { roles } from './roles.schema.js';
 
 /**
  * Organization Invites: Multi-tenant invitation management.
@@ -27,7 +28,9 @@ export const organizationInvites = pgTable(
     invitedById: uuid('invited_by_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    role: memberRoleEnum('role').notNull().default('employee'),
+    roleId: uuid('role_id')
+      .notNull()
+      .references(() => roles.id),
     status: inviteStatusEnum('status').notNull().default('pending'),
     expiresAt: pgTimestamp('expires_at').notNull(),
 
@@ -50,6 +53,10 @@ export const organizationInvitesRelations = relations(organizationInvites, ({ on
   invitedBy: one(user, {
     fields: [organizationInvites.invitedById],
     references: [user.id],
+  }),
+  role: one(roles, {
+    fields: [organizationInvites.roleId],
+    references: [roles.id],
   }),
 }));
 
