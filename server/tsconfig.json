@@ -36,6 +36,6 @@
       "#shared/*": ["../shared/*"]
     }
   },
-  "include": ["src", "../shared"],
-  "exclude": ["src/__tests__", "src/**/*.test.ts"]
+  "include": ["src", "../shared", "*.config.ts", "scripts/**/*.ts"],
+  "exclude": []
 }

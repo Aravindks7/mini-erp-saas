@@ -4,12 +4,16 @@ import {
   organizationMemberships,
   user,
   organizationInvites,
+  roles,
+  rolePermissionSets,
 } from '../../db/schema/index.js';
 import { and, eq, sql, ne } from 'drizzle-orm';
 import {
   CreateOrganizationInput,
   UpdateOrganizationInput,
 } from '#shared/contracts/organizations.contract.js';
+import { rbacService } from '../rbac/rbac.service.js';
+import { PERMISSIONS, type Permission } from '#shared/index.js';
 
 export class OrganizationsService {
   /**
@@ -34,11 +38,8 @@ export class OrganizationsService {
           isUnique = true;
         } else {
           counter++;
-          // Append a short random-ish suffix for collision resolution
           const suffix = Math.random().toString(36).substring(2, 6);
           finalSlug = `${slug}-${suffix}`;
-
-          // Circuit breaker to prevent infinite loops
           if (counter > 5) throw new Error('Could not generate a unique slug');
         }
       }
@@ -55,11 +56,25 @@ export class OrganizationsService {
 
       if (!newOrg) throw new Error('Failed to create organization');
 
-      // 3. Link the current user as an 'admin'
+      // 3. Resolve the "Admin" base role (Global)
+      // NOTE: For now we assume a seed script creates a role named "Admin" with isBaseRole=true and organizationId=null.
+      const adminRole = await tx.query.roles.findFirst({
+        where: and(
+          eq(roles.name, 'Admin'),
+          eq(roles.isBaseRole, true),
+          sql`${roles.organizationId} IS NULL`,
+        ),
+      });
+
+      if (!adminRole) {
+        throw new Error('SYSTEM_ERROR: Base Admin role not found. Please seed the database.');
+      }
+
+      // 4. Link the current user as an admin using the resolved roleId
       await tx.insert(organizationMemberships).values({
         userId: userId,
         organizationId: newOrg.id,
-        role: 'admin',
+        roleId: adminRole.id,
       });
 
       return newOrg;
@@ -86,35 +101,30 @@ export class OrganizationsService {
       where: (m, { eq }) => eq(m.userId, userId),
       with: {
         organization: true,
+        role: true,
       },
     });
 
-    return myOrgs.map((m) => ({ ...m.organization, role: m.role }));
+    return myOrgs.map((m) => ({
+      ...m.organization,
+      roleId: m.roleId,
+      roleName: m.role.name,
+    }));
   }
 
   /**
-   * Add a member to an organization. Requires requester to be an admin.
+   * Add a member to an organization. Requires requester to have membership management permission.
    */
   async addMember(params: {
     adminId: string;
     organizationId: string;
     userEmail: string;
-    role?: 'admin' | 'employee';
+    roleId: string;
   }) {
-    const { adminId, organizationId, userEmail, role = 'employee' } = params;
+    const { adminId, organizationId, userEmail, roleId } = params;
 
-    // 1. Verify the requester is an admin of this org
-    const adminMembership = await db.query.organizationMemberships.findFirst({
-      where: and(
-        eq(organizationMemberships.userId, adminId),
-        eq(organizationMemberships.organizationId, organizationId),
-        eq(organizationMemberships.role, 'admin'),
-      ),
-    });
-
-    if (!adminMembership) {
-      throw new Error('FORBIDDEN');
-    }
+    // 1. Verify the requester has management permission
+    await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
 
     // 2. Find the user to add
     const targetUser = await db.query.user.findFirst({
@@ -131,12 +141,12 @@ export class OrganizationsService {
       .values({
         userId: targetUser.id,
         organizationId: organizationId,
-        role: role,
+        roleId: roleId,
       })
       .onConflictDoUpdate({
         target: [organizationMemberships.userId, organizationMemberships.organizationId],
         set: {
-          role: role,
+          roleId: roleId,
           updatedAt: new Date(),
         },
       });
@@ -145,26 +155,18 @@ export class OrganizationsService {
   }
 
   /**
-   * Invite a member by email. If they don't exist, an invitation is created.
+   * Invite a member by email.
    */
   async inviteMember(params: {
     adminId: string;
     organizationId: string;
     userEmail: string;
-    role?: 'admin' | 'employee';
+    roleId: string;
   }) {
-    const { adminId, organizationId, userEmail, role = 'employee' } = params;
+    const { adminId, organizationId, userEmail, roleId } = params;
 
-    // 1. Verify requester is admin
-    const adminMembership = await db.query.organizationMemberships.findFirst({
-      where: and(
-        eq(organizationMemberships.userId, adminId),
-        eq(organizationMemberships.organizationId, organizationId),
-        eq(organizationMemberships.role, 'admin'),
-      ),
-    });
-
-    if (!adminMembership) throw new Error('FORBIDDEN');
+    // 1. Verify requester has permission
+    await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
 
     // 2. Check if user already exists
     const existingUser = await db.query.user.findFirst({
@@ -175,7 +177,6 @@ export class OrganizationsService {
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
 
     if (existingUser) {
-      // If user exists, call addMember and UPSERT invite record to 'accepted'
       await this.addMember(params);
 
       await db
@@ -184,7 +185,7 @@ export class OrganizationsService {
           email: userEmail,
           organizationId,
           invitedById: adminId,
-          role,
+          roleId: roleId,
           status: 'accepted',
           expiresAt,
         })
@@ -192,7 +193,7 @@ export class OrganizationsService {
           target: [organizationInvites.email, organizationInvites.organizationId],
           set: {
             status: 'accepted',
-            role,
+            roleId,
             expiresAt,
             updatedAt: new Date(),
           },
@@ -208,7 +209,7 @@ export class OrganizationsService {
         email: userEmail,
         organizationId,
         invitedById: adminId,
-        role,
+        roleId,
         status: 'pending',
         expiresAt,
       })
@@ -216,7 +217,7 @@ export class OrganizationsService {
         target: [organizationInvites.email, organizationInvites.organizationId],
         set: {
           status: 'pending',
-          role,
+          roleId,
           expiresAt,
           invitedById: adminId,
           updatedAt: new Date(),
@@ -240,6 +241,7 @@ export class OrganizationsService {
             image: true,
           },
         },
+        role: true,
       },
     });
 
@@ -247,7 +249,8 @@ export class OrganizationsService {
       id: m.id,
       userId: m.userId,
       organizationId: m.organizationId,
-      role: m.role,
+      roleId: m.roleId,
+      roleName: m.role.name,
       joinedAt: m.createdAt.toISOString(),
       user: m.user,
     }));
@@ -260,13 +263,13 @@ export class OrganizationsService {
     adminId: string;
     organizationId: string;
     targetUserId: string;
-    role: 'admin' | 'employee';
+    roleId: string;
   }) {
-    const { adminId, organizationId, targetUserId, role } = params;
+    const { adminId, organizationId, targetUserId, roleId } = params;
 
     return await db.transaction(async (tx) => {
-      // 1. Verify requester is admin
-      await this.ensureAdmin(tx, adminId, organizationId);
+      // 1. Verify requester has permission
+      await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
 
       // 2. Get target membership
       const targetMembership = await tx.query.organizationMemberships.findFirst({
@@ -278,10 +281,27 @@ export class OrganizationsService {
 
       if (!targetMembership) throw new Error('NOT_FOUND');
 
-      // 3. Lockout protection: if changing from admin to employee
-      if (targetMembership.role === 'admin' && role === 'employee') {
-        const adminCount = await this.getAdminCount(tx, organizationId);
-        if (adminCount <= 1) {
+      // 3. Lockout protection using RBACService logic
+      const canDowngrade = await rbacService.canDowngrade(targetUserId, organizationId);
+      if (!canDowngrade) {
+        // We need to check if the NEW role still has management permission
+        // If it doesn't, and this was the last admin, we block it.
+        const newRolePermissions = await tx.query.rolePermissionSets.findMany({
+          where: eq(rolePermissionSets.roleId, roleId),
+          with: {
+            permissionSet: {
+              with: {
+                items: true,
+              },
+            },
+          },
+        });
+
+        const hasManagement = newRolePermissions.some((rp) =>
+          rp.permissionSet.items.some((i) => i.permissionId === PERMISSIONS.ORGANIZATION.MEMBERS),
+        );
+
+        if (!hasManagement) {
           throw new Error('LAST_ADMIN_LOCKOUT');
         }
       }
@@ -289,7 +309,7 @@ export class OrganizationsService {
       // 4. Update role
       await tx
         .update(organizationMemberships)
-        .set({ role, updatedAt: new Date() })
+        .set({ roleId, updatedAt: new Date() })
         .where(eq(organizationMemberships.id, targetMembership.id));
 
       return { success: true };
@@ -303,8 +323,8 @@ export class OrganizationsService {
     const { adminId, organizationId, targetUserId } = params;
 
     return await db.transaction(async (tx) => {
-      // 1. Verify requester is admin
-      await this.ensureAdmin(tx, adminId, organizationId);
+      // 1. Verify requester has permission
+      await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
 
       // 2. Get target membership
       const targetMembership = await tx.query.organizationMemberships.findFirst({
@@ -317,11 +337,9 @@ export class OrganizationsService {
       if (!targetMembership) throw new Error('NOT_FOUND');
 
       // 3. Lockout protection
-      if (targetMembership.role === 'admin') {
-        const adminCount = await this.getAdminCount(tx, organizationId);
-        if (adminCount <= 1) {
-          throw new Error('LAST_ADMIN_LOCKOUT');
-        }
+      const canRemove = await rbacService.canDowngrade(targetUserId, organizationId);
+      if (!canRemove) {
+        throw new Error('LAST_ADMIN_LOCKOUT');
       }
 
       // 4. Delete membership
@@ -338,15 +356,15 @@ export class OrganizationsService {
    */
   async updateOrganization(adminId: string, organizationId: string, data: UpdateOrganizationInput) {
     return await db.transaction(async (tx) => {
-      // 1. Verify requester is admin
-      await this.ensureAdmin(tx, adminId, organizationId);
+      // 1. Verify requester has permission
+      await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.SETTINGS);
 
       const updateData: UpdateOrganizationInput & { updatedAt: Date } = {
         ...data,
         updatedAt: new Date(),
       };
 
-      // 2. Handle slug uniqueness if provided
+      // 2. Handle slug uniqueness
       if (data.slug) {
         let finalSlug = data.slug;
         let isUnique = false;
@@ -369,7 +387,6 @@ export class OrganizationsService {
         updateData.slug = finalSlug;
       }
 
-      // 3. Update
       const [updated] = await tx
         .update(organizations)
         .set(updateData)
@@ -383,16 +400,14 @@ export class OrganizationsService {
   }
 
   /**
-   * Resend an invitation (reset expiry and status).
+   * Resend an invitation.
    */
   async resendInvite(params: { adminId: string; organizationId: string; inviteId: string }) {
     const { adminId, organizationId, inviteId } = params;
 
     return await db.transaction(async (tx) => {
-      // 1. Verify requester is admin
-      await this.ensureAdmin(tx, adminId, organizationId);
+      await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
 
-      // 2. Get invite
       const invite = await tx.query.organizationInvites.findFirst({
         where: and(
           eq(organizationInvites.id, inviteId),
@@ -402,7 +417,6 @@ export class OrganizationsService {
 
       if (!invite) throw new Error('NOT_FOUND');
 
-      // 3. Reset expiry and status
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 7);
 
@@ -426,10 +440,8 @@ export class OrganizationsService {
     const { adminId, organizationId, inviteId } = params;
 
     return await db.transaction(async (tx) => {
-      // 1. Verify requester is admin
-      await this.ensureAdmin(tx, adminId, organizationId);
+      await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
 
-      // 2. Update status
       const [updated] = await tx
         .update(organizationInvites)
         .set({ status: 'revoked', updatedAt: new Date() })
@@ -448,29 +460,24 @@ export class OrganizationsService {
   }
 
   /**
-   * List all invitations for an organization.
+   * List all invitations.
    */
   async listInvites(adminId: string, organizationId: string) {
-    // 1. Verify requester is admin
-    const adminMembership = await db.query.organizationMemberships.findFirst({
-      where: and(
-        eq(organizationMemberships.userId, adminId),
-        eq(organizationMemberships.organizationId, organizationId),
-        eq(organizationMemberships.role, 'admin'),
-      ),
-    });
-
-    if (!adminMembership) throw new Error('FORBIDDEN');
+    await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
 
     const invites = await db.query.organizationInvites.findMany({
       where: eq(organizationInvites.organizationId, organizationId),
+      with: {
+        role: true,
+      },
       orderBy: (invites, { desc }) => [desc(invites.createdAt)],
     });
 
     return invites.map((i) => ({
       id: i.id,
       email: i.email,
-      role: i.role,
+      roleId: i.roleId,
+      roleName: i.role.name,
       status: i.status,
       expiresAt: i.expiresAt.toISOString(),
       createdAt: i.createdAt.toISOString(),
@@ -478,16 +485,12 @@ export class OrganizationsService {
   }
 
   /**
-   * Delete an organization and all its data (cascading).
+   * Delete an organization.
    */
   async deleteOrganization(adminId: string, organizationId: string) {
     return await db.transaction(async (tx) => {
-      // 1. Verify requester is admin
-      await this.ensureAdmin(tx, adminId, organizationId);
+      await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.SETTINGS);
 
-      // 2. Delete the organization
-      // Note: memberships, invites, and business data (customers, etc)
-      // will be deleted via cascading foreign keys defined in the schema.
       const [deleted] = await tx
         .delete(organizations)
         .where(eq(organizations.id, organizationId))
@@ -499,31 +502,11 @@ export class OrganizationsService {
     });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async ensureAdmin(tx: any, userId: string, organizationId: string) {
-    const membership = await tx.query.organizationMemberships.findFirst({
-      where: and(
-        eq(organizationMemberships.userId, userId),
-        eq(organizationMemberships.organizationId, organizationId),
-        eq(organizationMemberships.role, 'admin'),
-      ),
-    });
-
-    if (!membership) throw new Error('FORBIDDEN');
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async getAdminCount(tx: any, organizationId: string): Promise<number> {
-    const result = await tx
-      .select({ count: sql<number>`count(*)` })
-      .from(organizationMemberships)
-      .where(
-        and(
-          eq(organizationMemberships.organizationId, organizationId),
-          eq(organizationMemberships.role, 'admin'),
-        ),
-      );
-    return Number(result[0].count);
+  private async ensurePermission(userId: string, organizationId: string, permission: string) {
+    const permissions = await rbacService.getPermissions(userId, organizationId);
+    if (!permissions.includes(permission as Permission)) {
+      throw new Error('FORBIDDEN');
+    }
   }
 
   /**
@@ -539,23 +522,21 @@ export class OrganizationsService {
       });
 
       for (const invite of pendingInvites) {
-        // 1. Create/Update membership (idempotency fixes "membership already exists" errors)
         await tx
           .insert(organizationMemberships)
           .values({
             userId: userId,
             organizationId: invite.organizationId,
-            role: invite.role,
+            roleId: invite.roleId,
           })
           .onConflictDoUpdate({
             target: [organizationMemberships.userId, organizationMemberships.organizationId],
             set: {
-              role: invite.role,
+              roleId: invite.roleId,
               updatedAt: new Date(),
             },
           });
 
-        // 2. Mark invite as accepted
         await tx
           .update(organizationInvites)
           .set({ status: 'accepted', updatedAt: new Date() })

@@ -1,79 +1,105 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Building2, Plus, ArrowRight, Loader2, Shield } from 'lucide-react';
+import { toast } from 'sonner';
+
+import { useOrganizations } from '@/features/organizations/hooks/organizations.hooks';
 import { useTenant } from '@/contexts/TenantContext';
 import { Button } from '@/components/ui/button';
-import { CardContent, CardFooter } from '@/components/ui/card';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Building2, Plus, ArrowRight } from 'lucide-react';
-import { useOrganizations } from '@/features/organizations/hooks/organizations.hooks';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CreateOrganizationDialog } from '@/features/organizations/components/CreateOrganizationDialog';
+import { useAuth } from '@/contexts/AuthContext';
+import { Badge } from '@/components/ui/badge';
+import AuthLayout from '@/components/shared/AuthLayout';
 
-export default function SelectOrganizationPage() {
-  const { setActiveOrganizationId } = useTenant();
+export default function SelectOrganization() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { data: organizations, isLoading, isError } = useOrganizations();
+  const { syncActiveOrganizationId } = useTenant();
+  const { data: session } = useAuth();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const { data: organizations, isLoading } = useOrganizations();
+  // Redirect to onboarding if the user has no organizations and loading is finished.
+  useEffect(() => {
+    if (!isLoading && organizations && organizations.length === 0) {
+      navigate('/onboarding');
+    }
+  }, [isLoading, organizations, navigate]);
 
-  const handleSelectOrganization = (id: string) => {
-    setActiveOrganizationId(id);
-    const from = location.state?.from?.pathname || '/';
-    navigate(from, { replace: true });
+  const handleSelect = (orgId: string, slug: string) => {
+    syncActiveOrganizationId(orgId);
+    toast.success('Switched organization');
+    navigate(`/${slug}`);
   };
 
   if (isLoading) {
     return (
-      <CardContent className="p-12 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-2">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <div className="text-sm text-muted-foreground animate-pulse font-medium">
-            Loading workspaces...
-          </div>
+      <AuthLayout title="Loading organizations...">
+        <div className="flex justify-center p-8">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </CardContent>
+      </AuthLayout>
+    );
+  }
+
+  if (isError) {
+    return (
+      <AuthLayout title="Error">
+        <p className="text-center text-destructive">Failed to load organizations.</p>
+        <Button onClick={() => window.location.reload()} className="mt-4 w-full">
+          Retry
+        </Button>
+      </AuthLayout>
     );
   }
 
   return (
-    <>
-      <CardContent className="space-y-4 p-6 pt-2">
-        <div className="grid gap-3">
-          {organizations && organizations.length > 0 ? (
-            organizations.map((org) => (
-              <button
-                key={org.id}
-                onClick={() => handleSelectOrganization(org.id)}
-                className="group flex items-center justify-between rounded-lg border bg-card p-4 text-left transition-all hover:border-primary hover:bg-accent/50 hover:shadow-sm"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors font-bold">
-                    {org.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-foreground">{org.name}</div>
-                    <div className="text-xs text-muted-foreground uppercase tracking-widest">
-                      {org.role}
-                    </div>
+    <AuthLayout
+      title="Welcome back!"
+      description={
+        session?.user?.email
+          ? `Signed in as ${session.user.email}`
+          : 'Select an organization to continue'
+      }
+    >
+      <div className="space-y-4">
+        {organizations?.map((org) => (
+          <Card
+            key={org.id}
+            className="group cursor-pointer hover:border-primary/50 transition-all active:scale-[0.98]"
+            onClick={() => handleSelect(org.id, org.slug)}
+          >
+            <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                  <Building2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">{org.name}</CardTitle>
+                  <div className="flex items-center gap-2 mt-1">
+                    <CardDescription className="text-xs">/{org.slug}</CardDescription>
+                    <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-normal">
+                      <Shield className="mr-1 h-2.5 w-2.5" />
+                      {org.roleName}
+                    </Badge>
                   </div>
                 </div>
-                <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary transition-all -translate-x-2 group-hover:translate-x-0" />
-              </button>
-            ))
-          ) : (
-            <div className="text-center py-6 px-4 rounded-lg border border-dashed text-muted-foreground">
-              <Building2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">You don't have any organizations yet.</p>
-            </div>
-          )}
-        </div>
-      </CardContent>
-      <CardFooter className="bg-zinc-50/50 dark:bg-zinc-900/50 border-t p-6">
+              </div>
+              <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors translate-x-0 group-hover:translate-x-1" />
+            </CardHeader>
+          </Card>
+        ))}
+
         <Button
           variant="outline"
-          className="w-full h-12 flex items-center justify-center gap-3 border-primary/20 hover:border-primary/50 text-primary font-bold transition-all hover:bg-primary/5"
-          onClick={() => navigate('/onboarding')}
+          className="w-full border-dashed border-2 h-14"
+          onClick={() => setIsCreateDialogOpen(true)}
         >
-          <Plus className="h-5 w-5" />
-          Create New Organization
+          <Plus className="mr-2 h-4 w-4" /> Create New Organization
         </Button>
-      </CardFooter>
-    </>
+      </div>
+
+      <CreateOrganizationDialog isOpen={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} />
+    </AuthLayout>
   );
 }

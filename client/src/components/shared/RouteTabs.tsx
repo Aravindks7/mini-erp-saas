@@ -66,7 +66,7 @@ export function RouteTabs({
               value={tab.path}
               className={cn(
                 'data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2',
-                orientation === 'vertical' ? 'w-full justify-start text-left' : 'flex-shrink-0',
+                orientation === 'vertical' ? 'w-full justify-start text-left' : 'shrink-0',
               )}
               asChild
             >

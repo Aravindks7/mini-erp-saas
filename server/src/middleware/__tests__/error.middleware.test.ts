@@ -107,7 +107,7 @@ describe('errorMiddleware', () => {
     errorMiddleware(err, mockReq as Request, mockRes as Response, nextFunction);
 
     expect(mockRes.status).toHaveBeenCalledWith(500);
-    const jsonResult = vi.mocked(mockRes.json!).mock.calls[0][0];
+    const jsonResult = vi.mocked(mockRes.json!).mock.calls[0]?.[0];
     expect(jsonResult.error).toBe('Dev failure');
     expect(jsonResult).toHaveProperty('stack');
 

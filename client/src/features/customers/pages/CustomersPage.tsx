@@ -7,6 +7,8 @@ import { CustomerList } from '../components/CustomerList';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { Can } from '@/components/shared/Can';
+import { PERMISSIONS } from '@shared/index';
 
 export default function CustomersPage() {
   const navigate = useNavigate();
@@ -15,9 +17,11 @@ export default function CustomersPage() {
   return (
     <PageContainer>
       <PageHeader title="Customers" description="Manage your client base and their details.">
-        <Button onClick={() => navigate(getPath('/customers/new'))}>
-          <Plus className="mr-2 h-4 w-4" /> Add Customer
-        </Button>
+        <Can I={PERMISSIONS.CUSTOMERS.CREATE}>
+          <Button onClick={() => navigate(getPath('/customers/new'))}>
+            <Plus className="mr-2 h-4 w-4" /> Add Customer
+          </Button>
+        </Can>
       </PageHeader>
 
       <Card>

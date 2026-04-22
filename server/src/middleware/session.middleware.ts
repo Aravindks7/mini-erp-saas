@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../modules/auth/auth.js';
+import { User, Session } from '../db/schema/auth.schema.js';
 
 /**
  * Session Middleware
@@ -52,6 +53,6 @@ export async function sessionMiddleware(
     return;
   }
 
-  req.authSession = sessionData;
+  req.authSession = sessionData as { user: User; session: Session };
   next();
 }

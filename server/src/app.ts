@@ -8,6 +8,7 @@ import { auth } from './modules/auth/auth.js';
 
 import customersRoutes from './modules/customers/customers.routes.js';
 import organizationsRoutes from './modules/organizations/organizations.routes.js';
+import rbacRoutes from './modules/rbac/rbac.routes.js';
 
 const app = express();
 
@@ -48,6 +49,7 @@ app.get('/', (_req, res) => {
 // Business routes
 app.use('/customers', customersRoutes);
 app.use('/organizations', organizationsRoutes);
+app.use('/rbac', rbacRoutes);
 
 // Global error handler — must be last
 app.use(errorMiddleware);

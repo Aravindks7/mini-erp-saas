@@ -5,8 +5,13 @@ import SettingsPage from './pages/SettingsPage';
 import { OrgProfileTab } from '../organizations/components/OrgProfileTab';
 import { MembersTab } from '../organizations/components/MembersTab';
 import { InvitationsTab } from '../organizations/components/InvitationsTab';
+import { RolesTab } from '../organizations/components/RolesTab';
+import { PermissionSetsTab } from '../organizations/components/PermissionSetsTab';
+import RoleFormPage from '../organizations/pages/RoleFormPage';
+import PermissionSetFormPage from '../organizations/pages/PermissionSetFormPage';
 
 export const settingsRoutes: AppRoute[] = [
+  // The main settings layout with tabs
   {
     path: 'settings',
     element: <SettingsPage />,
@@ -26,7 +31,6 @@ export const settingsRoutes: AppRoute[] = [
         element: <OrgProfileTab />,
         handle: {
           title: 'Organization Profile',
-          crumb: 'Profile',
         },
       },
       {
@@ -34,7 +38,6 @@ export const settingsRoutes: AppRoute[] = [
         element: <MembersTab />,
         handle: {
           title: 'Workspace Members',
-          crumb: 'Members',
         },
       },
       {
@@ -42,9 +45,55 @@ export const settingsRoutes: AppRoute[] = [
         element: <InvitationsTab />,
         handle: {
           title: 'Pending Invitations',
-          crumb: 'Invitations',
+        },
+      },
+      {
+        path: 'roles',
+        element: <RolesTab />,
+        handle: {
+          title: 'Roles',
+        },
+      },
+      {
+        path: 'permission-sets',
+        element: <PermissionSetsTab />,
+        handle: {
+          title: 'Permission Sets',
         },
       },
     ],
+  },
+  // Full-page forms (Outside the tabbed SettingsPage layout)
+  {
+    path: 'settings/roles/new',
+    element: <RoleFormPage />,
+    handle: {
+      title: 'New Role',
+      crumb: 'New Role',
+    },
+  },
+  {
+    path: 'settings/roles/:id',
+    element: <RoleFormPage />,
+    handle: {
+      title: 'Edit Role',
+      crumb: 'Edit Role',
+    },
+  },
+  {
+    path: 'settings/permission-sets/new',
+    element: <PermissionSetFormPage />,
+    handle: {
+      title: 'New Permission Set',
+      crumb: 'New Permission Set',
+    },
+  },
+  {
+    path: 'settings/permission-sets/:id',
+    element: <PermissionSetFormPage />,
+    handle: {
+      title: 'Edit Permission Set',
+      crumb: 'Edit Permission Set',
+    },
   },
 ];

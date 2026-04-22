@@ -3,6 +3,8 @@ export * from './audit.schema.js';
 export * from './organizations.schema.js';
 export * from './auth.schema.js';
 export * from './auth-enums.schema.js';
+export * from './permissions.schema.js';
+export * from './roles.schema.js';
 export * from './memberships.schema.js';
 export * from './invites.schema.js';
 
