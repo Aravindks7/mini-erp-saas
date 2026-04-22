@@ -8,7 +8,7 @@ import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
 import { formatDate } from '@shared/utils/date';
 import { type ColumnDef } from '@tanstack/react-table';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { RefreshCw, XCircle, UserPlus } from 'lucide-react';
+import { RefreshCw, XCircle, UserPlus, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InviteMemberDialog } from './InviteMemberDialog';
 
@@ -46,9 +46,14 @@ export function InvitationsTab() {
   const columns: ColumnDef<OrganizationInvite>[] = [
     { accessorKey: 'email', header: 'Email' },
     {
-      accessorKey: 'role',
+      accessorKey: 'roleName',
       header: 'Role',
-      cell: ({ row }) => <span className="capitalize">{row.original.role}</span>,
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <Shield className="h-4 w-4 text-muted-foreground" />
+          <span className="capitalize">{row.original.roleName}</span>
+        </div>
+      ),
     },
     {
       accessorKey: 'status',

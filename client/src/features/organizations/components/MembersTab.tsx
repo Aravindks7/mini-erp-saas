@@ -3,40 +3,51 @@ import { toast } from 'sonner';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMembers, useUpdateMemberRole, useRemoveMember } from '../hooks/organizations.hooks';
+import { useRoles } from '@/features/auth/hooks/rbac.hooks';
 import type { OrganizationMember } from '../api/organizations.api';
 import { EntityTable } from '@/components/shared/data-table/EntityTable';
 import { UserDisplay } from '@/components/shared/UserDisplay';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatDate } from '@shared/utils/date';
 import { type ColumnDef } from '@tanstack/react-table';
-import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { UserCog, UserMinus } from 'lucide-react';
+import {
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
+} from '@/components/ui/dropdown-menu';
+import { UserCog, UserMinus, Shield } from 'lucide-react';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-
-const roleStatusMap: StatusMap<'admin' | 'employee'> = {
-  admin: { label: 'Admin', tone: 'danger' },
-  employee: { label: 'Employee', tone: 'info' },
-};
+import { PERMISSIONS } from '@shared/index';
+import { usePermission } from '@/hooks/usePermission';
 
 export function MembersTab() {
   const { activeOrganizationId } = useTenant();
   const { data: session } = useAuth();
   const { data: members, isLoading } = useMembers(activeOrganizationId || '');
+  const { data: roles } = useRoles();
   const updateRole = useUpdateMemberRole(activeOrganizationId || '');
   const removeMember = useRemoveMember(activeOrganizationId || '');
+  const canManageMembers = usePermission(PERMISSIONS.ORGANIZATION.MEMBERS);
 
   const [confirmRemove, setConfirmRemove] = useState<OrganizationMember | null>(null);
 
-  const handleRoleChange = async (member: OrganizationMember) => {
-    const newRole = member.role === 'admin' ? 'employee' : 'admin';
+  const handleRoleChange = async (member: OrganizationMember, roleId: string) => {
     try {
       await updateRole.mutateAsync({
         userId: member.userId,
-        data: { role: newRole },
+        data: { roleId },
       });
-      toast.success(`Role updated to ${newRole}`);
-    } catch {
-      toast.error('Failed to update role');
+      toast.success('Role updated successfully');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '';
+      if (message === 'LAST_ADMIN_LOCKOUT') {
+        toast.error('Cannot downgrade the last administrator');
+      } else {
+        toast.error('Failed to update role');
+      }
     }
   };
 
@@ -46,8 +57,13 @@ export function MembersTab() {
       await removeMember.mutateAsync(confirmRemove.userId);
       toast.success('Member removed');
       setConfirmRemove(null);
-    } catch {
-      toast.error('Failed to remove member');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '';
+      if (message === 'LAST_ADMIN_LOCKOUT') {
+        toast.error('Cannot remove the last administrator');
+      } else {
+        toast.error('Failed to remove member');
+      }
     }
   };
 
@@ -64,9 +80,19 @@ export function MembersTab() {
       ),
     },
     {
-      accessorKey: 'role',
+      accessorKey: 'roleName',
       header: 'Role',
-      cell: ({ row }) => <StatusBadge value={row.original.role} statusMap={roleStatusMap} />,
+      cell: ({ row }) => (
+        <StatusBadge
+          value={row.original.roleName}
+          statusMap={{
+            [row.original.roleName]: {
+              label: row.original.roleName,
+              tone: row.original.roleName === 'Admin' ? 'danger' : 'info',
+            },
+          }}
+        />
+      ),
     },
     {
       accessorKey: 'joinedAt',
@@ -82,25 +108,34 @@ export function MembersTab() {
         columns={columns}
         isLoading={isLoading}
         renderRowActions={(member) => {
-          const isSelf = member.userId === session?.user?.id;
-          if (isSelf) return null;
+          if (!canManageMembers) return null;
 
-          const isAdmin = member.role === 'admin';
-          const otherAdmins = (members || []).filter(
-            (m) => m.role === 'admin' && m.userId !== session?.user?.id,
-          );
-          // Lockout protection: Prevent changing own role or removing self if last admin
-          const lockout = isSelf && isAdmin && otherAdmins.length === 0;
+          const isSelf = member.userId === session?.user?.id;
+          // Note: In a dynamic system, "isLastAdmin" logic is handled by the backend
+          // but we can provide a better UI by fetching roles and checking permissions.
 
           return (
             <>
-              <DropdownMenuItem
-                disabled={lockout || updateRole.isPending}
-                onClick={() => handleRoleChange(member)}
-              >
-                <UserCog className="mr-2 h-4 w-4" />
-                Change to {member.role === 'admin' ? 'Employee' : 'Admin'}
-              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger disabled={updateRole.isPending}>
+                  <UserCog className="mr-2 h-4 w-4" />
+                  Change Role
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent>
+                    {roles?.map((role) => (
+                      <DropdownMenuItem
+                        key={role.id}
+                        disabled={role.id === member.roleId}
+                        onClick={() => handleRoleChange(member, role.id)}
+                      >
+                        <Shield className="mr-2 h-4 w-4" />
+                        {role.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 disabled={isSelf || removeMember.isPending}

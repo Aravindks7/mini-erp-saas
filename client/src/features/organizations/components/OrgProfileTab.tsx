@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { PageContainer } from '@/components/shared/PageContainer';
+import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { UpdateOrganizationForm } from './UpdateOrganizationForm';
 import { useTenant } from '@/contexts/TenantContext';
 import { useMembers, useInvitations, useDeleteOrganization } from '../hooks/organizations.hooks';
@@ -9,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 import { Users, Mail, Calendar, Building2, Trash2, AlertCircle } from 'lucide-react';
 import { formatDate } from '@shared/utils/date';
+import { usePermission } from '@/hooks/usePermission';
+import { PERMISSIONS } from '@shared/index';
 
 export function OrgProfileTab() {
   const { activeOrganization, activeOrganizationId, syncActiveOrganizationId } = useTenant();
@@ -20,6 +23,7 @@ export function OrgProfileTab() {
   );
 
   const deleteOrg = useDeleteOrganization();
+  const canDeleteOrg = usePermission(PERMISSIONS.ORGANIZATION.SETTINGS);
 
   const handleDelete = async () => {
     try {
@@ -32,28 +36,98 @@ export function OrgProfileTab() {
     }
   };
 
+  if (isLoadingMembers || isLoadingInvites) {
+    return (
+      <PageContainer>
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              <SkeletonLoader variant="form" rows={3} />
+            </div>
+            <div className="lg:col-span-1">
+              <SkeletonLoader variant="card" className="h-[350px]" />
+            </div>
+          </div>
+          <SkeletonLoader variant="card" className="h-[180px]" />
+        </div>
+      </PageContainer>
+    );
+  }
+
   const stats = [
     {
       label: 'Active Members',
       value: members?.length || 0,
       icon: <Users className="h-4 w-4 text-primary" />,
-      loading: isLoadingMembers,
     },
     {
       label: 'Pending Invites',
       value: invitations?.filter((i) => i.status === 'pending').length || 0,
       icon: <Mail className="h-4 w-4 text-warning" />,
-      loading: isLoadingInvites,
     },
   ];
 
   return (
     <PageContainer>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          <UpdateOrganizationForm />
+      <div className="space-y-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          <div className="xl:col-span-2">
+            <UpdateOrganizationForm />
+          </div>
 
-          {/* Danger Zone */}
+          <div className="xl:col-span-1">
+            <Card className="h-full">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Building2 className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">Organization Summary</CardTitle>
+                    <CardDescription>Snapshot of your workspace personnel.</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  {stats.map((stat) => (
+                    <div key={stat.label} className="p-3 rounded-xl border bg-muted/30">
+                      <div className="flex items-center gap-2 mb-1">
+                        {stat.icon}
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          {stat.label}
+                        </span>
+                      </div>
+                      <div className="text-2xl font-bold">{stat.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-4 border-t space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      <span>Created on</span>
+                    </div>
+                    <span className="font-medium">
+                      {activeOrganization ? formatDate(activeOrganization.createdAt) : '...'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Building2 className="h-4 w-4" />
+                      <span>Region</span>
+                    </div>
+                    <span className="font-medium">{activeOrganization?.defaultCountry}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Danger Zone - Always at the bottom */}
+        {canDeleteOrg && (
           <Card className="border-destructive/20 bg-destructive/1">
             <CardHeader>
               <div className="flex items-center gap-2 text-destructive">
@@ -85,76 +159,7 @@ export function OrgProfileTab() {
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Building2 className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-base">Organization Summary</CardTitle>
-                  <CardDescription>Snapshot of your workspace personnel.</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                {stats.map((stat) => (
-                  <div key={stat.label} className="p-3 rounded-xl border bg-muted/30">
-                    <div className="flex items-center gap-2 mb-1">
-                      {stat.icon}
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        {stat.label}
-                      </span>
-                    </div>
-                    {stat.loading ? (
-                      <div className="h-7 w-12 animate-pulse bg-muted rounded mt-1" />
-                    ) : (
-                      <div className="text-2xl font-bold">{stat.value}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div className="pt-4 border-t space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    <span>Created on</span>
-                  </div>
-                  <span className="font-medium">
-                    {activeOrganization ? formatDate(activeOrganization.createdAt) : '...'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Building2 className="h-4 w-4" />
-                    <span>Region</span>
-                  </div>
-                  <span className="font-medium">{activeOrganization?.defaultCountry}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-primary/2 border-primary/10 border-dashed">
-            <CardContent className="p-6 text-center">
-              <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Building2 className="h-6 w-6 text-primary" />
-              </div>
-              <h4 className="font-semibold mb-1">Workspace Logo</h4>
-              <p className="text-xs text-muted-foreground mb-4">
-                Upload your company brand to customize your ERP environment.
-              </p>
-              <div className="text-xs font-bold text-primary uppercase tracking-widest bg-primary/5 py-1 px-2 rounded inline-block">
-                Coming Soon
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        )}
       </div>
 
       <DeleteConfirmDialog

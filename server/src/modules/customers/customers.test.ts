@@ -6,13 +6,45 @@ import { db } from '../../db/index.js';
 import { customerAddresses } from '../../db/schema/customer-addresses.schema.js';
 
 // --- TYPES FOR MOCKS ---
-type MockSession = { user: { id: string } };
-type MockMembership = { role: string; organization: { id: string } };
+type MockSession = {
+  user: {
+    id: string;
+    email: string;
+    emailVerified: boolean;
+    name: string;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+  session: {
+    id: string;
+    userId: string;
+    token: string;
+    expiresAt: Date;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+};
+
+type MockMembership = {
+  id: string;
+  userId: string;
+  organizationId: string;
+  roleId: string;
+  roleName: string;
+  joinedAt: Date;
+  role: { id: string; name: string; isBaseRole: boolean };
+  organization: { id: string; name: string };
+};
+
 type MockCustomer = {
   id: string;
   companyName: string;
-  addresses?: unknown[];
-  contacts?: unknown[];
+  organizationId: string;
+  version: number;
+  createdBy: string | null;
+  updatedBy: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 // --- MOCKS ---
@@ -77,6 +109,15 @@ vi.mock('../../db/index.js', () => ({
         findMany: vi.fn().mockResolvedValue([]),
       },
     },
+    selectDistinct: vi.fn(() => ({
+      from: vi.fn(() => ({
+        innerJoin: vi.fn(() => ({
+          innerJoin: vi.fn(() => ({
+            where: vi.fn().mockResolvedValue([{ id: 'perm:1' }]),
+          })),
+        })),
+      })),
+    })),
     insert: vi.fn(() => ({
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: 'new-id' }]),
@@ -111,7 +152,7 @@ describe('Customers Module Integration', () => {
 
   describe('Authentication & Multi-Tenancy', () => {
     it('should return 401 if unauthorized (no session)', async () => {
-      vi.mocked(auth.api.getSession).mockResolvedValue(null);
+      vi.mocked(auth.api.getSession).mockResolvedValue(null as any);
 
       const response = await request(app).get('/customers').set('x-organization-id', mockOrgId);
 
@@ -120,9 +161,7 @@ describe('Customers Module Integration', () => {
     });
 
     it('should return 400 if x-organization-id header is missing', async () => {
-      vi.mocked(auth.api.getSession).mockResolvedValue({
-        user: { id: mockUserId },
-      } as unknown as MockSession);
+      vi.mocked(auth.api.getSession).mockResolvedValue({ user: { id: mockUserId } } as any);
 
       const response = await request(app).get('/customers');
 
@@ -131,10 +170,8 @@ describe('Customers Module Integration', () => {
     });
 
     it('should return 403 if user is not a member of the organization', async () => {
-      vi.mocked(auth.api.getSession).mockResolvedValue({
-        user: { id: mockUserId },
-      } as unknown as MockSession);
-      vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue(null);
+      vi.mocked(auth.api.getSession).mockResolvedValue({ user: { id: mockUserId } } as any);
+      vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue(null as any);
 
       const response = await request(app).get('/customers').set('x-organization-id', mockOrgId);
 
@@ -145,13 +182,11 @@ describe('Customers Module Integration', () => {
 
   describe('RBAC Enforcement', () => {
     it('should allow employees to list customers', async () => {
-      vi.mocked(auth.api.getSession).mockResolvedValue({
-        user: { id: mockUserId },
-      } as unknown as MockSession);
+      vi.mocked(auth.api.getSession).mockResolvedValue({ user: { id: mockUserId } } as any);
       vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue({
         role: 'employee',
         organization: { id: mockOrgId },
-      } as unknown as MockMembership);
+      } as any);
       vi.mocked(db.query.customers.findMany).mockResolvedValue([]);
 
       const response = await request(app).get('/customers').set('x-organization-id', mockOrgId);
@@ -160,13 +195,11 @@ describe('Customers Module Integration', () => {
     });
 
     it('should forbid employees from deleting customers', async () => {
-      vi.mocked(auth.api.getSession).mockResolvedValue({
-        user: { id: mockUserId },
-      } as unknown as MockSession);
+      vi.mocked(auth.api.getSession).mockResolvedValue({ user: { id: mockUserId } } as any);
       vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue({
         role: 'employee',
         organization: { id: mockOrgId },
-      } as unknown as MockMembership);
+      } as any);
 
       const response = await request(app)
         .delete('/customers/cust-123')
@@ -177,19 +210,17 @@ describe('Customers Module Integration', () => {
     });
 
     it('should allow admins to delete customers', async () => {
-      vi.mocked(auth.api.getSession).mockResolvedValue({
-        user: { id: mockUserId },
-      } as unknown as MockSession);
+      vi.mocked(auth.api.getSession).mockResolvedValue({ user: { id: mockUserId } } as any);
       vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue({
         role: 'admin',
         organization: { id: mockOrgId },
-      } as unknown as MockMembership);
+      } as any);
 
       vi.mocked(mockTx.delete).mockReturnValue({
         where: mockWhere.mockReturnValue({
           returning: mockReturning.mockResolvedValue([{ id: 'cust-123' }]),
         }),
-      } as unknown as MockCustomer);
+      } as any);
 
       const response = await request(app)
         .delete('/customers/cust-123')
@@ -202,13 +233,11 @@ describe('Customers Module Integration', () => {
 
   describe('CRUD Lifecycle', () => {
     it('should successfully update a customer via PATCH', async () => {
-      vi.mocked(auth.api.getSession).mockResolvedValue({
-        user: { id: mockUserId },
-      } as unknown as MockSession);
+      vi.mocked(auth.api.getSession).mockResolvedValue({ user: { id: mockUserId } } as any);
       vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue({
         role: 'admin',
         organization: { id: mockOrgId },
-      } as unknown as MockMembership);
+      } as any);
 
       const response = await request(app)
         .patch('/customers/cust-123')
@@ -222,13 +251,11 @@ describe('Customers Module Integration', () => {
 
   describe('Aggregate Root Mutation & Nested Retrieval', () => {
     beforeEach(() => {
-      vi.mocked(auth.api.getSession).mockResolvedValue({
-        user: { id: mockUserId },
-      } as unknown as MockSession);
+      vi.mocked(auth.api.getSession).mockResolvedValue({ user: { id: mockUserId } } as any);
       vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue({
         role: 'admin',
         organization: { id: mockOrgId },
-      } as unknown as MockMembership);
+      } as any);
     });
 
     it('should create a customer with nested contacts and addresses', async () => {
@@ -255,7 +282,7 @@ describe('Customers Module Integration', () => {
         companyName: 'Mock Corp',
         addresses: [{ address: { city: 'Springfield' } }],
         contacts: [{ contact: { firstName: 'John' } }],
-      } as unknown as MockCustomer);
+      } as any);
 
       const response = await request(app)
         .get('/customers/cust-123')
@@ -274,7 +301,7 @@ describe('Customers Module Integration', () => {
           addresses: [],
           contacts: [],
         },
-      ] as unknown as MockCustomer[]);
+      ] as any);
 
       const response = await request(app).get('/customers').set('x-organization-id', mockOrgId);
 
@@ -287,7 +314,7 @@ describe('Customers Module Integration', () => {
       it('should return 404 when attempting to access a customer belonging to another organization', async () => {
         // Mock db to return null when searching for this ID within Org A's context
         // even if the ID exists in the database under Org B.
-        vi.mocked(db.query.customers.findFirst).mockResolvedValue(null);
+        vi.mocked(db.query.customers.findFirst).mockResolvedValue(null as any);
 
         const otherOrgCustomerId = 'other-org-cust-uuid';
         const response = await request(app)
@@ -305,7 +332,7 @@ describe('Customers Module Integration', () => {
               returning: vi.fn().mockResolvedValue([]),
             }),
           }),
-        } as unknown as MockCustomer);
+        } as any);
 
         const otherOrgCustomerId = 'other-org-cust-uuid';
         const response = await request(app)

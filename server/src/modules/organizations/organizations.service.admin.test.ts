@@ -33,11 +33,12 @@ vi.mock('../../db/index.js', () => ({
           where: vi.fn().mockReturnThis(),
         })),
       };
-      return await cb(tx);
+      return await cb(tx as any);
     }),
     query: {
       organizationMemberships: {
         findMany: vi.fn(),
+        findFirst: vi.fn(),
       },
     },
   },
@@ -59,16 +60,16 @@ describe('OrganizationsService - Admin Methods', () => {
           id: 'membership-1',
           userId: targetUserId,
           organizationId: orgId,
-          role: 'employee',
+          roleId: 'role-1',
           createdAt: new Date(),
           user: { name: 'Test User', email: 'test@example.com', image: null },
-        },
+        } as any,
       ]);
 
       const result = await organizationsService.listMembers(orgId);
 
       expect(result).toHaveLength(1);
-      expect(result[0].user.name).toBe('Test User');
+      expect(result[0]!.user.name).toBe('Test User');
       expect(db.query.organizationMemberships.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: eq(organizationMemberships.organizationId, orgId),
@@ -88,7 +89,7 @@ describe('OrganizationsService - Admin Methods', () => {
             },
           },
         };
-        return await cb(tx);
+        return await cb(tx as any);
       });
 
       await expect(
@@ -96,7 +97,7 @@ describe('OrganizationsService - Admin Methods', () => {
           adminId,
           organizationId: orgId,
           targetUserId,
-          role: 'admin',
+          roleId: 'role-1',
         }),
       ).rejects.toThrow('FORBIDDEN');
     });
@@ -118,7 +119,7 @@ describe('OrganizationsService - Admin Methods', () => {
             })),
           })),
         };
-        return await cb(tx);
+        return await cb(tx as any);
       });
 
       await expect(
@@ -126,7 +127,7 @@ describe('OrganizationsService - Admin Methods', () => {
           adminId,
           organizationId: orgId,
           targetUserId,
-          role: 'employee',
+          roleId: 'role-1',
         }),
       ).rejects.toThrow('LAST_ADMIN_LOCKOUT');
     });
@@ -150,7 +151,7 @@ describe('OrganizationsService - Admin Methods', () => {
           },
           delete: mockDelete,
         };
-        return await cb(tx);
+        return await cb(tx as any);
       });
 
       await organizationsService.removeMember({ adminId, organizationId: orgId, targetUserId });
@@ -178,7 +179,7 @@ describe('OrganizationsService - Admin Methods', () => {
           },
           update: mockUpdate,
         };
-        return await cb(tx);
+        return await cb(tx as any);
       });
 
       const result = await organizationsService.updateOrganization(adminId, orgId, {
@@ -207,7 +208,7 @@ describe('OrganizationsService - Admin Methods', () => {
           },
           update: mockUpdate,
         };
-        return await cb(tx);
+        return await cb(tx as any);
       });
 
       await organizationsService.resendInvite({
@@ -236,7 +237,7 @@ describe('OrganizationsService - Admin Methods', () => {
           },
           update: mockUpdate,
         };
-        return await cb(tx);
+        return await cb(tx as any);
       });
 
       await organizationsService.cancelInvite({

@@ -4,6 +4,7 @@ import {
   createOrganizationSchema,
   updateOrganizationSchema,
   updateMemberRoleSchema,
+  inviteMemberSchema,
 } from '#shared/contracts/organizations.contract.js';
 import { logger } from '../../utils/logger.js';
 import type { DbError } from '../../types/db.js';
@@ -48,8 +49,14 @@ export async function listMyOrganizations(req: Request, res: Response) {
 
 export async function addMember(req: Request, res: Response) {
   const { organizationId } = req.params;
-  const { userEmail, role = 'employee' } = req.body;
   const adminId = req.authSession.user.id;
+
+  const parseResult = inviteMemberSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  const { userEmail, roleId } = parseResult.data;
 
   if (!organizationId || typeof organizationId !== 'string') {
     return res.status(400).json({ error: 'Valid organizationId parameter is required' });
@@ -60,7 +67,7 @@ export async function addMember(req: Request, res: Response) {
       adminId,
       organizationId,
       userEmail,
-      role: role as 'admin' | 'employee',
+      roleId,
     });
 
     res.status(201).json({ message: 'Member added successfully' });
@@ -70,7 +77,7 @@ export async function addMember(req: Request, res: Response) {
     logger.error({ error, adminId, organizationId }, 'Failed to add member');
 
     if (err.message === 'FORBIDDEN') {
-      return res.status(403).json({ error: 'Only admins can add members' });
+      return res.status(403).json({ error: 'Insufficient permissions' });
     }
     if (err.message === 'USER_NOT_FOUND') {
       return res.status(404).json({ error: 'User not found' });
@@ -85,8 +92,14 @@ export async function addMember(req: Request, res: Response) {
 
 export async function inviteMember(req: Request, res: Response) {
   const { organizationId } = req.params;
-  const { userEmail, role = 'employee' } = req.body;
   const adminId = req.authSession.user.id;
+
+  const parseResult = inviteMemberSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  const { userEmail, roleId } = parseResult.data;
 
   if (!organizationId || typeof organizationId !== 'string') {
     return res.status(400).json({ error: 'Valid organizationId parameter is required' });
@@ -97,7 +110,7 @@ export async function inviteMember(req: Request, res: Response) {
       adminId,
       organizationId,
       userEmail,
-      role: role as 'admin' | 'employee',
+      roleId,
     });
 
     if ('invited' in result && result.invited) {
@@ -111,7 +124,7 @@ export async function inviteMember(req: Request, res: Response) {
     logger.error({ error, adminId, organizationId }, 'Failed to invite member');
 
     if (err.message === 'FORBIDDEN') {
-      return res.status(403).json({ error: 'Only admins can invite members' });
+      return res.status(403).json({ error: 'Insufficient permissions' });
     }
     if (dbError.code === '23505' || dbError.cause?.code === '23505') {
       return res.status(409).json({ error: 'User is already a member of this organization' });
@@ -142,7 +155,7 @@ export async function updateOrganization(req: Request, res: Response) {
     logger.error({ error, adminId, organizationId }, 'Failed to update organization');
 
     if (err.message === 'FORBIDDEN') {
-      return res.status(403).json({ error: 'Only admins can update organization details' });
+      return res.status(403).json({ error: 'Insufficient permissions' });
     }
     if (err.message === 'NOT_FOUND') {
       return res.status(404).json({ error: 'Organization not found' });
@@ -163,7 +176,7 @@ export async function deleteOrganization(req: Request, res: Response) {
     logger.error({ error, adminId, organizationId }, 'Failed to delete organization');
 
     if (err.message === 'FORBIDDEN') {
-      return res.status(403).json({ error: 'Only admins can delete the organization' });
+      return res.status(403).json({ error: 'Insufficient permissions' });
     }
     if (err.message === 'NOT_FOUND') {
       return res.status(404).json({ error: 'Organization not found' });
@@ -198,7 +211,7 @@ export async function updateMemberRole(req: Request, res: Response) {
       adminId,
       organizationId,
       targetUserId: userId,
-      role: parseResult.data.role,
+      roleId: parseResult.data.roleId,
     });
     res.json({ message: 'Member role updated successfully' });
   } catch (error) {
@@ -206,13 +219,15 @@ export async function updateMemberRole(req: Request, res: Response) {
     logger.error({ error, adminId, organizationId, userId }, 'Failed to update member role');
 
     if (err.message === 'FORBIDDEN') {
-      return res.status(403).json({ error: 'Only admins can update member roles' });
+      return res.status(403).json({ error: 'Insufficient permissions' });
     }
     if (err.message === 'NOT_FOUND') {
       return res.status(404).json({ error: 'Member not found' });
     }
     if (err.message === 'LAST_ADMIN_LOCKOUT') {
-      return res.status(400).json({ error: 'Cannot downgrade the last organization admin' });
+      return res
+        .status(400)
+        .json({ error: 'Cannot remove the last member with management permissions' });
     }
     throw error;
   }
@@ -234,13 +249,15 @@ export async function removeMember(req: Request, res: Response) {
     logger.error({ error, adminId, organizationId, userId }, 'Failed to remove member');
 
     if (err.message === 'FORBIDDEN') {
-      return res.status(403).json({ error: 'Only admins can remove members' });
+      return res.status(403).json({ error: 'Insufficient permissions' });
     }
     if (err.message === 'NOT_FOUND') {
       return res.status(404).json({ error: 'Member not found' });
     }
     if (err.message === 'LAST_ADMIN_LOCKOUT') {
-      return res.status(400).json({ error: 'Cannot remove the last organization admin' });
+      return res
+        .status(400)
+        .json({ error: 'Cannot remove the last member with management permissions' });
     }
     throw error;
   }
@@ -262,7 +279,7 @@ export async function resendInvite(req: Request, res: Response) {
     logger.error({ error, adminId, organizationId, inviteId }, 'Failed to resend invite');
 
     if (err.message === 'FORBIDDEN') {
-      return res.status(403).json({ error: 'Only admins can resend invitations' });
+      return res.status(403).json({ error: 'Insufficient permissions' });
     }
     if (err.message === 'NOT_FOUND') {
       return res.status(404).json({ error: 'Invitation not found' });
@@ -287,7 +304,7 @@ export async function cancelInvite(req: Request, res: Response) {
     logger.error({ error, adminId, organizationId, inviteId }, 'Failed to cancel invite');
 
     if (err.message === 'FORBIDDEN') {
-      return res.status(403).json({ error: 'Only admins can cancel invitations' });
+      return res.status(403).json({ error: 'Insufficient permissions' });
     }
     if (err.message === 'NOT_FOUND') {
       return res.status(404).json({ error: 'Invitation not found' });
@@ -307,7 +324,7 @@ export async function listInvites(req: Request, res: Response) {
     const err = error as Error;
     logger.error({ error, adminId, organizationId }, 'Failed to list invites');
     if (err.message === 'FORBIDDEN') {
-      return res.status(403).json({ error: 'Only admins can list invitations' });
+      return res.status(403).json({ error: 'Insufficient permissions' });
     }
     throw error;
   }
