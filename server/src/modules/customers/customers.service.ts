@@ -4,12 +4,19 @@ import { customerAddresses } from '../../db/schema/customer-addresses.schema.js'
 import { customerContacts } from '../../db/schema/customer-contacts.schema.js';
 
 import { addresses, contacts } from '../../db/schema/index.js';
-import { and, eq, inArray } from 'drizzle-orm';
-import { CreateCustomerInput, UpdateCustomerInput } from '#shared/contracts/customers.contract.js';
+import { and, eq, inArray, ne, sql, type SQL } from 'drizzle-orm';
+import {
+  createCustomerSchema,
+  CreateCustomerInput,
+  UpdateCustomerInput,
+} from '#shared/contracts/customers.contract.js';
 
 import { BaseService } from '../../lib/base.service.js';
+import { parseCsv } from '../../utils/csv.js';
+import { logger } from 'src/utils/logger.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type CustomerWithRelations = Awaited<ReturnType<CustomersService['getCustomerById']>>;
 
 export class CustomersService extends BaseService<typeof customers> {
   constructor() {
@@ -45,8 +52,31 @@ export class CustomersService extends BaseService<typeof customers> {
     });
   }
 
+  async checkDuplicate(organizationId: string, companyName: string, excludeId?: string) {
+    const whereConditions: SQL[] = [
+      eq(customers.organizationId, organizationId),
+      eq(customers.companyName, companyName),
+      sql`${customers.deletedAt} IS NULL`,
+    ];
+
+    if (excludeId) {
+      whereConditions.push(ne(customers.id, excludeId));
+    }
+
+    return await db.query.customers.findFirst({
+      where: and(...whereConditions),
+    });
+  }
+
   async createCustomer(organizationId: string, userId: string, data: CreateCustomerInput) {
     return await db.transaction(async (tx) => {
+      // 0. Duplicate check
+      const existing = await this.checkDuplicate(organizationId, data.companyName);
+      logger.info({ existing, companyName: data.companyName }, 'Duplicate check result');
+      if (existing) {
+        throw new Error(`Customer with name '${data.companyName}' already exists`);
+      }
+
       // 1. Create Customer
       const { addresses: addressData, contacts: contactData, ...customerData } = data;
 
@@ -350,6 +380,131 @@ export class CustomersService extends BaseService<typeof customers> {
     // For now, only the customer record is soft-deleted.
 
     return deletedCustomer;
+  }
+
+  async bulkDeleteCustomers(organizationId: string, userId: string, ids: string[]) {
+    if (ids.length === 0) return [];
+
+    const deletedCustomers = await db
+      .update(customers)
+      .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+      .where(and(eq(customers.organizationId, organizationId), inArray(customers.id, ids)))
+      .returning();
+
+    return deletedCustomers;
+  }
+
+  async exportCustomers(organizationId: string) {
+    const data = await this.listCustomers(organizationId);
+
+    // Flatten for CSV
+    return data.map((c) => {
+      const primaryAddress = c.addresses.find((a) => a.isPrimary)?.address;
+      const primaryContact = c.contacts.find((c) => c.isPrimary)?.contact;
+
+      return {
+        companyName: c.companyName,
+        taxNumber: c.taxNumber || '',
+        status: c.status,
+        contactFirstName: primaryContact?.firstName || '',
+        contactLastName: primaryContact?.lastName || '',
+        contactEmail: primaryContact?.email || '',
+        addressLine1: primaryAddress?.addressLine1 || '',
+        city: primaryAddress?.city || '',
+        country: primaryAddress?.country || '',
+        createdAt: c.createdAt ? new Date(c.createdAt).toISOString() : '',
+      };
+    });
+  }
+
+  async importCustomers(organizationId: string, userId: string, buffer: Buffer) {
+    const rawData = parseCsv<Record<string, string | undefined>>(buffer);
+    const summary = {
+      totalProcessed: rawData.length,
+      successCount: 0,
+      failedCount: 0,
+      errors: [] as Array<{ row: number; message: string }>,
+      successfulRecords: [] as CustomerWithRelations[],
+    };
+
+    for (let i = 0; i < rawData.length; i++) {
+      const rowNum = i + 1;
+      const row = rawData[i];
+      if (!row || !row.companyName) {
+        summary.failedCount++;
+        summary.errors.push({ row: rowNum, message: 'Missing companyName' });
+        continue;
+      }
+
+      try {
+        // 1. Transform flat CSV row to nested structure for createCustomerSchema
+        const customerData: CreateCustomerInput = {
+          companyName: row.companyName,
+          taxNumber: row.taxNumber || undefined,
+          status: (row.status || 'active') as CreateCustomerInput['status'],
+          contacts:
+            row.contactFirstName || row.contactLastName || row.contactEmail
+              ? [
+                  {
+                    firstName: row.contactFirstName || 'Imported',
+                    lastName: row.contactLastName || 'Contact',
+                    email: row.contactEmail || null,
+                    isPrimary: true,
+                  },
+                ]
+              : [],
+          addresses:
+            row.addressLine1 || row.city || row.country
+              ? [
+                  {
+                    addressLine1: row.addressLine1 || 'Unknown',
+                    city: row.city || 'Unknown',
+                    country: row.country || 'Unknown',
+                    isPrimary: true,
+                  },
+                ]
+              : [],
+        };
+
+        // 2. Validate
+        const validation = createCustomerSchema.safeParse(customerData);
+        if (!validation.success) {
+          summary.failedCount++;
+          summary.errors.push({
+            row: rowNum,
+            message: validation.error.issues
+              .map((e) => `${e.path.join('.')}: ${e.message}`)
+              .join(', '),
+          });
+          continue;
+        }
+
+        // 3. Duplicate check (within tenant)
+        const existing = await this.checkDuplicate(organizationId, validation.data.companyName);
+
+        if (existing) {
+          summary.failedCount++;
+          summary.errors.push({
+            row: rowNum,
+            message: `Customer with name '${validation.data.companyName}' already exists`,
+          });
+          continue;
+        }
+
+        // 4. Create
+        const newCustomer = await this.createCustomer(organizationId, userId, validation.data);
+        summary.successCount++;
+        summary.successfulRecords.push(newCustomer);
+      } catch (error: unknown) {
+        summary.failedCount++;
+        summary.errors.push({
+          row: rowNum,
+          message: (error as Error).message || 'Unknown error',
+        });
+      }
+    }
+
+    return summary;
   }
 }
 

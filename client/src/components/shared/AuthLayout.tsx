@@ -37,7 +37,7 @@ export default function AuthLayout({ children, title, description, className }: 
             </span>
           </div>
           <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-5xl">
-            CloudERP <span className="text-primary italic">SaaS</span>
+            ERP SaaS
           </h1>
           <p className="text-muted-foreground text-sm max-w-xs">
             Manage your organization with clinical precision and enterprise-grade tools.

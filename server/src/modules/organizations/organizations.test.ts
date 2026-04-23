@@ -4,20 +4,25 @@ import { app } from '../../app.js';
 import { auth } from '../auth/auth.js';
 import { db } from '../../db/index.js';
 import { organizationInvites, organizationMemberships } from '../../db/schema/index.js';
+import { rbacService } from '../rbac/rbac.service.js';
+import { PERMISSIONS } from '#shared/contracts/rbac.contract.js';
 
 // --- MOCKS ---
 
-vi.mock('../rbac/rbac.service', () => ({
+vi.mock('../rbac/rbac.service.js', () => ({
   rbacService: {
     getPermissions: vi
       .fn()
       .mockResolvedValue([
         'org:settings:manage',
+        'org:members:manage',
+        'org:roles:manage',
         'customers:read',
         'customers:create',
         'customers:update',
         'customers:delete',
       ]),
+    canDowngrade: vi.fn().mockResolvedValue(true),
     invalidateCache: vi.fn().mockResolvedValue(undefined),
   },
 }));
@@ -52,7 +57,7 @@ vi.mock('../../db/index.js', () => {
   const queryMock = {
     organizationMemberships: {
       findFirst: vi.fn().mockResolvedValue({
-        roleId: '00000000-0000-0000-0000-000000000001',
+        roleId: '550e8400-e29b-41d4-a716-446655440001',
         organizationId: 'org-456',
         role: { name: 'admin' },
         organization: { id: 'org-456', name: 'Test Org' },
@@ -67,7 +72,7 @@ vi.mock('../../db/index.js', () => {
       findFirst: vi.fn().mockResolvedValue(null),
     },
     roles: {
-      findFirst: vi.fn().mockResolvedValue({ id: '00000000-0000-0000-0000-000000000001' }),
+      findFirst: vi.fn().mockResolvedValue({ id: '550e8400-e29b-41d4-a716-446655440001' }),
     },
     user: {
       findFirst: vi.fn(),
@@ -121,9 +126,19 @@ describe('Organizations Module Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue({
-      roleId: '00000000-0000-0000-0000-000000000001',
+      roleId: '550e8400-e29b-41d4-a716-446655440001',
       organizationId: mockOrgId,
+      organization: { id: mockOrgId, name: 'Test Org' },
     } as any);
+    vi.mocked(rbacService.getPermissions).mockResolvedValue([
+      'org:settings:manage',
+      'org:members:manage',
+      'org:roles:manage',
+      'customers:read',
+      'customers:create',
+      'customers:update',
+      'customers:delete',
+    ]);
   });
 
   describe('POST /organizations', () => {
@@ -155,7 +170,7 @@ describe('Organizations Module Integration', () => {
       vi.mocked(auth.api.getSession).mockResolvedValue({ user: { id: mockUserId } } as any);
       vi.mocked(db.query.organizationMemberships.findMany).mockResolvedValue([
         {
-          roleId: '00000000-0000-0000-0000-000000000001',
+          roleId: '550e8400-e29b-41d4-a716-446655440001',
           role: { name: 'admin' },
           organization: { id: mockOrgId, name: 'My Org', slug: 'my-org' },
         },
@@ -186,15 +201,16 @@ describe('Organizations Module Integration', () => {
       it('should create an invitation if user does not exist', async () => {
         vi.mocked(auth.api.getSession).mockResolvedValue({ user: { id: mockUserId } } as any);
         vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue({
-          roleId: '00000000-0000-0000-0000-000000000001',
+          roleId: '550e8400-e29b-41d4-a716-446655440001',
           organizationId: mockOrgId,
+          organization: { id: mockOrgId, name: 'Test Org' },
         } as any);
         vi.mocked(db.query.user.findFirst).mockResolvedValue(null as any);
 
         const response = await request(app)
           .post(`/organizations/${mockOrgId}/invites`)
           .set('x-organization-id', mockOrgId)
-          .send({ userEmail: mockUserEmail, roleId: '00000000-0000-0000-0000-000000000001' });
+          .send({ userEmail: mockUserEmail, roleId: '550e8400-e29b-41d4-a716-446655440001' });
 
         expect(response.status).toBe(201);
         expect(db.insert).toHaveBeenCalledWith(organizationInvites);
@@ -207,7 +223,7 @@ describe('Organizations Module Integration', () => {
         const mockInvite = {
           id: 'invite-1',
           organizationId: 'org-1',
-          roleId: '00000000-0000-0000-0000-000000000001',
+          roleId: '550e8400-e29b-41d4-a716-446655440001',
           email: mockUserEmail,
         };
 
@@ -275,7 +291,7 @@ describe('Organizations Module Integration', () => {
             id: 'm1',
             userId: mockUserId,
             organizationId: mockOrgId,
-            roleId: '00000000-0000-0000-0000-000000000001',
+            roleId: '550e8400-e29b-41d4-a716-446655440001',
             role: { name: 'admin' },
             createdAt: new Date(),
             user: { name: 'Admin User', email: 'admin@test.com', image: null },
@@ -315,7 +331,7 @@ describe('Organizations Module Integration', () => {
         const response = await request(app)
           .patch(`/organizations/${mockOrgId}/members/${mockUserId}`)
           .set('x-organization-id', mockOrgId)
-          .send({ roleId: '00000000-0000-0000-0000-000000000001' });
+          .send({ roleId: '550e8400-e29b-41d4-a716-446655440001' });
 
         expect(response.status).toBe(200);
         expect(response.body.message).toBe('Member role updated successfully');
@@ -407,13 +423,15 @@ describe('Organizations Module Integration', () => {
           email: targetEmail,
         } as any);
         vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue({
-          roleId: '00000000-0000-0000-0000-000000000001', // requester is admin
+          roleId: '550e8400-e29b-41d4-a716-446655440001', // requester is admin
+          organizationId: mockOrgId,
+          organization: { id: mockOrgId, name: 'Test Org' },
         } as any);
 
         const response = await request(app)
           .post(`/organizations/${mockOrgId}/invites`)
           .set('x-organization-id', mockOrgId)
-          .send({ userEmail: targetEmail, roleId: '00000000-0000-0000-0000-000000000001' });
+          .send({ userEmail: targetEmail, roleId: '550e8400-e29b-41d4-a716-446655440001' });
 
         expect(response.status).toBe(201);
         expect(response.body.message).toBe('Member added successfully');
@@ -431,13 +449,15 @@ describe('Organizations Module Integration', () => {
           email: targetEmail,
         } as any);
         vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue({
-          roleId: '00000000-0000-0000-0000-000000000001', // requester is admin
+          roleId: '550e8400-e29b-41d4-a716-446655440001', // requester is admin
+          organizationId: mockOrgId,
+          organization: { id: mockOrgId, name: 'Test Org' },
         } as any);
 
         const response = await request(app)
           .post(`/organizations/${mockOrgId}/invites`)
           .set('x-organization-id', mockOrgId)
-          .send({ userEmail: targetEmail, roleId: '00000000-0000-0000-0000-000000000001' });
+          .send({ userEmail: targetEmail, roleId: '550e8400-e29b-41d4-a716-446655440001' });
 
         expect(response.status).toBe(201);
         expect(response.body.message).toBe('Member added successfully');
