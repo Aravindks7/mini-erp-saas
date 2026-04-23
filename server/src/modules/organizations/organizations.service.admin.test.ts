@@ -3,6 +3,14 @@ import { organizationsService } from './organizations.service.js';
 import { db } from '../../db/index.js';
 import { organizationMemberships } from '../../db/schema/index.js';
 import { eq } from 'drizzle-orm';
+import { rbacService } from '../rbac/rbac.service.js';
+
+vi.mock('../rbac/rbac.service.js', () => ({
+  rbacService: {
+    getPermissions: vi.fn().mockResolvedValue(['org:members:manage', 'org:settings:manage']),
+    canDowngrade: vi.fn().mockResolvedValue(true),
+  },
+}));
 
 vi.mock('../../db/index.js', () => ({
   db: {
@@ -51,6 +59,11 @@ describe('OrganizationsService - Admin Methods', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(rbacService.getPermissions).mockResolvedValue([
+      'org:members:manage',
+      'org:settings:manage',
+    ]);
+    vi.mocked(rbacService.canDowngrade).mockResolvedValue(true);
   });
 
   describe('listMembers', () => {
@@ -61,6 +74,7 @@ describe('OrganizationsService - Admin Methods', () => {
           userId: targetUserId,
           organizationId: orgId,
           roleId: 'role-1',
+          role: { name: 'admin' },
           createdAt: new Date(),
           user: { name: 'Test User', email: 'test@example.com', image: null },
         } as any,
@@ -79,18 +93,8 @@ describe('OrganizationsService - Admin Methods', () => {
   });
 
   describe('updateMemberRole', () => {
-    it('should throw FORBIDDEN if requester is not admin', async () => {
-      // Mock ensureAdmin failure
-      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
-        const tx = {
-          query: {
-            organizationMemberships: {
-              findFirst: vi.fn().mockResolvedValue(null), // Not an admin
-            },
-          },
-        };
-        return await cb(tx as any);
-      });
+    it('should throw FORBIDDEN if requester lacks permission', async () => {
+      vi.mocked(rbacService.getPermissions).mockResolvedValueOnce([]);
 
       await expect(
         organizationsService.updateMemberRole({
@@ -103,21 +107,25 @@ describe('OrganizationsService - Admin Methods', () => {
     });
 
     it('should throw LAST_ADMIN_LOCKOUT if trying to demote the only admin', async () => {
+      vi.mocked(rbacService.canDowngrade).mockResolvedValueOnce(false);
+      vi.mocked(rbacService.getPermissions).mockResolvedValue(['org:members:manage']);
+
       vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
         const tx = {
           query: {
             organizationMemberships: {
-              findFirst: vi
-                .fn()
-                .mockResolvedValueOnce({ role: 'admin' }) // Requester is admin
-                .mockResolvedValueOnce({ id: 'm-1', role: 'admin' }), // Target is admin
+              findFirst: vi.fn().mockResolvedValue({ id: 'm-1', role: 'admin' }),
+            },
+            rolePermissionSets: {
+              findMany: vi.fn().mockResolvedValue([
+                {
+                  permissionSet: {
+                    items: [], // No management permission
+                  },
+                },
+              ]),
             },
           },
-          select: vi.fn(() => ({
-            from: vi.fn(() => ({
-              where: vi.fn().mockResolvedValue([{ count: 1 }]), // Only 1 admin
-            })),
-          })),
         };
         return await cb(tx as any);
       });

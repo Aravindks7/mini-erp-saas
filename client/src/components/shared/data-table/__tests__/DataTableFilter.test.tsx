@@ -89,4 +89,22 @@ describe('DataTableFilter Component', () => {
 
     expect(mockColumn.setFilterValue).toHaveBeenCalledWith(undefined);
   });
+
+  it('should render an X button and clear filter when clicked directly', () => {
+    mockColumn.getFilterValue.mockReturnValue('active');
+
+    render(
+      <DataTableFilter
+        column={mockColumn as unknown as Column<unknown, unknown>}
+        title="Status"
+        options={options}
+      />,
+    );
+
+    const clearButton = screen.getByTestId('clear-filter-status');
+    expect(clearButton).toBeInTheDocument();
+
+    fireEvent.click(clearButton);
+    expect(mockColumn.setFilterValue).toHaveBeenCalledWith(undefined);
+  });
 });

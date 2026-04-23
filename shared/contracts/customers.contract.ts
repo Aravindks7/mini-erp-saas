@@ -43,5 +43,10 @@ export const updateCustomerSchema = createCustomerSchema.partial().extend({
   id: z.string().uuid().optional(), // id is usually in the URL but good to have here too
 });
 
+export const bulkDeleteCustomersSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1, 'At least one customer ID is required'),
+});
+
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
 export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
+export type BulkDeleteCustomersInput = z.infer<typeof bulkDeleteCustomersSchema>;

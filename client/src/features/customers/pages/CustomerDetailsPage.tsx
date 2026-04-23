@@ -1,7 +1,9 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Building, MapPin, FileEdit, AlertCircle, Users } from 'lucide-react';
+import * as React from 'react';
 
-import { useCustomer } from '../hooks/customers.hooks';
+import { useCustomer, customerKeys } from '../hooks/customers.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
@@ -13,6 +15,7 @@ import { ContactCard, type Contact } from '@/components/shared/domain/ContactCar
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { customersApi } from '../api/customers.api';
 
 const customerStatusMap: StatusMap<string> = {
   active: { label: 'Active', tone: 'success' },
@@ -23,7 +26,15 @@ export default function CustomerDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
+  const queryClient = useQueryClient();
   const { data: customer, isLoading, isError } = useCustomer(id);
+
+  React.useEffect(() => {
+    queryClient.prefetchQuery({
+      queryKey: customerKeys.lists(),
+      queryFn: customersApi.fetchCustomers,
+    });
+  }, [queryClient]);
 
   if (isLoading) {
     return (
