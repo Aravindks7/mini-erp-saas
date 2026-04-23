@@ -33,6 +33,7 @@ import { Button } from '@/components/ui/button';
 import { DataTable, type BulkAction } from './DataTable';
 import { DataTableToolbar } from './DataTableToolbar';
 import { DataTableSearch } from './DataTableSearch';
+import { cn } from '@/lib/utils';
 
 /**
  * Standard action configuration for EntityTable rows.
@@ -61,7 +62,7 @@ interface EntityTableProps<TData, TValue> {
   /** Global table actions (e.g., Add New, Export) */
   headerActions?: React.ReactNode;
   /** Custom content to inject into the toolbar (e.g., specialized filters) */
-  toolbarContent?: (table: Table<TData>) => React.ReactNode;
+  toolbarFilters?: (table: Table<TData>) => React.ReactNode;
   /** Actions that can be performed on multiple selected rows */
   bulkActions?: BulkAction<TData>[];
   /** Callback for when the table state is reset */
@@ -77,10 +78,13 @@ interface EntityTableProps<TData, TValue> {
   };
   title?: string;
   description?: string;
+  searchPlaceholder?: string;
+  enableGlobalSearch?: boolean;
   emptyState?: {
     title?: string;
     description?: string;
   };
+  headerVariant?: 'default' | 'primary';
 }
 
 /**
@@ -99,19 +103,23 @@ export function EntityTable<TData, TValue>({
   actions,
   renderRowActions,
   headerActions,
-  toolbarContent,
+  toolbarFilters,
   bulkActions,
   onReset,
   state: externalState,
   onStateChange,
   title,
   description,
+  searchPlaceholder,
+  enableGlobalSearch,
   emptyState,
+  headerVariant = 'default',
 }: EntityTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [globalFilter, setGlobalFilter] = React.useState('');
 
   // Memoize augmented columns to include the global Actions column
   const augmentedColumns = React.useMemo(() => {
@@ -193,6 +201,7 @@ export function EntityTable<TData, TValue>({
       columnVisibility,
       rowSelection,
       columnFilters,
+      globalFilter,
       ...externalState,
     },
     enableRowSelection: true,
@@ -200,6 +209,7 @@ export function EntityTable<TData, TValue>({
     onSortingChange: onStateChange?.onSortingChange || setSorting,
     onColumnFiltersChange: onStateChange?.onColumnFiltersChange || setColumnFilters,
     onColumnVisibilityChange: onStateChange?.onColumnVisibilityChange || setColumnVisibility,
+    onGlobalFilterChange: setGlobalFilter,
     onPaginationChange: onStateChange?.onPaginationChange,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -213,12 +223,37 @@ export function EntityTable<TData, TValue>({
   return (
     <div className="space-y-4">
       {(title || description || headerActions) && (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-1">
-          <div>
-            {title && <h2 className="text-2xl font-bold tracking-tight">{title}</h2>}
-            {description && <p className="text-muted-foreground">{description}</p>}
+        <div
+          className={cn(
+            'flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between px-1',
+            headerVariant === 'primary' ? 'mb-8' : 'mb-0',
+          )}
+        >
+          <div className="space-y-1.5 flex-1 min-w-0">
+            {title &&
+              (headerVariant === 'primary' ? (
+                <h1 className="text-2xl font-bold tracking-tight text-foreground truncate leading-tight lg:text-3xl">
+                  {title}
+                </h1>
+              ) : (
+                <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
+              ))}
+            {description && (
+              <p
+                className={cn(
+                  'text-muted-foreground',
+                  headerVariant === 'primary'
+                    ? 'text-sm leading-relaxed max-w-2xl font-medium'
+                    : '',
+                )}
+              >
+                {description}
+              </p>
+            )}
           </div>
-          <div className="flex items-center gap-2">{headerActions}</div>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            {headerActions}
+          </div>
         </div>
       )}
 
@@ -235,16 +270,27 @@ export function EntityTable<TData, TValue>({
           onViewModeChange={onViewModeChange}
           bulkActions={bulkActions}
           onReset={onReset}
-        >
-          {toolbarContent?.(table)}
-          {searchKey && !toolbarContent && (
-            <DataTableSearch
-              searchKey={searchKey}
-              value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ''}
-              onChange={(value) => table.getColumn(searchKey)?.setFilterValue(value)}
-            />
-          )}
-        </DataTableToolbar>
+          searchKey={enableGlobalSearch ? undefined : searchKey}
+          searchNode={
+            enableGlobalSearch || searchKey ? (
+              <DataTableSearch
+                searchKey={searchKey || 'global'}
+                value={
+                  enableGlobalSearch
+                    ? ((table.getState().globalFilter as string) ?? '')
+                    : ((table.getColumn(searchKey!)?.getFilterValue() as string) ?? '')
+                }
+                onChange={(value) =>
+                  enableGlobalSearch
+                    ? table.setGlobalFilter(value)
+                    : table.getColumn(searchKey!)?.setFilterValue(value)
+                }
+                placeholder={searchPlaceholder}
+              />
+            ) : undefined
+          }
+          filterNode={toolbarFilters?.(table)}
+        />
       </DataTable>
     </div>
   );

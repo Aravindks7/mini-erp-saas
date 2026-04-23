@@ -1,7 +1,7 @@
 'use no memo';
 
 import * as React from 'react';
-import { Check, PlusCircle } from 'lucide-react';
+import { Check, PlusCircle, X } from 'lucide-react';
 import type { Column } from '@tanstack/react-table';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -68,6 +68,17 @@ export function DataTableFilter<TData, TValue>({
                       </Badge>
                     ))
                 )}
+              </div>
+              <div
+                role="button"
+                data-testid={`clear-filter-${title?.toLowerCase()}`}
+                className="ml-2 rounded-full hover:bg-muted/50 p-0.5 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  column.setFilterValue(undefined);
+                }}
+              >
+                <X className="h-3 w-3 text-muted-foreground" />
               </div>
             </>
           )}

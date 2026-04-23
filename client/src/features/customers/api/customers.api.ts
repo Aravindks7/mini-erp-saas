@@ -102,4 +102,9 @@ export const customersApi = {
     apiFetch<{ message: string }>(`/customers/${id}`, {
       method: 'DELETE',
     }),
+  bulkDeleteCustomers: (ids: string[]) =>
+    apiFetch<{ message: string; deletedCount: number; deletedIds: string[] }>('/customers', {
+      method: 'DELETE',
+      body: JSON.stringify({ ids }),
+    }),
 };

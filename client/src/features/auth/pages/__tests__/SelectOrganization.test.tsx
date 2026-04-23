@@ -4,6 +4,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import SelectOrganizationPage from '../SelectOrganization';
 import { useTenant } from '@/contexts/TenantContext';
 import { useOrganizations } from '@/features/organizations/hooks/organizations.hooks';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Mock the dependencies
 vi.mock('@/contexts/TenantContext', () => ({
@@ -12,6 +13,15 @@ vi.mock('@/contexts/TenantContext', () => ({
 
 vi.mock('@/features/organizations/hooks/organizations.hooks', () => ({
   useOrganizations: vi.fn(),
+}));
+
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: vi.fn(),
+}));
+
+// Mock the CreateOrganizationDialog to avoid portal issues
+vi.mock('@/features/organizations/components/CreateOrganizationDialog', () => ({
+  CreateOrganizationDialog: () => <div data-testid="create-org-dialog" />,
 }));
 
 // Mock react-router-dom's useNavigate
@@ -26,19 +36,19 @@ vi.mock('react-router-dom', async () => {
 });
 
 describe('SelectOrganizationPage', () => {
-  const setActiveOrganizationId = vi.fn();
+  const syncActiveOrganizationId = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useTenant).mockReturnValue({ setActiveOrganizationId } as unknown as ReturnType<
-      typeof useTenant
-    >);
+    vi.mocked(useTenant).mockReturnValue({ syncActiveOrganizationId } as any);
+    vi.mocked(useAuth).mockReturnValue({
+      data: { user: { email: 'test@example.com' } },
+      isLoading: false,
+    } as any);
   });
 
   it('should render loading state when fetching organizations', () => {
-    vi.mocked(useOrganizations).mockReturnValue({ isLoading: true } as unknown as ReturnType<
-      typeof useOrganizations
-    >);
+    vi.mocked(useOrganizations).mockReturnValue({ isLoading: true } as any);
 
     render(
       <MemoryRouter>
@@ -46,18 +56,18 @@ describe('SelectOrganizationPage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText(/Loading workspaces.../i)).toBeInTheDocument();
+    expect(screen.getByText(/Loading organizations.../i)).toBeInTheDocument();
   });
 
   it('should render a list of organizations', () => {
     const mockOrgs = [
-      { id: 'org-1', name: 'Acme Corp', role: 'admin' },
-      { id: 'org-2', name: 'Globex', role: 'employee' },
+      { id: 'org-1', name: 'Acme Corp', slug: 'acme', roleName: 'admin' },
+      { id: 'org-2', name: 'Globex', slug: 'globex', roleName: 'employee' },
     ];
     vi.mocked(useOrganizations).mockReturnValue({
       isLoading: false,
       data: mockOrgs,
-    } as unknown as ReturnType<typeof useOrganizations>);
+    } as any);
 
     render(
       <MemoryRouter>
@@ -67,16 +77,16 @@ describe('SelectOrganizationPage', () => {
 
     expect(screen.getByText('Acme Corp')).toBeInTheDocument();
     expect(screen.getByText('Globex')).toBeInTheDocument();
-    expect(screen.getByText(/admin/i)).toBeInTheDocument();
-    expect(screen.getByText(/employee/i)).toBeInTheDocument();
+    expect(screen.getByText('/acme')).toBeInTheDocument();
+    expect(screen.getByText('/globex')).toBeInTheDocument();
   });
 
-  it('should call setActiveOrganizationId and navigate on selection', () => {
-    const mockOrgs = [{ id: 'org-1', name: 'Acme Corp', role: 'admin' }];
+  it('should call syncActiveOrganizationId and navigate on selection', () => {
+    const mockOrgs = [{ id: 'org-1', name: 'Acme Corp', slug: 'acme', roleName: 'admin' }];
     vi.mocked(useOrganizations).mockReturnValue({
       isLoading: false,
       data: mockOrgs,
-    } as unknown as ReturnType<typeof useOrganizations>);
+    } as any);
 
     render(
       <MemoryRouter>
@@ -86,15 +96,15 @@ describe('SelectOrganizationPage', () => {
 
     fireEvent.click(screen.getByText('Acme Corp'));
 
-    expect(setActiveOrganizationId).toHaveBeenCalledWith('org-1');
-    expect(mockNavigate).toHaveBeenCalledWith('/customers', { replace: true });
+    expect(syncActiveOrganizationId).toHaveBeenCalledWith('org-1');
+    expect(mockNavigate).toHaveBeenCalledWith('/acme');
   });
 
-  it('should render empty state when no organizations found', () => {
+  it('should navigate to onboarding when no organizations found', () => {
     vi.mocked(useOrganizations).mockReturnValue({
       isLoading: false,
       data: [],
-    } as unknown as ReturnType<typeof useOrganizations>);
+    } as any);
 
     render(
       <MemoryRouter>
@@ -102,14 +112,15 @@ describe('SelectOrganizationPage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText(/You don't have any organizations yet/i)).toBeInTheDocument();
+    // useEffect handles this, and navigate is called
+    expect(mockNavigate).toHaveBeenCalledWith('/onboarding');
   });
 
-  it('should navigate to onboarding when "Create New Organization" is clicked', () => {
+  it('should open create dialog when "Create New Organization" is clicked', () => {
     vi.mocked(useOrganizations).mockReturnValue({
       isLoading: false,
       data: [],
-    } as unknown as ReturnType<typeof useOrganizations>);
+    } as any);
 
     render(
       <MemoryRouter>
@@ -118,6 +129,7 @@ describe('SelectOrganizationPage', () => {
     );
 
     fireEvent.click(screen.getByText(/Create New Organization/i));
-    expect(mockNavigate).toHaveBeenCalledWith('/onboarding');
+    // The dialog should be visible (mocked)
+    expect(screen.getByTestId('create-org-dialog')).toBeInTheDocument();
   });
 });

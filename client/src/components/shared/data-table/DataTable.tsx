@@ -10,7 +10,7 @@ import { DataCardView } from './DataCardView';
 
 export interface BulkAction<TData> {
   label: string;
-  onAction: (rows: TData[]) => void;
+  onAction: (rows: TData[], clearSelection: () => void) => void;
   icon?: React.ReactNode;
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost';
 }

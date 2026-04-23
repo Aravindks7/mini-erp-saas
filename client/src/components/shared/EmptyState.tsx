@@ -1,3 +1,4 @@
+import * as React from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { SearchX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ interface EmptyStateProps {
     icon?: LucideIcon;
   };
   className?: string;
+  children?: React.ReactNode;
 }
 
 /**
@@ -24,6 +26,7 @@ export function EmptyState({
   icon: Icon = SearchX,
   action,
   className,
+  children,
 }: EmptyStateProps) {
   return (
     <div
@@ -47,6 +50,7 @@ export function EmptyState({
           </Button>
         </div>
       )}
+      {children && <div className="mt-8 w-full max-w-md">{children}</div>}
     </div>
   );
 }

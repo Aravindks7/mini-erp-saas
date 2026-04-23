@@ -35,17 +35,20 @@ export const columns: ColumnDef<CustomerResponse>[] = [
     ),
     enableSorting: false,
     enableHiding: false,
+    enableGlobalFilter: false,
   },
   {
     accessorKey: 'companyName',
     header: ({ column }) => <DataTableColumnHeader column={column} title="Company Name" />,
     meta: { variant: 'title', label: 'Company' },
+    enableGlobalFilter: true,
   },
   {
     accessorKey: 'taxNumber',
     header: ({ column }) => <DataTableColumnHeader column={column} title="Tax Number" />,
     cell: ({ row }) => row.getValue('taxNumber') || '-',
     meta: { variant: 'subtitle', label: 'Tax ID' },
+    enableGlobalFilter: true,
   },
   {
     accessorKey: 'status',
@@ -72,5 +75,6 @@ export const columns: ColumnDef<CustomerResponse>[] = [
     id: 'actions',
     cell: ({ row }) => <CustomerRowActions row={row} />,
     meta: { variant: 'actions' },
+    enableGlobalFilter: false,
   },
 ];

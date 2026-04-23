@@ -3,8 +3,10 @@ import { customersService } from './customers.service.js';
 import {
   createCustomerSchema,
   updateCustomerSchema,
+  bulkDeleteCustomersSchema,
 } from '#shared/contracts/customers.contract.js';
 import { logger } from '../../utils/logger.js';
+import { generateCsv } from '../../utils/csv.js';
 import type { DbError } from '../../types/db.js';
 
 export async function listCustomers(req: Request, res: Response) {
@@ -47,6 +49,14 @@ export async function createCustomer(req: Request, res: Response) {
   const userId = req.authSession.user.id;
 
   try {
+    // Check for duplicates
+    const existing = await customersService.listCustomers(organizationId);
+    if (existing.some((c) => c.companyName === parseResult.data.companyName)) {
+      return res
+        .status(409)
+        .json({ error: `Customer with name '${parseResult.data.companyName}' already exists` });
+    }
+
     const newCustomer = await customersService.createCustomer(
       organizationId,
       userId,
@@ -126,5 +136,93 @@ export async function deleteCustomer(req: Request, res: Response) {
   } catch (error) {
     logger.error({ error, organizationId, userId, id }, 'Failed to delete customer');
     throw error;
+  }
+}
+
+export async function bulkDeleteCustomers(req: Request, res: Response) {
+  const parseResult = bulkDeleteCustomersSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    const deletedCustomers = await customersService.bulkDeleteCustomers(
+      organizationId,
+      userId,
+      parseResult.data.ids,
+    );
+
+    res.json({
+      message: `Successfully deleted ${deletedCustomers.length} customers`,
+      deletedCount: deletedCustomers.length,
+      deletedIds: deletedCustomers.map((c) => c.id),
+    });
+  } catch (error) {
+    logger.error({ error, organizationId, userId }, 'Failed to bulk delete customers');
+    throw error;
+  }
+}
+
+export async function exportCustomers(req: Request, res: Response) {
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    const csvData = await customersService.exportCustomers(organizationId);
+    const csv = generateCsv(csvData);
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=customers-export-${Date.now()}.csv`);
+    res.send(csv);
+  } catch (error) {
+    logger.error({ error, organizationId, userId }, 'Failed to export customers');
+    throw error;
+  }
+}
+
+export async function getImportTemplate(req: Request, res: Response) {
+  try {
+    const templateData = [
+      {
+        companyName: 'Acme Corp',
+        taxNumber: '123456789',
+        status: 'active',
+        contactFirstName: 'John',
+        contactLastName: 'Doe',
+        contactEmail: 'john@acme.com',
+        addressLine1: '123 Main St',
+        city: 'Metropolis',
+        country: 'USA',
+      },
+    ];
+    const csv = generateCsv(templateData);
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=customers-import-template.csv');
+    res.send(csv);
+  } catch (error) {
+    logger.error({ error }, 'Failed to get import template');
+    throw error;
+  }
+}
+
+export async function importCustomers(req: Request, res: Response) {
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+  const file = req.file;
+
+  if (!file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
+  try {
+    const summary = await customersService.importCustomers(organizationId, userId, file.buffer);
+    res.json(summary);
+  } catch (error: unknown) {
+    logger.error({ error, organizationId, userId }, 'Failed to import customers');
+    res.status(400).json({ error: (error as Error).message || 'Failed to parse CSV' });
   }
 }

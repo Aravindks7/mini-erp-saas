@@ -23,6 +23,7 @@ export function useCustomers() {
   return useQuery({
     queryKey: customerKeys.lists(),
     queryFn: customersApi.fetchCustomers,
+    staleTime: 5000,
   });
 }
 
@@ -62,6 +63,17 @@ export function useDeleteCustomer() {
 
   return useMutation({
     mutationFn: (id: string) => customersApi.deleteCustomer(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: customerKeys.lists() });
+    },
+  });
+}
+
+export function useBulkDeleteCustomers() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ids: string[]) => customersApi.bulkDeleteCustomers(ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: customerKeys.lists() });
     },
