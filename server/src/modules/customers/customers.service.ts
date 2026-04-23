@@ -13,7 +13,7 @@ import {
 
 import { BaseService } from '../../lib/base.service.js';
 import { parseCsv } from '../../utils/csv.js';
-import { logger } from 'src/utils/logger.js';
+import { logger } from '../../utils/logger.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type CustomerWithRelations = Awaited<ReturnType<CustomersService['getCustomerById']>>;
