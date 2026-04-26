@@ -12,4 +12,15 @@ export default defineConfig({
       '@shared': path.resolve(__dirname, '../shared'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'tanstack-vendor': ['@tanstack/react-query', '@tanstack/react-table'],
+          'ui-vendor': ['radix-ui', 'lucide-react', 'class-variance-authority', 'tailwind-merge'],
+        },
+      },
+    },
+  },
 });

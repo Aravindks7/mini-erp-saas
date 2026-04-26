@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Save, X } from 'lucide-react';
 
@@ -39,7 +39,7 @@ export default function RoleFormPage() {
     register,
     handleSubmit,
     setValue,
-    watch,
+    control,
     reset,
     formState: { errors, isDirty },
   } = useForm<CreateRoleInput>({
@@ -50,7 +50,11 @@ export default function RoleFormPage() {
     },
   });
 
-  const selectedSetIds = watch('permissionSetIds');
+  const selectedSetIds = useWatch({
+    control,
+    name: 'permissionSetIds',
+    defaultValue: [],
+  });
 
   React.useEffect(() => {
     if (existingRole) {
@@ -120,10 +124,10 @@ export default function RoleFormPage() {
       />
 
       {isForking && (
-        <Alert variant="default" className="mb-6 bg-amber-50 border-amber-200 text-amber-800">
-          <AlertCircle className="h-4 w-4 stroke-amber-800" />
-          <AlertTitle className="font-semibold text-amber-900">System Template</AlertTitle>
-          <AlertDescription className="text-amber-800/90">
+        <Alert variant="default" className="mb-6 bg-muted/40 border-border">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle className="font-semibold">System Template</AlertTitle>
+          <AlertDescription>
             You are editing a <strong>System Template</strong>. A custom copy will be created for
             your organization upon saving.
           </AlertDescription>

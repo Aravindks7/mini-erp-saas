@@ -1,11 +1,13 @@
+import { lazy } from 'react';
 import { Users } from 'lucide-react';
 import type { AppRoute } from '@/lib/types/navigation';
-import CustomersListPage from './pages/CustomersListPage';
-import CustomerFormPage from './pages/CustomerFormPage';
-import CustomerDetailsPage from './pages/CustomerDetailsPage';
 import { queryClient } from '@/lib/query-client';
 import { customerDetailQuery } from './hooks/customers.hooks';
 import type { CustomerResponse } from './api/customers.api';
+
+const CustomersListPage = lazy(() => import('./pages/CustomersListPage'));
+const CustomerFormPage = lazy(() => import('./pages/CustomerFormPage'));
+const CustomerDetailsPage = lazy(() => import('./pages/CustomerDetailsPage'));
 
 export const customerRoutes: AppRoute[] = [
   {
