@@ -4,6 +4,10 @@ import type { AppRoute } from '@/lib/types/navigation';
 import { authRoutes } from '@/features/auth/routes';
 import { dashboardRoutes as coreDashboardRoutes } from '@/features/dashboard/routes';
 import { customerRoutes } from '@/features/customers/routes';
+import { supplierRoutes } from '@/features/suppliers/routes';
+import { productRoutes } from '@/features/products/routes';
+import { uomRoutes } from '@/features/uom/routes';
+import { taxRoutes } from '@/features/taxes/routes';
 import { settingsRoutes } from '@/features/settings/routes';
 
 /**
@@ -14,6 +18,10 @@ import { settingsRoutes } from '@/features/settings/routes';
 export const dashboardRoutes: AppRoute[] = [
   ...coreDashboardRoutes,
   ...customerRoutes,
+  ...supplierRoutes,
+  ...productRoutes,
+  ...uomRoutes,
+  ...taxRoutes,
   ...settingsRoutes,
 ];
 

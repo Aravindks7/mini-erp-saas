@@ -574,8 +574,10 @@ CREATE UNIQUE INDEX "customer_contacts_customer_id_contact_id_key" ON "customer_
 CREATE UNIQUE INDEX "idx_customer_contacts_primary_unique" ON "customer_contacts" USING btree ("customer_id") WHERE "customer_contacts"."is_primary" = true;--> statement-breakpoint
 CREATE INDEX "customers_org_idx" ON "customers" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "customers_status_idx" ON "customers" USING btree ("status");--> statement-breakpoint
-CREATE UNIQUE INDEX "perm_set_name_org_idx" ON "permission_sets" USING btree ("name","organization_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "role_name_org_idx" ON "roles" USING btree ("name","organization_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "perm_set_global_name_idx" ON "permission_sets" USING btree ("name") WHERE "permission_sets"."organization_id" IS NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "perm_set_tenant_name_idx" ON "permission_sets" USING btree ("name","organization_id") WHERE "permission_sets"."organization_id" IS NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "role_global_name_idx" ON "roles" USING btree ("name") WHERE "roles"."organization_id" IS NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "role_tenant_name_idx" ON "roles" USING btree ("name","organization_id") WHERE "roles"."organization_id" IS NOT NULL;--> statement-breakpoint
 CREATE UNIQUE INDEX "org_member_unique_idx" ON "organization_memberships" USING btree ("user_id","organization_id");--> statement-breakpoint
 CREATE INDEX "org_member_org_idx" ON "organization_memberships" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "org_member_user_idx" ON "organization_memberships" USING btree ("user_id");--> statement-breakpoint

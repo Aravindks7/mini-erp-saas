@@ -1,0 +1,80 @@
+import type { ColumnDef } from '@tanstack/react-table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
+import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { formatDate } from '@shared/utils/date';
+import type { SupplierResponse } from '../api/suppliers.api';
+import { SupplierRowActions } from './SupplierRowActions';
+
+const supplierStatusMap: StatusMap<string> = {
+  active: { label: 'Active', tone: 'success' },
+  inactive: { label: 'Inactive', tone: 'neutral' },
+};
+
+export const supplierStatusOptions = Object.entries(supplierStatusMap).map(([value, config]) => ({
+  label: config.label,
+  value,
+}));
+
+export const columns: ColumnDef<SupplierResponse>[] = [
+  {
+    id: 'select',
+    header: ({ table }) => (
+      <Checkbox
+        checked={table.getIsAllPageRowsSelected()}
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Select all"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="Select row"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+    enableGlobalFilter: false,
+  },
+  {
+    accessorKey: 'name',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Supplier Name" />,
+    meta: { variant: 'title', label: 'Supplier' },
+    enableGlobalFilter: true,
+  },
+  {
+    accessorKey: 'taxNumber',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Tax Number" />,
+    cell: ({ row }) => row.getValue('taxNumber') || '-',
+    meta: { variant: 'subtitle', label: 'Tax ID' },
+    enableGlobalFilter: true,
+  },
+  {
+    accessorKey: 'status',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+    filterFn: (row, id, value) => {
+      const rowValue = row.getValue(id) as string;
+      const selectedValues = typeof value === 'string' ? value.split(',') : value;
+      return Array.isArray(selectedValues) ? selectedValues.includes(rowValue) : false;
+    },
+    cell: ({ row }) => {
+      return <StatusBadge value={row.getValue('status') as string} statusMap={supplierStatusMap} />;
+    },
+    meta: { variant: 'field', label: 'Status' },
+  },
+  {
+    accessorKey: 'createdAt',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Created At" />,
+    cell: ({ row }) => {
+      return formatDate(row.getValue('createdAt'));
+    },
+    meta: { variant: 'field', label: 'Created' },
+  },
+  {
+    id: 'actions',
+    cell: ({ row }) => <SupplierRowActions row={row} />,
+    meta: { variant: 'actions' },
+    enableGlobalFilter: false,
+  },
+];

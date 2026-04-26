@@ -9,6 +9,7 @@ import { registerSchema, type RegisterInput } from '@shared/contracts/auth.contr
 import { useRegisterMutation } from '../hooks/auth.hooks';
 import { Form } from '@/components/shared/form/Form';
 import { FormField } from '@/components/shared/form/FormField';
+import { getAuthErrorMessage } from '../utils/error-utils';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -29,13 +30,13 @@ export default function RegisterPage() {
     try {
       const result = await register(data);
       if (result.error) {
-        form.setError('root', { message: result.error.message || 'Registration failed' });
+        form.setError('root', { message: getAuthErrorMessage(result.error) });
       } else {
         navigate('/', { replace: true });
       }
     } catch (error) {
-      console.error('[Register] Registration failed:', error);
-      form.setError('root', { message: 'An unexpected error occurred' });
+      console.error('[Register] Unexpected registration failure:', error);
+      form.setError('root', { message: getAuthErrorMessage(error) });
     }
   };
 

@@ -1,5 +1,5 @@
 {
-  "id": "1fd9644e-7834-41ed-afe2-9c2b0c5af66c",
+  "id": "6e125602-fb9a-45df-b764-b67eda0c11ab",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1295,8 +1295,24 @@
         }
       },
       "indexes": {
-        "perm_set_name_org_idx": {
-          "name": "perm_set_name_org_idx",
+        "perm_set_global_name_idx": {
+          "name": "perm_set_global_name_idx",
+          "columns": [
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"permission_sets\".\"organization_id\" IS NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "perm_set_tenant_name_idx": {
+          "name": "perm_set_tenant_name_idx",
           "columns": [
             {
               "expression": "name",
@@ -1312,6 +1328,7 @@
             }
           ],
           "isUnique": true,
+          "where": "\"permission_sets\".\"organization_id\" IS NOT NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1466,8 +1483,24 @@
         }
       },
       "indexes": {
-        "role_name_org_idx": {
-          "name": "role_name_org_idx",
+        "role_global_name_idx": {
+          "name": "role_global_name_idx",
+          "columns": [
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"roles\".\"organization_id\" IS NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "role_tenant_name_idx": {
+          "name": "role_tenant_name_idx",
           "columns": [
             {
               "expression": "name",
@@ -1483,6 +1516,7 @@
             }
           ],
           "isUnique": true,
+          "where": "\"roles\".\"organization_id\" IS NOT NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}

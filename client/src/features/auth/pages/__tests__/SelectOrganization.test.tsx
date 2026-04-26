@@ -40,15 +40,19 @@ describe('SelectOrganizationPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useTenant).mockReturnValue({ syncActiveOrganizationId } as any);
+    vi.mocked(useTenant).mockReturnValue({
+      syncActiveOrganizationId,
+    } as unknown as ReturnType<typeof useTenant>);
     vi.mocked(useAuth).mockReturnValue({
       data: { user: { email: 'test@example.com' } },
       isLoading: false,
-    } as any);
+    } as unknown as ReturnType<typeof useAuth>);
   });
 
   it('should render loading state when fetching organizations', () => {
-    vi.mocked(useOrganizations).mockReturnValue({ isLoading: true } as any);
+    vi.mocked(useOrganizations).mockReturnValue({
+      isLoading: true,
+    } as unknown as ReturnType<typeof useOrganizations>);
 
     render(
       <MemoryRouter>
@@ -67,7 +71,7 @@ describe('SelectOrganizationPage', () => {
     vi.mocked(useOrganizations).mockReturnValue({
       isLoading: false,
       data: mockOrgs,
-    } as any);
+    } as unknown as ReturnType<typeof useOrganizations>);
 
     render(
       <MemoryRouter>
@@ -86,7 +90,7 @@ describe('SelectOrganizationPage', () => {
     vi.mocked(useOrganizations).mockReturnValue({
       isLoading: false,
       data: mockOrgs,
-    } as any);
+    } as unknown as ReturnType<typeof useOrganizations>);
 
     render(
       <MemoryRouter>
@@ -104,7 +108,7 @@ describe('SelectOrganizationPage', () => {
     vi.mocked(useOrganizations).mockReturnValue({
       isLoading: false,
       data: [],
-    } as any);
+    } as unknown as ReturnType<typeof useOrganizations>);
 
     render(
       <MemoryRouter>
@@ -120,7 +124,7 @@ describe('SelectOrganizationPage', () => {
     vi.mocked(useOrganizations).mockReturnValue({
       isLoading: false,
       data: [],
-    } as any);
+    } as unknown as ReturnType<typeof useOrganizations>);
 
     render(
       <MemoryRouter>

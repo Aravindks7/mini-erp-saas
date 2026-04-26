@@ -5,7 +5,6 @@ import { auth } from '../auth/auth.js';
 import { db } from '../../db/index.js';
 import { organizationInvites, organizationMemberships } from '../../db/schema/index.js';
 import { rbacService } from '../rbac/rbac.service.js';
-import { PERMISSIONS } from '#shared/contracts/rbac.contract.js';
 
 // --- MOCKS ---
 
