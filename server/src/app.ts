@@ -7,8 +7,12 @@ import { errorMiddleware } from './middleware/error.middleware.js';
 import { auth } from './modules/auth/auth.js';
 
 import customersRoutes from './modules/customers/customers.routes.js';
+import suppliersRoutes from './modules/suppliers/suppliers.routes.js';
 import organizationsRoutes from './modules/organizations/organizations.routes.js';
 import rbacRoutes from './modules/rbac/rbac.routes.js';
+import uomRoutes from './modules/uom/uom.routes.js';
+import taxesRoutes from './modules/taxes/taxes.routes.js';
+import productsRoutes from './modules/products/products.routes.js';
 
 const app = express();
 
@@ -48,8 +52,12 @@ app.get('/', (_req, res) => {
 
 // Business routes
 app.use('/customers', customersRoutes);
+app.use('/suppliers', suppliersRoutes);
 app.use('/organizations', organizationsRoutes);
 app.use('/rbac', rbacRoutes);
+app.use('/uom', uomRoutes);
+app.use('/taxes', taxesRoutes);
+app.use('/products', productsRoutes);
 
 // Global error handler — must be last
 app.use(errorMiddleware);

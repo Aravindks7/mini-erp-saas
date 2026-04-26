@@ -11,10 +11,52 @@ export const PERMISSIONS = {
     READ: 'inventory:read',
     ADJUST: 'inventory:adjust',
   },
+  UOM: {
+    READ: 'uom:read',
+    CREATE: 'uom:create',
+    UPDATE: 'uom:update',
+    DELETE: 'uom:delete',
+  },
   ORGANIZATION: {
     SETTINGS: 'org:settings:manage',
     MEMBERS: 'org:members:manage',
     ROLES: 'org:roles:manage',
+  },
+  TAXES: {
+    READ: 'taxes:read',
+    CREATE: 'taxes:create',
+    UPDATE: 'taxes:update',
+    DELETE: 'taxes:delete',
+  },
+  SUPPLIERS: {
+    READ: 'suppliers:read',
+    CREATE: 'suppliers:create',
+    UPDATE: 'suppliers:update',
+    DELETE: 'suppliers:delete',
+  },
+  PRODUCTS: {
+    READ: 'products:read',
+    CREATE: 'products:create',
+    UPDATE: 'products:update',
+    DELETE: 'products:delete',
+  },
+  WAREHOUSES: {
+    READ: 'warehouses:read',
+    CREATE: 'warehouses:create',
+    UPDATE: 'warehouses:update',
+    DELETE: 'warehouses:delete',
+  },
+  SALES_ORDERS: {
+    READ: 'sales-orders:read',
+    CREATE: 'sales-orders:create',
+    UPDATE: 'sales-orders:update',
+    DELETE: 'sales-orders:delete',
+  },
+  PURCHASE_ORDERS: {
+    READ: 'purchase-orders:read',
+    CREATE: 'purchase-orders:create',
+    UPDATE: 'purchase-orders:update',
+    DELETE: 'purchase-orders:delete',
   },
 } as const;
 

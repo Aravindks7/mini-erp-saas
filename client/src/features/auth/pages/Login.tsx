@@ -9,6 +9,7 @@ import { loginSchema, type LoginInput } from '@shared/contracts/auth.contract';
 import { useLoginMutation } from '../hooks/auth.hooks';
 import { Form } from '@/components/shared/form/Form';
 import { FormField } from '@/components/shared/form/FormField';
+import { getAuthErrorMessage } from '../utils/error-utils';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -28,13 +29,13 @@ export default function LoginPage() {
     try {
       const result = await login(data);
       if (result.error) {
-        form.setError('root', { message: result.error.message || 'Login failed' });
+        form.setError('root', { message: getAuthErrorMessage(result.error) });
       } else {
         navigate('/', { replace: true });
       }
     } catch (error) {
-      console.error('[Login] Login failed:', error);
-      form.setError('root', { message: 'An unexpected error occurred' });
+      console.error('[Login] Unexpected login failure:', error);
+      form.setError('root', { message: getAuthErrorMessage(error) });
     }
   };
 

@@ -286,25 +286,28 @@ export function ImportModal({
                         </tr>
                       </thead>
                       <tbody>
-                        {result.successfulRecords.map((record: any, i) => (
-                          <tr key={record.id || i} className="border-b last:border-0">
-                            <td className="px-2 py-1 truncate max-w-[150px]">
-                              {formatValue('companyName', record.companyName)}
-                            </td>
-                            <td className="px-2 py-1 truncate max-w-[150px]">
-                              {formatValue('taxNumber', record.taxNumber)}
-                            </td>
-                            <td className="px-2 py-1 truncate max-w-[150px] capitalize">
-                              {formatValue('status', record.status)}
-                            </td>
-                            <td className="px-2 py-1 truncate max-w-[150px]">
-                              {formatValue('createdAt', record.createdAt)}
-                            </td>
-                            <td className="px-2 py-1 truncate max-w-[150px]">
-                              {formatValue('updatedAt', record.updatedAt)}
-                            </td>
-                          </tr>
-                        ))}
+                        {(result.successfulRecords as unknown[]).map((item, i) => {
+                          const record = item as Record<string, unknown>;
+                          return (
+                            <tr key={(record.id as string) || i} className="border-b last:border-0">
+                              <td className="px-2 py-1 truncate max-w-[150px]">
+                                {formatValue('companyName', record.companyName)}
+                              </td>
+                              <td className="px-2 py-1 truncate max-w-[150px]">
+                                {formatValue('taxNumber', record.taxNumber)}
+                              </td>
+                              <td className="px-2 py-1 truncate max-w-[150px] capitalize">
+                                {formatValue('status', record.status)}
+                              </td>
+                              <td className="px-2 py-1 truncate max-w-[150px]">
+                                {formatValue('createdAt', record.createdAt)}
+                              </td>
+                              <td className="px-2 py-1 truncate max-w-[150px]">
+                                {formatValue('updatedAt', record.updatedAt)}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

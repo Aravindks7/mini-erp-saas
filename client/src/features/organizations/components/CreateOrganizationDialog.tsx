@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -20,13 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SearchableSelect } from '@/components/shared/form/SearchableSelect';
 import { COUNTRIES } from '@shared/utils/countries';
 
 interface CreateOrganizationDialogProps {
@@ -37,6 +31,11 @@ interface CreateOrganizationDialogProps {
 export function CreateOrganizationDialog({ isOpen, onOpenChange }: CreateOrganizationDialogProps) {
   const { syncActiveOrganizationId } = useTenant();
   const createOrganization = useCreateOrganization();
+
+  const countryOptions = useMemo(
+    () => COUNTRIES.map((c) => ({ label: c.name, value: c.code })),
+    [],
+  );
 
   const form = useForm<CreateOrganizationInput>({
     resolver: zodResolver(createOrganizationSchema),
@@ -104,18 +103,12 @@ export function CreateOrganizationDialog({ isOpen, onOpenChange }: CreateOrganiz
               </FormField>
               <FormField name="defaultCountry" label="Default Country">
                 {({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a country" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COUNTRIES.map((country) => (
-                        <SelectItem key={country.code} value={country.code}>
-                          {country.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={countryOptions}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Select a country"
+                  />
                 )}
               </FormField>
               <div className="flex justify-end gap-3 pt-4">

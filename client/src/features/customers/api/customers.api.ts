@@ -3,9 +3,8 @@ import { z } from 'zod';
 import type {
   CreateCustomerInput,
   UpdateCustomerInput,
-  addressSchema,
-  contactSchema,
 } from '@shared/contracts/customers.contract';
+import { addressSchema, contactSchema } from '@shared/contracts/common.contract';
 
 export interface RawAddressResponse {
   id: string;

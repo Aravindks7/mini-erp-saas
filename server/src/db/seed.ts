@@ -7,7 +7,7 @@ import {
   rolePermissionSets,
 } from './schema/index.js';
 import { PERMISSIONS } from '#shared/index.js';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, sql, notInArray } from 'drizzle-orm';
 
 /**
  * Idempotent seed function for the Dynamic RBAC system.
@@ -20,11 +20,19 @@ export async function seedRBAC() {
     // 1. Seed Granular Permissions from TypeScript Constants
     const allPermissions = Object.values(PERMISSIONS).flatMap((group) => Object.values(group));
 
+    // Upsert all defined permissions
     for (const p of allPermissions) {
       await db
         .insert(permissions)
         .values({ id: p, description: `Permission for ${p}` })
         .onConflictDoNothing();
+    }
+
+    // Optional: Clean up orphaned permissions that are no longer in our PERMISSIONS constant
+    if (allPermissions.length > 0) {
+      await db
+        .delete(permissions)
+        .where(notInArray(permissions.id, allPermissions as [string, ...string[]]));
     }
 
     // 2. Create "Full Access" Permission Set (Global)
@@ -57,7 +65,51 @@ export async function seedRBAC() {
         .onConflictDoNothing();
     }
 
-    // 3. Create Base Roles (Admin, Employee)
+    // 3. Create "Employee Access" Permission Set (Global)
+    // Sane defaults for a standard employee: Read everything, but no manage/delete/create on core org/RBAC
+    const employeePermissions: string[] = [
+      PERMISSIONS.CUSTOMERS.READ,
+      PERMISSIONS.PRODUCTS.READ,
+      PERMISSIONS.INVENTORY.READ,
+      PERMISSIONS.SUPPLIERS.READ,
+      PERMISSIONS.TAXES.READ,
+      PERMISSIONS.UOM.READ,
+      PERMISSIONS.WAREHOUSES.READ,
+      PERMISSIONS.SALES_ORDERS.READ,
+      PERMISSIONS.SALES_ORDERS.CREATE,
+      PERMISSIONS.PURCHASE_ORDERS.READ,
+    ];
+
+    let employeeAccessSet = await db.query.permissionSets.findFirst({
+      where: and(
+        eq(permissionSets.name, 'Employee Access'),
+        sql`${permissionSets.organizationId} IS NULL`,
+      ),
+    });
+
+    if (!employeeAccessSet) {
+      const [newSet] = await db
+        .insert(permissionSets)
+        .values({
+          name: 'Employee Access',
+          organizationId: null,
+        })
+        .returning();
+      employeeAccessSet = newSet;
+    }
+
+    // Link defined employee permissions to the "Employee Access" set
+    for (const p of employeePermissions) {
+      await db
+        .insert(permissionSetItems)
+        .values({
+          permissionSetId: employeeAccessSet!.id,
+          permissionId: p,
+        })
+        .onConflictDoNothing();
+    }
+
+    // 4. Create Base Roles (Admin, Employee)
 
     // ADMIN
     let adminRole = await db.query.roles.findFirst({
@@ -88,12 +140,12 @@ export async function seedRBAC() {
     }
 
     // EMPLOYEE
-    const employeeRole = await db.query.roles.findFirst({
+    let employeeRole = await db.query.roles.findFirst({
       where: and(eq(roles.name, 'Employee'), sql`${roles.organizationId} IS NULL`),
     });
 
     if (!employeeRole) {
-      await db
+      const [newRole] = await db
         .insert(roles)
         .values({
           name: 'Employee',
@@ -101,6 +153,18 @@ export async function seedRBAC() {
           organizationId: null,
         })
         .returning();
+      employeeRole = newRole;
+    }
+
+    if (employeeRole && employeeAccessSet) {
+      // Link Employee role to Employee Access set
+      await db
+        .insert(rolePermissionSets)
+        .values({
+          roleId: employeeRole.id,
+          permissionSetId: employeeAccessSet.id,
+        })
+        .onConflictDoNothing();
     }
 
     console.log('✅ RBAC System defaults verified.');

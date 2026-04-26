@@ -18,7 +18,8 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:check": "drizzle-kit check",
-    "db:migrate": "node dist/server/src/db/migrate.js"
+    "db:migrate": "node dist/server/src/db/migrate.js",
+    "db:seed": "tsx scripts/seed.ts"
   },
   "keywords": [],
   "author": "",

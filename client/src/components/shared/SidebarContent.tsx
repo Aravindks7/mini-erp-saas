@@ -45,13 +45,15 @@ export function SidebarContent({ onItemClick, isCollapsed, toggle }: SidebarCont
     <div className="flex flex-col h-full bg-background overflow-hidden">
       <div
         className={cn(
-          'hidden lg:flex items-center gap-2 px-4 py-6 font-semibold text-lg',
-          isCollapsed && '',
+          'hidden lg:flex items-center gap-3 px-4 py-6 font-semibold text-lg',
+          isCollapsed && 'flex-col justify-center px-2 gap-4',
         )}
       >
-        {!isCollapsed && <OrganizationSwitcher isCollapsed={isCollapsed} />}
+        <div className={cn('min-w-0', !isCollapsed && 'flex-1')}>
+          <OrganizationSwitcher isCollapsed={isCollapsed} />
+        </div>
 
-        <Button variant="outline" size="icon" onClick={toggle}>
+        <Button variant="outline" size="icon" onClick={toggle} className="shrink-0">
           {isCollapsed ? <SidebarOpen size={14} /> : <SidebarClose size={14} />}
         </Button>
       </div>
