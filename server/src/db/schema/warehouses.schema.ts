@@ -4,6 +4,7 @@ import { baseColumns } from './base.schema.js';
 import { timestamps, userTracking, versioning, lifecycle } from './audit.schema.js';
 import { organizations } from './organizations.schema.js';
 import { addresses } from './addresses.schema.js';
+import { bins } from './bins.schema.js';
 
 export const warehouses = pgTable(
   'warehouses',
@@ -49,12 +50,13 @@ export const warehouseAddresses = pgTable(
   ],
 );
 
-export const warehousesRelations = relations(warehouses, ({ one, many }) => ({
+export const warehousesRelations = relations(warehouses, ({ many, one }) => ({
   organization: one(organizations, {
     fields: [warehouses.organizationId],
     references: [organizations.id],
   }),
   addresses: many(warehouseAddresses),
+  bins: many(bins),
 }));
 
 export const warehouseAddressesRelations = relations(warehouseAddresses, ({ one }) => ({

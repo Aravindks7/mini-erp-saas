@@ -24,6 +24,9 @@ export class WarehousesService extends BaseService<typeof warehouses> {
         addresses: {
           with: { address: true },
         },
+        bins: {
+          where: (bins, { isNull }) => isNull(bins.deletedAt),
+        },
       },
       orderBy: (warehouses, { desc }) => [desc(warehouses.createdAt)],
     });
@@ -35,6 +38,9 @@ export class WarehousesService extends BaseService<typeof warehouses> {
       with: {
         addresses: {
           with: { address: true },
+        },
+        bins: {
+          where: (bins, { isNull }) => isNull(bins.deletedAt),
         },
       },
     });
