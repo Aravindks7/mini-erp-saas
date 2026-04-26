@@ -1,13 +1,14 @@
 import * as React from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { PERMISSIONS } from '@shared/index';
-import { cn } from '@/lib/utils';
 
 interface PermissionTreeProps {
   selectedPermissions: string[];
   onChange: (permissions: string[]) => void;
   disabled?: boolean;
+  searchQuery?: string;
 }
 
 type PermissionNode = string | { [key: string]: PermissionNode };
@@ -54,73 +55,105 @@ const toggleNode = (
 };
 
 /**
- * Recursive tree item representing a single node or leaf in the PERMISSIONS hierarchy.
+ * A custom basic accordion-style toggle for a module (group of permissions).
  */
-const TreeItem = ({
+const ModuleGroup = ({
   name,
   node,
   selectedPermissions,
   onChange,
   disabled,
-  depth = 0,
-  path = '',
+  searchQuery = '',
 }: {
   name: string;
   node: PermissionNode;
   selectedPermissions: string[];
   onChange: (permissions: string[]) => void;
   disabled?: boolean;
-  depth?: number;
-  path?: string;
+  searchQuery?: string;
 }) => {
-  const fullPath = path ? `${path}.${name}` : name;
-  const id = `perm-${fullPath}`;
+  const [isOpen, setIsOpen] = React.useState(true);
+
+  // Auto-expand if there's a search match in this module
+  React.useEffect(() => {
+    if (searchQuery) {
+      setIsOpen(true);
+    }
+  }, [searchQuery]);
+
+  const id = `module-${name}`;
   const checked = getCheckedState(node, selectedPermissions);
-  const isLeaf = typeof node === 'string';
 
   const handleCheckedChange = (checkedValue: boolean | 'indeterminate') => {
-    // When a user clicks a checkbox, Radix calls onCheckedChange with the new boolean state.
-    // We treat 'indeterminate' as true to ensure we always pass a boolean to toggleNode.
     const targetState = checkedValue === 'indeterminate' ? true : checkedValue;
     onChange(toggleNode(node, selectedPermissions, targetState));
   };
 
-  // Convert key names (e.g., "CUSTOMERS", "READ") to friendly labels ("customers", "read")
   const label = name.toLowerCase().replace(/_/g, ' ');
 
+  // Filter children based on search query
+  const children = typeof node === 'object' ? Object.entries(node) : [];
+  const filteredChildren = children.filter(
+    ([childName]) =>
+      label.includes(searchQuery.toLowerCase()) ||
+      childName.toLowerCase().replace(/_/g, ' ').includes(searchQuery.toLowerCase()),
+  );
+
+  // If the module name doesn't match and no children match, hide the module
+  if (searchQuery && !label.includes(searchQuery.toLowerCase()) && filteredChildren.length === 0) {
+    return null;
+  }
+
   return (
-    <div className={cn('flex flex-col gap-3', depth > 0 && 'ml-6')}>
-      <div className="flex items-center space-x-2">
-        <Checkbox
-          id={id}
-          checked={checked}
-          onCheckedChange={handleCheckedChange}
-          disabled={disabled}
-        />
-        <Label
-          htmlFor={id}
-          className={cn(
-            'cursor-pointer capitalize text-sm leading-none',
-            !isLeaf && 'font-semibold',
-          )}
-        >
-          {label}
-        </Label>
+    <div className="flex flex-col border rounded-md bg-card shadow-sm h-full transition-all duration-200">
+      <div
+        className="flex items-center justify-between p-3 bg-muted/30 cursor-pointer select-none hover:bg-muted/50 transition-colors"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center space-x-3" onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            id={id}
+            checked={checked}
+            onCheckedChange={handleCheckedChange}
+            disabled={disabled}
+          />
+          <Label htmlFor={id} className="cursor-pointer capitalize font-semibold text-sm">
+            {label}
+          </Label>
+        </div>
+        <div className="text-muted-foreground ml-2 shrink-0">
+          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </div>
       </div>
-      {!isLeaf && (
-        <div className="flex flex-col gap-3 mt-1 border-l pl-4 ml-1.5 border-muted">
-          {Object.entries(node).map(([childName, childNode]) => (
-            <TreeItem
-              key={childName}
-              name={childName}
-              node={childNode}
-              selectedPermissions={selectedPermissions}
-              onChange={onChange}
-              disabled={disabled}
-              depth={depth + 1}
-              path={fullPath}
-            />
-          ))}
+
+      {isOpen && filteredChildren.length > 0 && (
+        <div className="p-3 border-t bg-card animate-in fade-in slide-in-from-top-1">
+          <div className="flex flex-col gap-3 pl-2">
+            {filteredChildren.map(([childName, childNode]) => {
+              const childId = `perm-${name}-${childName}`;
+              const childChecked = getCheckedState(childNode, selectedPermissions);
+              const childLabel = childName.toLowerCase().replace(/_/g, ' ');
+              return (
+                <div key={childName} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={childId}
+                    checked={childChecked}
+                    onCheckedChange={(val) => {
+                      const targetState = val === 'indeterminate' ? true : val;
+                      onChange(toggleNode(childNode, selectedPermissions, targetState));
+                    }}
+                    disabled={disabled}
+                  />
+                  <Label
+                    htmlFor={childId}
+                    className="cursor-pointer capitalize text-sm font-normal"
+                  >
+                    {childLabel}
+                  </Label>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -128,24 +161,26 @@ const TreeItem = ({
 };
 
 /**
- * PermissionTree component manages granular RBAC permissions in a hierarchical tree view.
- * It supports recursive selection, indeterminate states, and granular leaf toggling.
+ * PermissionTree component manages granular RBAC permissions.
+ * Displays modules in a 3-column grid to maximize space usage.
  */
 export const PermissionTree: React.FC<PermissionTreeProps> = ({
   selectedPermissions,
   onChange,
   disabled,
+  searchQuery = '',
 }) => {
   return (
-    <div className="space-y-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {Object.entries(PERMISSIONS).map(([groupName, groupNode]) => (
-        <TreeItem
+        <ModuleGroup
           key={groupName}
           name={groupName}
           node={groupNode}
           selectedPermissions={selectedPermissions}
           onChange={onChange}
           disabled={disabled}
+          searchQuery={searchQuery}
         />
       ))}
     </div>

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Save, X } from 'lucide-react';
 
@@ -25,6 +25,8 @@ export default function PermissionSetFormPage() {
   const { getPath } = useTenantPath();
   const backPath = getPath('/settings/permission-sets');
 
+  const [searchQuery, setSearchQuery] = React.useState('');
+
   const { data: existingSet, isLoading: isFetching } = usePermissionSet(id!);
   const createMutation = useCreatePermissionSet();
   const updateMutation = useUpdatePermissionSet(id!);
@@ -37,7 +39,7 @@ export default function PermissionSetFormPage() {
     register,
     handleSubmit,
     setValue,
-    watch,
+    control,
     reset,
     formState: { errors, isDirty },
   } = useForm<CreatePermissionSetInput>({
@@ -48,7 +50,11 @@ export default function PermissionSetFormPage() {
     },
   });
 
-  const selectedPermissions = watch('permissions');
+  const selectedPermissions = useWatch({
+    control,
+    name: 'permissions',
+    defaultValue: [],
+  });
 
   React.useEffect(() => {
     if (existingSet) {
@@ -115,10 +121,10 @@ export default function PermissionSetFormPage() {
       />
 
       {isForking && (
-        <Alert variant="default" className="mb-6 bg-amber-50 border-amber-200 text-amber-800">
-          <AlertCircle className="h-4 w-4 stroke-amber-800" />
-          <AlertTitle className="font-semibold text-amber-900">System Template</AlertTitle>
-          <AlertDescription className="text-amber-800/90">
+        <Alert variant="default" className="mb-6 bg-muted/40 border-border">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle className="font-semibold">System Template</AlertTitle>
+          <AlertDescription>
             You are editing a <strong>System Template</strong>. A custom copy will be created for
             your organization upon saving.
           </AlertDescription>
@@ -149,11 +155,20 @@ export default function PermissionSetFormPage() {
             </Badge>
           </div>
 
-          <div className="rounded-lg border bg-card p-6">
+          <div className="max-w-md">
+            <Input
+              placeholder="Search permissions..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div className="rounded-lg border bg-card p-6 max-h-[420px] overflow-y-auto">
             <PermissionTree
               selectedPermissions={selectedPermissions}
               onChange={(perms) => setValue('permissions', perms, { shouldDirty: true })}
               disabled={isPending}
+              searchQuery={searchQuery}
             />
           </div>
           {errors.permissions && (

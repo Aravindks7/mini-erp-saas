@@ -13,6 +13,8 @@ import rbacRoutes from './modules/rbac/rbac.routes.js';
 import uomRoutes from './modules/uom/uom.routes.js';
 import taxesRoutes from './modules/taxes/taxes.routes.js';
 import productsRoutes from './modules/products/products.routes.js';
+import warehousesRoutes from './modules/warehouses/warehouses.routes.js';
+import inventoryRoutes from './modules/inventory/inventory.routes.js';
 
 const app = express();
 
@@ -58,6 +60,8 @@ app.use('/rbac', rbacRoutes);
 app.use('/uom', uomRoutes);
 app.use('/taxes', taxesRoutes);
 app.use('/products', productsRoutes);
+app.use('/warehouses', warehousesRoutes);
+app.use('/inventory', inventoryRoutes);
 
 // Global error handler — must be last
 app.use(errorMiddleware);

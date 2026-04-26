@@ -13,7 +13,6 @@ import {
 
 import { BaseService } from '../../lib/base.service.js';
 import { parseCsv } from '../../utils/csv.js';
-import { logger } from '../../utils/logger.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type CustomerWithRelations = Awaited<ReturnType<CustomersService['getCustomerById']>>;
@@ -72,7 +71,6 @@ export class CustomersService extends BaseService<typeof customers> {
     return await db.transaction(async (tx) => {
       // 0. Duplicate check
       const existing = await this.checkDuplicate(organizationId, data.companyName);
-      logger.info({ existing, companyName: data.companyName }, 'Duplicate check result');
       if (existing) {
         throw new Error(`Customer with name '${data.companyName}' already exists`);
       }
