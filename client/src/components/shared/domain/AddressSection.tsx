@@ -7,11 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormField } from '@/components/shared/form/FormField';
-import { Combobox } from '@/components/shared/form/Combobox';
 import { useGeoLookup } from '@/hooks/useGeoLookup';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useTenant } from '@/contexts/TenantContext';
 import { COUNTRIES, getCountryByName } from '@shared/utils/countries';
+import { SearchableSelect } from '../form/SearchableSelect';
 
 const countryOptions = COUNTRIES.map((c) => ({ label: c.name, value: c.name }));
 
@@ -152,7 +152,7 @@ function AddressItem({
 
         <FormField name={`${name}.${index}.country`} label="Country">
           {({ field }) => (
-            <Combobox
+            <SearchableSelect
               id={field.id}
               options={countryOptions}
               value={field.value}

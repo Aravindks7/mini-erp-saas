@@ -1,10 +1,10 @@
-import { CustomerList } from '../components/CustomerList';
+import { ProductList } from '../components/ProductList';
 import { PageContainer } from '@/components/shared/PageContainer';
 
-export default function CustomersPage() {
+export default function ProductsListPage() {
   return (
     <PageContainer>
-      <CustomerList />
+      <ProductList />
     </PageContainer>
   );
 }

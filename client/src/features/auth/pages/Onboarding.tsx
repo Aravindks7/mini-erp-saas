@@ -18,7 +18,7 @@ import {
   organizationKeys,
 } from '@/features/organizations/hooks/organizations.hooks';
 import type { OrganizationResponse } from '@/features/organizations/api/organizations.api';
-import { Combobox } from '@/components/shared/form/Combobox';
+import { SearchableSelect } from '@/components/shared/form/SearchableSelect';
 import { COUNTRIES } from '@shared/utils/countries';
 import { Form } from '@/components/shared/form/Form';
 import { FormField } from '@/components/shared/form/FormField';
@@ -124,7 +124,7 @@ export default function OnboardingPage() {
               <FieldGroup>
                 <FormField name="defaultCountry" label="Default Country">
                   {({ field }) => (
-                    <Combobox
+                    <SearchableSelect
                       id={field.id}
                       options={countryOptions}
                       value={field.value}

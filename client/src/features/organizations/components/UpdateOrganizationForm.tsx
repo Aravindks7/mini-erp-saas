@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { toast } from 'sonner';
 import { useTenant } from '@/contexts/TenantContext';
 import { useUpdateOrganization } from '../hooks/organizations.hooks';
@@ -13,11 +14,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Loader2, Save } from 'lucide-react';
 import { usePermission } from '@/hooks/usePermission';
 import { PERMISSIONS } from '@shared/index';
+import { SearchableSelect } from '@/components/shared/form/SearchableSelect';
+import { COUNTRIES } from '@shared/utils/countries';
 
 export function UpdateOrganizationForm() {
   const { activeOrganization } = useTenant();
   const updateOrg = useUpdateOrganization(activeOrganization?.id || '');
   const canManageSettings = usePermission(PERMISSIONS.ORGANIZATION.SETTINGS);
+
+  const countryOptions = useMemo(
+    () => COUNTRIES.map((c) => ({ label: c.name, value: c.code })),
+    [],
+  );
 
   const handleSubmit = async (data: UpdateOrganizationInput) => {
     if (!activeOrganization) return;
@@ -66,7 +74,13 @@ export function UpdateOrganizationForm() {
 
               <FormField name="defaultCountry" label="Default Country">
                 {({ field }) => (
-                  <Input {...field} placeholder="United States" disabled={!canManageSettings} />
+                  <SearchableSelect
+                    options={countryOptions}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Select a country"
+                    disabled={!canManageSettings}
+                  />
                 )}
               </FormField>
 

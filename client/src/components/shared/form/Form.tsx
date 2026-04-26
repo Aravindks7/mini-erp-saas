@@ -14,11 +14,13 @@ interface FormProps<
   TFieldValues extends FieldValues,
   TSchema extends z.ZodType<TFieldValues> | z.ZodTypeAny,
 > {
-  children: (form: UseFormReturn<TFieldValues, unknown>) => React.ReactNode;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  children: (form: UseFormReturn<TFieldValues, any, TFieldValues>) => React.ReactNode;
   onSubmit: SubmitHandler<TFieldValues>;
   schema?: TSchema;
   defaultValues?: UseFormProps<TFieldValues>['defaultValues'];
-  form?: UseFormReturn<TFieldValues, unknown>; // Optional external form
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  form?: UseFormReturn<TFieldValues, any, TFieldValues>; // Optional external form
   className?: string;
   id?: string;
   mode?: UseFormProps<TFieldValues>['mode'];
@@ -49,7 +51,8 @@ export function Form<
     defaultValues,
   });
 
-  const form = (externalForm || internalForm) as UseFormReturn<TFieldValues, unknown>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const form = (externalForm || internalForm) as UseFormReturn<TFieldValues, any, TFieldValues>;
 
   return (
     <FormProvider {...form}>

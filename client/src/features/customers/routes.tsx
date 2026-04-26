@@ -1,6 +1,6 @@
 import { Users } from 'lucide-react';
 import type { AppRoute } from '@/lib/types/navigation';
-import CustomersPage from './pages/CustomersPage';
+import CustomersListPage from './pages/CustomersListPage';
 import CustomerFormPage from './pages/CustomerFormPage';
 import CustomerDetailsPage from './pages/CustomerDetailsPage';
 import { queryClient } from '@/lib/query-client';
@@ -19,7 +19,7 @@ export const customerRoutes: AppRoute[] = [
     children: [
       {
         index: true,
-        element: <CustomersPage />,
+        element: <CustomersListPage />,
       },
       {
         path: 'new',
