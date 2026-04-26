@@ -1,7 +1,7 @@
 import { pgTable, text, integer, uniqueIndex } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { baseColumns } from './base.schema.js';
-import { timestamps, userTracking } from './audit.schema.js';
+import { timestamps, userTracking, lifecycle } from './audit.schema.js';
 import { organizations } from './organizations.schema.js';
 
 /**
@@ -15,6 +15,7 @@ export const documentSequences = pgTable(
     ...baseColumns,
     ...timestamps,
     ...userTracking,
+    ...lifecycle,
 
     type: text('type').notNull(), // e.g., 'SO', 'PO', 'INV'
     prefix: text('prefix').notNull(), // e.g., 'SO-'

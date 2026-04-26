@@ -7,4 +7,6 @@ export * from './contracts/uom.contract.js';
 export * from './contracts/taxes.contract.js';
 export * from './contracts/suppliers.contract.js';
 export * from './contracts/products.contract.js';
+export * from './contracts/warehouses.contract.js';
+export * from './contracts/inventory.contract.js';
 export * from './utils/date.js';
