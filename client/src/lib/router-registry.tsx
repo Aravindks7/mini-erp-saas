@@ -12,6 +12,13 @@ import { warehouseRoutes } from '@/features/warehouses/routes';
 import { inventoryRoutes } from '@/features/inventory/routes';
 import { purchaseOrdersRoutes } from '@/features/purchase-orders/routes';
 import { salesOrdersRoutes } from '@/features/sales-orders/routes';
+import { receiptRoutes } from '@/features/receipts/routes';
+import { billRoutes } from '@/features/bills/routes';
+import { paymentRoutes } from '@/features/payments/routes';
+import { shipmentRoutes } from '@/features/shipments/routes';
+import { invoiceRoutes } from '@/features/invoices/routes';
+import { bomRoutes } from '@/features/bom/routes';
+import { workOrderRoutes } from '@/features/work-orders/routes';
 import { settingsRoutes } from '@/features/settings/routes';
 
 /**
@@ -30,6 +37,13 @@ export const dashboardRoutes: AppRoute[] = [
   ...inventoryRoutes,
   ...purchaseOrdersRoutes,
   ...salesOrdersRoutes,
+  ...receiptRoutes,
+  ...billRoutes,
+  ...paymentRoutes,
+  ...shipmentRoutes,
+  ...invoiceRoutes,
+  ...bomRoutes,
+  ...workOrderRoutes,
   ...settingsRoutes,
 ];
 

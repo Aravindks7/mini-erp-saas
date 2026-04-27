@@ -9,6 +9,12 @@ export interface RouteManifest {
   icon?: LucideIcon;
   /** Should this route project into the primary sidebar? */
   showInSidebar?: boolean;
+  /** The group this module belongs to in the sidebar (e.g., 'Sales') */
+  sidebarGroup?: string;
+  /** Sort order within the group or sidebar */
+  order?: number;
+  /** Whether the route is completely hidden from navigation */
+  hidden?: boolean;
   /** RBAC: Minimum clearance required to view this link */
   requiredRoles?: ('admin' | 'manager' | 'user')[];
   /** Breadcrumb handler */
