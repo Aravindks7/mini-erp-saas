@@ -10,6 +10,8 @@ import { uomRoutes } from '@/features/uom/routes';
 import { taxRoutes } from '@/features/taxes/routes';
 import { warehouseRoutes } from '@/features/warehouses/routes';
 import { inventoryRoutes } from '@/features/inventory/routes';
+import { purchaseOrdersRoutes } from '@/features/purchase-orders/routes';
+import { salesOrdersRoutes } from '@/features/sales-orders/routes';
 import { settingsRoutes } from '@/features/settings/routes';
 
 /**
@@ -26,6 +28,8 @@ export const dashboardRoutes: AppRoute[] = [
   ...taxRoutes,
   ...warehouseRoutes,
   ...inventoryRoutes,
+  ...purchaseOrdersRoutes,
+  ...salesOrdersRoutes,
   ...settingsRoutes,
 ];
 

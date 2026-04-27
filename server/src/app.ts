@@ -15,6 +15,9 @@ import taxesRoutes from './modules/taxes/taxes.routes.js';
 import productsRoutes from './modules/products/products.routes.js';
 import warehousesRoutes from './modules/warehouses/warehouses.routes.js';
 import inventoryRoutes from './modules/inventory/inventory.routes.js';
+import purchaseOrdersRoutes from './modules/purchase-orders/purchase-orders.routes.js';
+import salesOrdersRoutes from './modules/sales-orders/sales-orders.routes.js';
+import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 
 const app = express();
 
@@ -62,6 +65,9 @@ app.use('/taxes', taxesRoutes);
 app.use('/products', productsRoutes);
 app.use('/warehouses', warehousesRoutes);
 app.use('/inventory', inventoryRoutes);
+app.use('/purchase-orders', purchaseOrdersRoutes);
+app.use('/sales-orders', salesOrdersRoutes);
+app.use('/dashboard', dashboardRoutes);
 
 // Global error handler — must be last
 app.use(errorMiddleware);
