@@ -8,13 +8,15 @@ vi.mock('@/contexts/AuthContext', () => ({
   useAuth: vi.fn(),
 }));
 
+const mockedUseAuth = vi.mocked(useAuth);
+
 describe('DashboardGreeting', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('renders nothing if session is not available', () => {
-    (useAuth as any).mockReturnValue({ data: null });
+    mockedUseAuth.mockReturnValue({ data: null } as unknown as ReturnType<typeof useAuth>);
     const { container } = render(<DashboardGreeting />);
     expect(container).toBeEmptyDOMElement();
   });
@@ -22,9 +24,9 @@ describe('DashboardGreeting', () => {
   it('renders morning greeting', () => {
     // Mock morning (e.g., 9 AM)
     vi.setSystemTime(new Date('2026-04-27T09:00:00'));
-    (useAuth as any).mockReturnValue({
+    mockedUseAuth.mockReturnValue({
       data: { user: { name: 'Aravind Venkat' } },
-    });
+    } as unknown as ReturnType<typeof useAuth>);
 
     render(<DashboardGreeting />);
     expect(screen.getByText(/Good morning, Aravind!/i)).toBeInTheDocument();
@@ -33,9 +35,9 @@ describe('DashboardGreeting', () => {
   it('renders afternoon greeting', () => {
     // Mock afternoon (e.g., 2 PM)
     vi.setSystemTime(new Date('2026-04-27T14:00:00'));
-    (useAuth as any).mockReturnValue({
+    mockedUseAuth.mockReturnValue({
       data: { user: { name: 'Aravind Venkat' } },
-    });
+    } as unknown as ReturnType<typeof useAuth>);
 
     render(<DashboardGreeting />);
     expect(screen.getByText(/Good afternoon, Aravind!/i)).toBeInTheDocument();
@@ -44,9 +46,9 @@ describe('DashboardGreeting', () => {
   it('renders evening greeting', () => {
     // Mock evening (e.g., 8 PM)
     vi.setSystemTime(new Date('2026-04-27T20:00:00'));
-    (useAuth as any).mockReturnValue({
+    mockedUseAuth.mockReturnValue({
       data: { user: { name: 'Aravind Venkat' } },
-    });
+    } as unknown as ReturnType<typeof useAuth>);
 
     render(<DashboardGreeting />);
     expect(screen.getByText(/Good evening, Aravind!/i)).toBeInTheDocument();
@@ -54,9 +56,9 @@ describe('DashboardGreeting', () => {
 
   it('handles single name correctly', () => {
     vi.setSystemTime(new Date('2026-04-27T09:00:00'));
-    (useAuth as any).mockReturnValue({
+    mockedUseAuth.mockReturnValue({
       data: { user: { name: 'Aravind' } },
-    });
+    } as unknown as ReturnType<typeof useAuth>);
 
     render(<DashboardGreeting />);
     expect(
