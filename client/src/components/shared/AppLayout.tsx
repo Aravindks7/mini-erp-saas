@@ -15,12 +15,10 @@ export default function AppLayout({ children, className }: AppLayoutProps) {
     <div className="flex h-dvh w-full overflow-hidden bg-background">
       {isDesktop && <Sidebar />}
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-y-auto relative">
         <Navbar />
 
-        <main className={cn('flex-1 overflow-y-auto bg-background pb-safe', className)}>
-          {children}
-        </main>
+        <main className={cn('flex-1 pb-safe', className)}>{children}</main>
       </div>
     </div>
   );

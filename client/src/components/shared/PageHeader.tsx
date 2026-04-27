@@ -13,6 +13,7 @@ export interface PageHeaderAction {
   className?: string;
   disabled?: boolean;
   isLoading?: boolean;
+  hidden?: boolean;
   type?: 'button' | 'submit';
   form?: string;
 }
@@ -97,20 +98,22 @@ export function PageHeader({
         </div>
 
         <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-          {actions.map((action, idx) => (
-            <Button
-              key={idx}
-              variant={action.variant || 'default'}
-              onClick={action.onClick}
-              disabled={action.disabled || action.isLoading}
-              type={action.type || 'button'}
-              form={action.form}
-              className={cn('h-9 gap-2', action.className)}
-            >
-              {action.icon && <span>{action.icon}</span>}
-              {action.label}
-            </Button>
-          ))}
+          {actions
+            .filter((action) => !action.hidden)
+            .map((action, idx) => (
+              <Button
+                key={idx}
+                variant={action.variant || 'default'}
+                onClick={action.onClick}
+                disabled={action.disabled || action.isLoading}
+                type={action.type || 'button'}
+                form={action.form}
+                className={cn('h-9 gap-2', action.className)}
+              >
+                {action.icon && <span>{action.icon}</span>}
+                {action.label}
+              </Button>
+            ))}
           {children}
         </div>
       </div>

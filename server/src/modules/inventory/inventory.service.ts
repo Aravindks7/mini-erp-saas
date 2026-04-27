@@ -10,6 +10,8 @@ import { sql, desc, and, eq } from 'drizzle-orm';
 import { CreateAdjustmentInput } from '#shared/contracts/inventory.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 /**
  * InventoryService: Orchestrates atomic stock movements.
  * Axiom: Every quantity change must have a header, a line, a ledger entry, and a level update.
@@ -23,8 +25,13 @@ export class InventoryService extends BaseService<typeof inventoryAdjustments> {
    * Creates an atomic Inventory Adjustment.
    * Updates Header -> Lines -> Levels -> Ledgers in a single transaction.
    */
-  async createAdjustment(organizationId: string, userId: string, data: CreateAdjustmentInput) {
-    return await db.transaction(async (tx) => {
+  async createAdjustment(
+    organizationId: string,
+    userId: string,
+    data: CreateAdjustmentInput,
+    txIn?: Transaction | typeof db,
+  ) {
+    const operation = async (tx: Transaction | typeof db) => {
       // 1. Generate Sequence Number (e.g., ADJ-0001)
       const sequenceNumber = await sequencesService.getNextSequence(
         organizationId,
@@ -120,6 +127,14 @@ export class InventoryService extends BaseService<typeof inventoryAdjustments> {
       }
 
       return adjustment;
+    };
+
+    if (txIn) {
+      return await operation(txIn);
+    }
+
+    return await db.transaction(async (tx) => {
+      return await operation(tx);
     });
   }
 

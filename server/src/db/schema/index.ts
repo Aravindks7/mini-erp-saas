@@ -22,6 +22,7 @@ export * from './customer-contacts.schema.js';
 
 export * from './warehouses.schema.js';
 export * from './bins.schema.js';
+export * from './dashboard.schema.js';
 
 export * from './inventory-levels.schema.js';
 export * from './inventory-ledgers.schema.js';

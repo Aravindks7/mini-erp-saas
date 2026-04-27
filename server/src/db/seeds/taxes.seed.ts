@@ -25,6 +25,24 @@ export async function seedTaxes() {
       createdBy: SEED_DATA.USER_ID,
       updatedBy: SEED_DATA.USER_ID,
     },
+    {
+      id: SEED_DATA.TAXES.VAT_REDUCED,
+      name: 'Reduced VAT',
+      rate: '5.00',
+      description: 'Reduced value added tax for essential goods',
+      organizationId: SEED_DATA.ORGANIZATION_ID,
+      createdBy: SEED_DATA.USER_ID,
+      updatedBy: SEED_DATA.USER_ID,
+    },
+    {
+      id: SEED_DATA.TAXES.EXEMPT,
+      name: 'Tax Exempt',
+      rate: '0.00',
+      description: 'Goods and services exempt from tax',
+      organizationId: SEED_DATA.ORGANIZATION_ID,
+      createdBy: SEED_DATA.USER_ID,
+      updatedBy: SEED_DATA.USER_ID,
+    },
   ];
 
   for (const item of items) {

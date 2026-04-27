@@ -102,7 +102,7 @@ export function GlobalSearch({ className, onSearch }: GlobalSearchProps) {
             }}
             className="h-12 text-sm px-4"
           />
-          <CommandList className="max-h-[500px] px-2 py-2">
+          <CommandList className="max-h-[calc(100dvh-240px)] sm:max-h-[500px] px-2 py-2">
             <CommandEmpty className="py-12 text-center">
               <Search className="mx-auto h-8 w-8 text-muted-foreground/30 mb-3" />
               <p className="text-sm font-medium text-muted-foreground">

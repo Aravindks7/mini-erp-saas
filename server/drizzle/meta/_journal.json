@@ -15,6 +15,13 @@
       "when": 1777119000001,
       "tag": "0001_security_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777119000002,
+      "tag": "0002_dashboard_mvs",
+      "breakpoints": true
     }
   ]
 }
