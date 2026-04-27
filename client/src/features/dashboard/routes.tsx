@@ -10,6 +10,7 @@ export const dashboardRoutes: AppRoute[] = [
       title: 'Dashboard',
       icon: LayoutDashboard,
       showInSidebar: true,
+      order: 0,
     },
   },
 ];

@@ -18,7 +18,8 @@ export const settingsRoutes: AppRoute[] = [
     handle: {
       title: 'Settings',
       icon: Settings,
-      showInSidebar: true,
+      showInSidebar: false,
+      order: 100,
       crumb: 'Settings',
     },
     children: [

@@ -16,6 +16,8 @@ export const productRoutes: AppRoute[] = [
       title: 'Products',
       icon: Package,
       showInSidebar: true,
+      sidebarGroup: 'Inventory',
+      order: 10,
       crumb: 'Products',
     },
     children: [

@@ -16,6 +16,8 @@ export const customerRoutes: AppRoute[] = [
       title: 'Customers',
       icon: Users,
       showInSidebar: true,
+      sidebarGroup: 'Sales',
+      order: 10,
       crumb: 'Customers',
     },
     children: [

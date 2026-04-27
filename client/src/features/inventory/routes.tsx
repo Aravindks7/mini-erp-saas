@@ -25,6 +25,8 @@ export const inventoryRoutes: AppRoute[] = [
       title: 'Inventory',
       icon: Boxes,
       showInSidebar: true,
+      sidebarGroup: 'Inventory',
+      order: 40,
       crumb: 'Inventory',
     },
     children: [
@@ -48,6 +50,8 @@ export const inventoryRoutes: AppRoute[] = [
       title: 'Adjustments',
       icon: ClipboardList,
       showInSidebar: true,
+      sidebarGroup: 'Inventory',
+      order: 50,
       crumb: 'Adjustments',
     },
     children: [

@@ -1,4 +1,4 @@
-import { User, UserPlus, Bell, MessageSquare, Activity, LogOut, ChevronUp } from 'lucide-react';
+import { User, UserPlus, Bell, MessageSquare, Activity, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSignOutMutation } from '@/features/auth/hooks/auth.hooks';
 import {
@@ -16,10 +16,9 @@ import { cn } from '@/lib/utils';
 
 interface UserProfileDropdownProps {
   className?: string;
-  isCollapsed?: boolean;
 }
 
-export function UserProfileDropdown({ className, isCollapsed }: UserProfileDropdownProps) {
+export function UserProfileDropdown({ className }: UserProfileDropdownProps) {
   const { data: session } = useAuth();
   const { mutate: handleSignOut } = useSignOutMutation();
 
@@ -34,45 +33,22 @@ export function UserProfileDropdown({ className, isCollapsed }: UserProfileDropd
     : 'U';
 
   return (
-    <div className={cn('p-3 mt-auto border-t border-border/50', isCollapsed && 'p-2', className)}>
+    <div className={cn('flex items-center', className)}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button
-            className={cn(
-              'flex items-center gap-3 w-full p-2 rounded-lg hover:bg-muted/50 transition-all duration-200 group text-left outline-none',
-              isCollapsed && 'justify-center px-0',
-            )}
-          >
-            <Avatar className="size-9 border-2 border-background shadow-sm group-hover:border-primary/20 transition-colors">
+          <button className="flex items-center justify-center rounded-full hover:ring-2 hover:ring-primary/20 transition-all duration-200 outline-none">
+            <Avatar className="size-9 border-2 border-background shadow-sm transition-colors">
               <AvatarImage src={user?.image || undefined} alt={user?.name || 'User'} />
               <AvatarFallback className="bg-primary/5 text-primary text-xs font-semibold">
                 {initials}
               </AvatarFallback>
             </Avatar>
-
-            {!isCollapsed && (
-              <div className="flex flex-col flex-1 min-w-0">
-                <span className="text-sm font-semibold truncate text-foreground/90">
-                  {user?.name || 'User Name'}
-                </span>
-                <span className="text-[11px] text-muted-foreground truncate font-medium">
-                  {user?.email || 'user@example.com'}
-                </span>
-              </div>
-            )}
-
-            {!isCollapsed && (
-              <ChevronUp
-                size={16}
-                className="text-muted-foreground group-hover:text-foreground transition-colors shrink-0"
-              />
-            )}
           </button>
         </DropdownMenuTrigger>
 
         <DropdownMenuContent
-          side="top"
-          align={isCollapsed ? 'center' : 'start'}
+          side="bottom"
+          align="end"
           sideOffset={12}
           className="w-72 shadow-2xl rounded-2xl border-border/40 backdrop-blur-sm"
         >
