@@ -11,99 +11,162 @@ import { eq, sql } from 'drizzle-orm';
 export async function seedInventory() {
   console.log('🌱 Seeding Inventory Adjustments & Levels...');
 
-  const adjustmentId = SEED_DATA.INVENTORY_ADJUSTMENTS.INITIAL_STOCK;
+  const adjustments = [
+    {
+      id: SEED_DATA.INVENTORY_ADJUSTMENTS.INITIAL_STOCK,
+      reference: 'SEED-MAIN-001',
+      reason: 'Initial Load - Main Warehouse',
+      lines: [
+        {
+          productId: SEED_DATA.PRODUCTS.WIDGET_A,
+          warehouseId: SEED_DATA.WAREHOUSES.MAIN,
+          binId: SEED_DATA.BINS.MAIN_A1,
+          quantity: '150',
+        },
+        {
+          productId: SEED_DATA.PRODUCTS.WIDGET_B,
+          warehouseId: SEED_DATA.WAREHOUSES.MAIN,
+          binId: SEED_DATA.BINS.MAIN_B1,
+          quantity: '300',
+        },
+        {
+          productId: SEED_DATA.PRODUCTS.STEEL_SHEET,
+          warehouseId: SEED_DATA.WAREHOUSES.MAIN,
+          binId: SEED_DATA.BINS.MAIN_A1,
+          quantity: '50',
+        },
+        {
+          productId: SEED_DATA.PRODUCTS.COPPER_WIRE,
+          warehouseId: SEED_DATA.WAREHOUSES.MAIN,
+          binId: SEED_DATA.BINS.MAIN_B1,
+          quantity: '20',
+        },
+      ],
+    },
+    {
+      id: SEED_DATA.INVENTORY_ADJUSTMENTS.ENRICHMENT_STOCK,
+      reference: 'SEED-ENRICH-001',
+      reason: 'Enrichment Load - Low Stock for Dashboard',
+      lines: [
+        {
+          productId: SEED_DATA.PRODUCTS.INK_CARTRIDGE,
+          warehouseId: SEED_DATA.WAREHOUSES.MAIN,
+          binId: SEED_DATA.BINS.MAIN_A1,
+          quantity: '4',
+        },
+        {
+          productId: SEED_DATA.PRODUCTS.PACKAGING_BOX,
+          warehouseId: SEED_DATA.WAREHOUSES.MAIN,
+          binId: SEED_DATA.BINS.MAIN_B1,
+          quantity: '8',
+        },
+      ],
+    },
+    {
+      id: SEED_DATA.INVENTORY_ADJUSTMENTS.INITIAL_STOCK_DC,
+      reference: 'SEED-DC-001',
+      reason: 'Initial Load - Distribution Center',
+      lines: [
+        {
+          productId: SEED_DATA.PRODUCTS.MICROCHIP_X,
+          warehouseId: SEED_DATA.WAREHOUSES.DIST_CENTER,
+          binId: SEED_DATA.BINS.DC_RACK_1,
+          quantity: '1000',
+        },
+        {
+          productId: SEED_DATA.PRODUCTS.LED_DISPLAY,
+          warehouseId: SEED_DATA.WAREHOUSES.DIST_CENTER,
+          binId: SEED_DATA.BINS.DC_RACK_2,
+          quantity: '500',
+        },
+        {
+          productId: SEED_DATA.PRODUCTS.OFFICE_PAPER,
+          warehouseId: SEED_DATA.WAREHOUSES.DIST_CENTER,
+          binId: SEED_DATA.BINS.DC_RACK_1,
+          quantity: '200',
+        },
+        {
+          productId: SEED_DATA.PRODUCTS.ASSEMBLY_KIT,
+          warehouseId: SEED_DATA.WAREHOUSES.DIST_CENTER,
+          binId: SEED_DATA.BINS.DC_RACK_2,
+          quantity: '25',
+        },
+      ],
+    },
+  ];
 
-  // 1. Check if adjustment already exists
-  const existingAdj = await db.query.inventoryAdjustments.findFirst({
-    where: eq(inventoryAdjustments.id, adjustmentId),
-  });
-
-  if (existingAdj) {
-    console.log('   - Initial stock adjustment already exists. Skipping.');
-    return;
-  }
-
-  await db.transaction(async (tx) => {
-    // 2. Create Header
-    await tx.insert(inventoryAdjustments).values({
-      id: adjustmentId,
-      organizationId: SEED_DATA.ORGANIZATION_ID,
-      adjustmentDate: new Date(),
-      reason: 'Initial System Load',
-      reference: 'SEED-0001',
-      status: 'approved',
-      createdBy: SEED_DATA.USER_ID,
-      updatedBy: SEED_DATA.USER_ID,
+  for (const adj of adjustments) {
+    const existingAdj = await db.query.inventoryAdjustments.findFirst({
+      where: eq(inventoryAdjustments.id, adj.id),
     });
 
-    const lines = [
-      {
-        productId: SEED_DATA.PRODUCTS.WIDGET_A,
-        warehouseId: SEED_DATA.WAREHOUSES.MAIN,
-        binId: SEED_DATA.BINS.MAIN_A1,
-        quantity: '100',
-      },
-      {
-        productId: SEED_DATA.PRODUCTS.WIDGET_B,
-        warehouseId: SEED_DATA.WAREHOUSES.MAIN,
-        binId: SEED_DATA.BINS.MAIN_B1,
-        quantity: '250',
-      },
-    ];
+    if (existingAdj) {
+      console.log(`   - Adjustment '${adj.reference}' already exists. Skipping.`);
+      continue;
+    }
 
-    for (const line of lines) {
-      // 3. Create Line
-      await tx.insert(inventoryAdjustmentLines).values({
+    await db.transaction(async (tx) => {
+      await tx.insert(inventoryAdjustments).values({
+        id: adj.id,
         organizationId: SEED_DATA.ORGANIZATION_ID,
-        adjustmentId: adjustmentId,
-        productId: line.productId,
-        warehouseId: line.warehouseId,
-        binId: line.binId,
-        quantityChange: line.quantity,
+        adjustmentDate: new Date(),
+        reason: adj.reason,
+        reference: adj.reference,
+        status: 'approved',
         createdBy: SEED_DATA.USER_ID,
         updatedBy: SEED_DATA.USER_ID,
       });
 
-      // 4. Update Level
-      await tx
-        .insert(inventoryLevels)
-        .values({
+      for (const line of adj.lines) {
+        await tx.insert(inventoryAdjustmentLines).values({
+          organizationId: SEED_DATA.ORGANIZATION_ID,
+          adjustmentId: adj.id,
+          productId: line.productId,
+          warehouseId: line.warehouseId,
+          binId: line.binId,
+          quantityChange: line.quantity,
+          createdBy: SEED_DATA.USER_ID,
+          updatedBy: SEED_DATA.USER_ID,
+        });
+
+        await tx
+          .insert(inventoryLevels)
+          .values({
+            organizationId: SEED_DATA.ORGANIZATION_ID,
+            productId: line.productId,
+            warehouseId: line.warehouseId,
+            binId: line.binId,
+            quantityOnHand: line.quantity,
+            createdBy: SEED_DATA.USER_ID,
+            updatedBy: SEED_DATA.USER_ID,
+          })
+          .onConflictDoUpdate({
+            target: [
+              inventoryLevels.organizationId,
+              inventoryLevels.productId,
+              inventoryLevels.warehouseId,
+              inventoryLevels.binId,
+            ],
+            set: {
+              quantityOnHand: sql`${inventoryLevels.quantityOnHand} + ${line.quantity}::numeric`,
+              updatedAt: new Date(),
+              updatedBy: SEED_DATA.USER_ID,
+            },
+          });
+
+        await tx.insert(inventoryLedgers).values({
           organizationId: SEED_DATA.ORGANIZATION_ID,
           productId: line.productId,
           warehouseId: line.warehouseId,
           binId: line.binId,
-          quantityOnHand: line.quantity,
+          quantityChange: line.quantity,
+          referenceType: 'adjustment',
+          referenceId: adj.id,
           createdBy: SEED_DATA.USER_ID,
           updatedBy: SEED_DATA.USER_ID,
-        })
-        .onConflictDoUpdate({
-          target: [
-            inventoryLevels.organizationId,
-            inventoryLevels.productId,
-            inventoryLevels.warehouseId,
-            inventoryLevels.binId,
-          ],
-          set: {
-            quantityOnHand: sql`${inventoryLevels.quantityOnHand} + ${line.quantity}::numeric`,
-            updatedAt: new Date(),
-            updatedBy: SEED_DATA.USER_ID,
-          },
         });
-
-      // 5. Create Ledger Entry
-      await tx.insert(inventoryLedgers).values({
-        organizationId: SEED_DATA.ORGANIZATION_ID,
-        productId: line.productId,
-        warehouseId: line.warehouseId,
-        binId: line.binId,
-        quantityChange: line.quantity,
-        referenceType: 'adjustment',
-        referenceId: adjustmentId,
-        createdBy: SEED_DATA.USER_ID,
-        updatedBy: SEED_DATA.USER_ID,
-      });
-    }
-  });
-
-  console.log('   - Initial stock adjustment created and levels updated.');
+      }
+    });
+    console.log(`   - Adjustment '${adj.reference}' created and levels updated.`);
+  }
 }

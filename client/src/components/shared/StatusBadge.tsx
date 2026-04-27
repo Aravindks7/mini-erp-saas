@@ -36,7 +36,10 @@ export function StatusBadge<T extends string>({
   statusMap,
   className,
 }: StatusBadgeProps<T>) {
-  const config = statusMap[value] || { label: value, tone: 'neutral' };
+  const config = (statusMap && value && statusMap[value]) || {
+    label: value || 'Unknown',
+    tone: 'neutral' as StatusTone,
+  };
 
   return (
     <Badge

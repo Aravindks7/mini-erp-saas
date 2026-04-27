@@ -58,6 +58,9 @@ export const PERMISSIONS = {
     UPDATE: 'purchase-orders:update',
     DELETE: 'purchase-orders:delete',
   },
+  DASHBOARD: {
+    READ: 'dashboard:read',
+  },
 } as const;
 
 // Helper to extract all values from the nested object
