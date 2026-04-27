@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 interface OrganizationSwitcherProps {
   isCollapsed?: boolean;
@@ -33,6 +34,7 @@ interface OrganizationSwitcherProps {
 export function OrganizationSwitcher({ isCollapsed }: OrganizationSwitcherProps) {
   const { activeOrganizationId, syncActiveOrganizationId } = useTenant();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const isDesktop = useBreakpoint('lg');
 
   const { data: organizations, isLoading } = useOrganizations();
   const activeOrg = organizations?.find((org) => org.id === activeOrganizationId);
@@ -110,7 +112,7 @@ export function OrganizationSwitcher({ isCollapsed }: OrganizationSwitcherProps)
         )}
 
         <DropdownMenuContent
-          className="w-64"
+          className={cn('', isDesktop && 'w-64')}
           align={isCollapsed ? 'start' : 'center'}
           side={isCollapsed ? 'right' : 'bottom'}
           sideOffset={isCollapsed ? 12 : 4}

@@ -14,6 +14,8 @@ export const supplierRoutes: AppRoute[] = [
       title: 'Suppliers',
       icon: Truck,
       showInSidebar: true,
+      sidebarGroup: 'Purchasing',
+      order: 10,
       crumb: 'Suppliers',
     },
     children: [

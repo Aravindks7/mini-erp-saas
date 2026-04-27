@@ -16,6 +16,8 @@ export const salesOrdersRoutes: AppRoute[] = [
       title: 'Sales Orders',
       icon: LayoutList,
       showInSidebar: true,
+      sidebarGroup: 'Sales',
+      order: 20,
       crumb: 'Sales Orders',
     },
     children: [

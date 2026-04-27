@@ -45,7 +45,7 @@ export function DataTableView<TData>({
                   <TableHead
                     key={header.id}
                     colSpan={header.colSpan}
-                    className="h-10 text-xs uppercase font-bold tracking-wider"
+                    className="text-xs uppercase font-bold tracking-wider"
                   >
                     {header.isPlaceholder
                       ? null
@@ -69,7 +69,7 @@ export function DataTableView<TData>({
                 )}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="py-3 px-4">
+                  <TableCell key={cell.id} className="">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}

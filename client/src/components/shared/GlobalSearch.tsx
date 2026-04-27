@@ -86,8 +86,9 @@ export function GlobalSearch({ className, onSearch }: GlobalSearchProps) {
       >
         <Search className="h-4 w-4 shrink-0 opacity-40" />
         <span className="hidden lg:inline flex-1 text-left">Search anything...</span>
-        <kbd className="pointer-events-none hidden h-5 select-none items-center gap-0.5 rounded-md border border-border/60 bg-background px-1.5 font-mono text-[10px] font-semibold text-muted-foreground xl:flex">
-          <span className="text-[11px] leading-none">{modifierKey}</span>K
+        <kbd className="pointer-events-none hidden h-5 select-none items-center gap-0.5 rounded-md border border-border/60 bg-background px-1.5 font-mono font-semibold text-muted-foreground xl:flex text-[10px]">
+          <span className="leading-none">{modifierKey}</span>
+          <span className="leading-none">K</span>
         </kbd>
       </Button>
 

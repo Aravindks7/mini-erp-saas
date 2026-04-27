@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
 import { GlobalSearch } from './GlobalSearch';
 import { NotificationBell } from './NotificationBell';
+import { UserProfileDropdown } from './UserProfileDropdown';
 import { Breadcrumbs } from './Breadcrumbs';
 import { DashboardGreeting } from './DashboardGreeting';
 import { SidebarContent } from './SidebarContent';
@@ -64,6 +65,7 @@ export default function Navbar() {
             <ThemeToggle variant="compact" />
           </>
         )}
+        <UserProfileDropdown />
       </div>
     </header>
   );
