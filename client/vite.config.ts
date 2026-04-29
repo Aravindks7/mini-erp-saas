@@ -13,12 +13,44 @@ export default defineConfig({
     },
   },
   build: {
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'tanstack-vendor': ['@tanstack/react-query', '@tanstack/react-table'],
-          'ui-vendor': ['radix-ui', 'lucide-react', 'class-variance-authority', 'tailwind-merge'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            // Split out the absolute largest ones first
+            if (id.includes('react-dom')) {
+              return 'react-dom-vendor';
+            }
+            if (id.includes('lucide-react')) {
+              return 'icons-vendor';
+            }
+            if (id.includes('@tanstack')) {
+              return 'tanstack-vendor';
+            }
+            // Group by category
+            if (
+              id.includes('react') ||
+              id.includes('scheduler') ||
+              id.includes('react-router') ||
+              id.includes('remix-run')
+            ) {
+              return 'framework-vendor';
+            }
+            if (id.includes('zod') || id.includes('hook-form')) {
+              return 'data-vendor';
+            }
+            if (
+              id.includes('radix-ui') ||
+              id.includes('cmdk') ||
+              id.includes('vaul') ||
+              id.includes('sonner')
+            ) {
+              return 'ui-vendor';
+            }
+            // General dependencies
+            return 'vendor';
+          }
         },
       },
     },

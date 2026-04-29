@@ -10,6 +10,10 @@ import { seedWarehouses } from '../src/db/seeds/warehouses.seed.js';
 import { seedInventory } from '../src/db/seeds/inventory.seed.js';
 import { seedPurchaseOrders } from '../src/db/seeds/purchase-orders.seed.js';
 import { seedSalesOrders } from '../src/db/seeds/sales-orders.seed.js';
+import { seedReceipts } from '../src/db/seeds/receipts.seed.js';
+import { seedShipments } from '../src/db/seeds/shipments.seed.js';
+import { seedInvoices } from '../src/db/seeds/invoices.seed.js';
+import { seedBills } from '../src/db/seeds/bills.seed.js';
 
 async function run() {
   // 1. Production Kill-Switch
@@ -41,6 +45,10 @@ async function run() {
     await seedInventory();
     await seedPurchaseOrders();
     await seedSalesOrders();
+    await seedReceipts();
+    await seedShipments();
+    await seedInvoices();
+    await seedBills();
 
     console.log('✅ Developer seeding complete successfully.');
   } catch (err) {

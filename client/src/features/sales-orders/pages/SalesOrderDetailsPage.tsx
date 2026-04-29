@@ -1,8 +1,17 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ShoppingCart, FileEdit, AlertCircle, Truck, Receipt, User } from 'lucide-react';
-import * as React from 'react';
+import {
+  ShoppingCart,
+  FileEdit,
+  AlertCircle,
+  Truck,
+  Receipt,
+  User,
+  ReceiptText,
+} from 'lucide-react';
+import { toast } from 'sonner';
 
 import { useSalesOrder } from '../hooks/sales-orders.hooks';
+import { useCreateInvoiceFromSO } from '@/features/invoices/hooks/invoices.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -12,7 +21,6 @@ import { AuditInfo } from '@/components/shared/AuditInfo';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { salesOrderStatusMap } from '../components/columns';
-import { FulfillSalesOrderSheet } from '../components/FulfillSalesOrderSheet';
 import {
   Table,
   TableBody,
@@ -27,8 +35,20 @@ export default function SalesOrderDetailsPage() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
   const { data: so, isLoading, isError } = useSalesOrder(id);
+  const { mutate: generateInvoice, isPending: isGeneratingInvoice } = useCreateInvoiceFromSO();
 
-  const [isFulfillSheetOpen, setIsFulfillSheetOpen] = React.useState(false);
+  const handleGenerateInvoice = () => {
+    if (!so) return;
+    generateInvoice(so.id, {
+      onSuccess: (invoice) => {
+        toast.success(`Invoice ${invoice.documentNumber} generated successfully`);
+        navigate(getPath(`/invoices/${invoice.id}`));
+      },
+      onError: (error: Error) => {
+        toast.error(error.message || 'Failed to generate invoice');
+      },
+    });
+  };
 
   if (isLoading) {
     return (
@@ -71,12 +91,20 @@ export default function SalesOrderDetailsPage() {
     <PageContainer>
       <PageHeader
         title={so.documentNumber}
-        description={`Sales document for ${so.customer.name}.`}
+        description={`Sales document for ${so.customer.companyName}.`}
         backButton={{ href: getPath('/sales-orders'), label: 'Back to List' }}
         actions={[
           {
-            label: 'Fulfill Order',
-            onClick: () => setIsFulfillSheetOpen(true),
+            label: 'Generate Invoice',
+            onClick: handleGenerateInvoice,
+            icon: <ReceiptText className="h-4 w-4" />,
+            variant: 'outline',
+            isLoading: isGeneratingInvoice,
+            hidden: so.status === 'draft' || so.status === 'cancelled',
+          },
+          {
+            label: 'Create Shipment',
+            onClick: () => navigate(getPath(`/shipments/new?salesOrderId=${so.id}`)),
             icon: <Truck className="h-4 w-4" />,
             variant: 'outline',
             hidden: !canFulfill,
@@ -120,7 +148,7 @@ export default function SalesOrderDetailsPage() {
                     <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
                       Customer Name
                     </label>
-                    <p className="text-base font-semibold">{so.customer.name}</p>
+                    <p className="text-base font-semibold">{so.customer.companyName}</p>
                   </div>
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
@@ -234,12 +262,6 @@ export default function SalesOrderDetailsPage() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      <FulfillSalesOrderSheet
-        isOpen={isFulfillSheetOpen}
-        onClose={() => setIsFulfillSheetOpen(false)}
-        so={so}
-      />
     </PageContainer>
   );
 }
