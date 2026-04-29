@@ -6,6 +6,7 @@ import { timestamps, userTracking, versioning, lifecycle } from './audit.schema.
 import { organizations } from './organizations.schema.js';
 import { customers } from './customers.schema.js';
 import { salesOrderLines } from './sales-order-lines.schema.js';
+import { shipments } from './shipments.schema.js';
 
 /**
  * Sales Order Lifecycle States
@@ -55,6 +56,7 @@ export const salesOrdersRelations = relations(salesOrders, ({ one, many }) => ({
     references: [customers.id],
   }),
   lines: many(salesOrderLines),
+  shipments: many(shipments),
 }));
 
 export type SalesOrder = typeof salesOrders.$inferSelect;

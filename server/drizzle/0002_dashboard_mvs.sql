@@ -1,9 +1,24 @@
 -- Custom Migration: Dashboard Materialized View & Secure Wrapper View
 -- Axiom: High-performance pre-aggregated metrics with tenant isolation.
 
--- 1. Cleanup
-DROP VIEW IF EXISTS dashboard_metrics;
-DROP MATERIALIZED VIEW IF EXISTS mv_dashboard_metrics_data;
+-- 1. Robust Cleanup
+DO $$ 
+BEGIN
+    -- Drop the secure view if it exists
+    IF EXISTS (SELECT 1 FROM information_schema.views WHERE table_name = 'dashboard_metrics') THEN
+        DROP VIEW dashboard_metrics CASCADE;
+    END IF;
+
+    -- Drop the physical table if it exists (conflicts with the view name)
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'dashboard_metrics' AND table_type = 'BASE TABLE') THEN
+        DROP TABLE dashboard_metrics CASCADE;
+    END IF;
+
+    -- Drop the materialized view if it exists
+    IF EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'mv_dashboard_metrics_data') THEN
+        DROP MATERIALIZED VIEW mv_dashboard_metrics_data CASCADE;
+    END IF;
+END $$;
 
 -- 2. Create Internal Materialized View (Raw Aggregates)
 CREATE MATERIALIZED VIEW mv_dashboard_metrics_data AS

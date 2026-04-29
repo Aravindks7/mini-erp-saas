@@ -1,11 +1,15 @@
 CREATE TYPE "public"."invite_status" AS ENUM('pending', 'accepted', 'revoked');--> statement-breakpoint
 CREATE TYPE "public"."member_role" AS ENUM('admin', 'employee');--> statement-breakpoint
+CREATE TYPE "public"."bill_status" AS ENUM('draft', 'open', 'paid', 'void');--> statement-breakpoint
 CREATE TYPE "public"."customer_status" AS ENUM('active', 'inactive');--> statement-breakpoint
 CREATE TYPE "public"."product_status" AS ENUM('active', 'inactive');--> statement-breakpoint
 CREATE TYPE "public"."supplier_status" AS ENUM('active', 'inactive');--> statement-breakpoint
 CREATE TYPE "public"."inventory_reference_type" AS ENUM('po_receipt', 'so_shipment', 'adjustment', 'transfer', 'stock_count');--> statement-breakpoint
 CREATE TYPE "public"."sales_order_status" AS ENUM('draft', 'approved', 'shipped', 'cancelled');--> statement-breakpoint
+CREATE TYPE "public"."shipment_status" AS ENUM('draft', 'shipped', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."purchase_order_status" AS ENUM('draft', 'sent', 'received', 'cancelled');--> statement-breakpoint
+CREATE TYPE "public"."receipt_status" AS ENUM('draft', 'received', 'cancelled');--> statement-breakpoint
+CREATE TYPE "public"."invoice_status" AS ENUM('draft', 'open', 'paid', 'void');--> statement-breakpoint
 CREATE TABLE "addresses" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"organization_id" uuid NOT NULL,
@@ -70,6 +74,48 @@ CREATE TABLE "verification" (
 	"expires_at" timestamp NOT NULL,
 	"created_at" timestamp DEFAULT now(),
 	"updated_at" timestamp DEFAULT now()
+);
+--> statement-breakpoint
+CREATE TABLE "bill_lines" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_by" uuid,
+	"updated_by" uuid,
+	"version" integer DEFAULT 1 NOT NULL,
+	"deleted_at" timestamp,
+	"bill_id" uuid NOT NULL,
+	"product_id" uuid NOT NULL,
+	"quantity" numeric(18, 8) NOT NULL,
+	"unit_price" numeric(18, 8) NOT NULL,
+	"tax_rate_at_order" numeric(18, 8) NOT NULL,
+	"tax_amount" numeric(18, 8) NOT NULL,
+	"line_total" numeric(18, 8) NOT NULL,
+	CONSTRAINT "bill_lines_quantity_check" CHECK ("bill_lines"."quantity" > 0),
+	CONSTRAINT "bill_lines_price_check" CHECK ("bill_lines"."unit_price" >= 0)
+);
+--> statement-breakpoint
+CREATE TABLE "bills" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_by" uuid,
+	"updated_by" uuid,
+	"version" integer DEFAULT 1 NOT NULL,
+	"deleted_at" timestamp,
+	"supplier_id" uuid NOT NULL,
+	"receipt_id" uuid,
+	"purchase_order_id" uuid,
+	"document_number" text NOT NULL,
+	"reference_number" text NOT NULL,
+	"status" "bill_status" DEFAULT 'draft' NOT NULL,
+	"issue_date" timestamp NOT NULL,
+	"due_date" timestamp NOT NULL,
+	"total_amount" numeric(18, 8) NOT NULL,
+	"tax_amount" numeric(18, 8) NOT NULL,
+	"notes" text
 );
 --> statement-breakpoint
 CREATE TABLE "bins" (
@@ -139,6 +185,14 @@ CREATE TABLE "customers" (
 	"company_name" text NOT NULL,
 	"tax_number" text,
 	"status" "customer_status" DEFAULT 'active' NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "dashboard_metrics" (
+	"organization_id" uuid PRIMARY KEY NOT NULL,
+	"total_sales" numeric NOT NULL,
+	"total_purchases" numeric NOT NULL,
+	"active_customers" bigint NOT NULL,
+	"total_products" bigint NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "organizations" (
@@ -446,6 +500,40 @@ CREATE TABLE "sales_order_lines" (
 	CONSTRAINT "so_lines_price_check" CHECK ("sales_order_lines"."unit_price" >= 0)
 );
 --> statement-breakpoint
+CREATE TABLE "shipments" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_by" uuid,
+	"updated_by" uuid,
+	"version" integer DEFAULT 1 NOT NULL,
+	"deleted_at" timestamp,
+	"sales_order_id" uuid NOT NULL,
+	"shipment_number" text NOT NULL,
+	"shipment_date" timestamp DEFAULT now() NOT NULL,
+	"reference" text,
+	"status" "shipment_status" DEFAULT 'shipped' NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "shipment_lines" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_by" uuid,
+	"updated_by" uuid,
+	"version" integer DEFAULT 1 NOT NULL,
+	"deleted_at" timestamp,
+	"shipment_id" uuid NOT NULL,
+	"product_id" uuid NOT NULL,
+	"warehouse_id" uuid NOT NULL,
+	"bin_id" uuid,
+	"sales_order_line_id" uuid,
+	"quantity_shipped" numeric(18, 8) NOT NULL,
+	CONSTRAINT "shipment_lines_quantity_check" CHECK ("shipment_lines"."quantity_shipped" > 0)
+);
+--> statement-breakpoint
 CREATE TABLE "purchase_orders" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"organization_id" uuid NOT NULL,
@@ -480,6 +568,80 @@ CREATE TABLE "purchase_order_lines" (
 	CONSTRAINT "po_lines_price_check" CHECK ("purchase_order_lines"."unit_price" >= 0)
 );
 --> statement-breakpoint
+CREATE TABLE "receipts" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_by" uuid,
+	"updated_by" uuid,
+	"version" integer DEFAULT 1 NOT NULL,
+	"deleted_at" timestamp,
+	"purchase_order_id" uuid,
+	"receipt_number" text NOT NULL,
+	"received_date" timestamp DEFAULT now() NOT NULL,
+	"reference" text,
+	"status" "receipt_status" DEFAULT 'received' NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "receipt_lines" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_by" uuid,
+	"updated_by" uuid,
+	"version" integer DEFAULT 1 NOT NULL,
+	"deleted_at" timestamp,
+	"receipt_id" uuid NOT NULL,
+	"product_id" uuid NOT NULL,
+	"warehouse_id" uuid NOT NULL,
+	"bin_id" uuid,
+	"purchase_order_line_id" uuid,
+	"quantity_received" numeric(18, 8) NOT NULL,
+	CONSTRAINT "receipt_lines_quantity_check" CHECK ("receipt_lines"."quantity_received" > 0)
+);
+--> statement-breakpoint
+CREATE TABLE "invoices" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_by" uuid,
+	"updated_by" uuid,
+	"version" integer DEFAULT 1 NOT NULL,
+	"deleted_at" timestamp,
+	"customer_id" uuid NOT NULL,
+	"sales_order_id" uuid,
+	"document_number" text NOT NULL,
+	"status" "invoice_status" DEFAULT 'draft' NOT NULL,
+	"issue_date" timestamp NOT NULL,
+	"due_date" timestamp NOT NULL,
+	"total_amount" numeric(18, 8) NOT NULL,
+	"tax_amount" numeric(18, 8) NOT NULL,
+	"notes" text
+);
+--> statement-breakpoint
+CREATE TABLE "invoice_lines" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_by" uuid,
+	"updated_by" uuid,
+	"version" integer DEFAULT 1 NOT NULL,
+	"deleted_at" timestamp,
+	"invoice_id" uuid NOT NULL,
+	"product_id" uuid NOT NULL,
+	"quantity" numeric(18, 8) NOT NULL,
+	"unit_price" numeric(18, 8) NOT NULL,
+	"tax_rate_at_order" numeric(18, 8) NOT NULL,
+	"tax_amount" numeric(18, 8) NOT NULL,
+	"line_total" numeric(18, 8) NOT NULL,
+	CONSTRAINT "invoice_lines_quantity_check" CHECK ("invoice_lines"."quantity" > 0),
+	CONSTRAINT "invoice_lines_price_check" CHECK ("invoice_lines"."unit_price" >= 0)
+);
+--> statement-breakpoint
 CREATE TABLE "document_sequences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"organization_id" uuid NOT NULL,
@@ -487,6 +649,7 @@ CREATE TABLE "document_sequences" (
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	"created_by" uuid,
 	"updated_by" uuid,
+	"deleted_at" timestamp,
 	"type" text NOT NULL,
 	"prefix" text NOT NULL,
 	"next_value" integer DEFAULT 1 NOT NULL,
@@ -496,6 +659,13 @@ CREATE TABLE "document_sequences" (
 ALTER TABLE "addresses" ADD CONSTRAINT "addresses_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "bill_lines" ADD CONSTRAINT "bill_lines_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "bill_lines" ADD CONSTRAINT "bill_lines_bill_id_bills_id_fk" FOREIGN KEY ("bill_id") REFERENCES "public"."bills"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "bill_lines" ADD CONSTRAINT "bill_lines_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "bills" ADD CONSTRAINT "bills_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "bills" ADD CONSTRAINT "bills_supplier_id_suppliers_id_fk" FOREIGN KEY ("supplier_id") REFERENCES "public"."suppliers"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "bills" ADD CONSTRAINT "bills_receipt_id_receipts_id_fk" FOREIGN KEY ("receipt_id") REFERENCES "public"."receipts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "bills" ADD CONSTRAINT "bills_purchase_order_id_purchase_orders_id_fk" FOREIGN KEY ("purchase_order_id") REFERENCES "public"."purchase_orders"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "bins" ADD CONSTRAINT "bins_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "bins" ADD CONSTRAINT "bins_warehouse_id_warehouses_id_fk" FOREIGN KEY ("warehouse_id") REFERENCES "public"."warehouses"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "contacts" ADD CONSTRAINT "contacts_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -506,6 +676,7 @@ ALTER TABLE "customer_contacts" ADD CONSTRAINT "customer_contacts_organization_i
 ALTER TABLE "customer_contacts" ADD CONSTRAINT "customer_contacts_customer_id_customers_id_fk" FOREIGN KEY ("customer_id") REFERENCES "public"."customers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "customer_contacts" ADD CONSTRAINT "customer_contacts_contact_id_contacts_id_fk" FOREIGN KEY ("contact_id") REFERENCES "public"."contacts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "customers" ADD CONSTRAINT "customers_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "dashboard_metrics" ADD CONSTRAINT "dashboard_metrics_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "permission_set_items" ADD CONSTRAINT "permission_set_items_permission_set_id_permission_sets_id_fk" FOREIGN KEY ("permission_set_id") REFERENCES "public"."permission_sets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "permission_set_items" ADD CONSTRAINT "permission_set_items_permission_id_permissions_id_fk" FOREIGN KEY ("permission_id") REFERENCES "public"."permissions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "permission_sets" ADD CONSTRAINT "permission_sets_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -557,13 +728,42 @@ ALTER TABLE "sales_orders" ADD CONSTRAINT "sales_orders_customer_id_customers_id
 ALTER TABLE "sales_order_lines" ADD CONSTRAINT "sales_order_lines_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sales_order_lines" ADD CONSTRAINT "sales_order_lines_sales_order_id_sales_orders_id_fk" FOREIGN KEY ("sales_order_id") REFERENCES "public"."sales_orders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sales_order_lines" ADD CONSTRAINT "sales_order_lines_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "shipments" ADD CONSTRAINT "shipments_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "shipments" ADD CONSTRAINT "shipments_sales_order_id_sales_orders_id_fk" FOREIGN KEY ("sales_order_id") REFERENCES "public"."sales_orders"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "shipment_lines" ADD CONSTRAINT "shipment_lines_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "shipment_lines" ADD CONSTRAINT "shipment_lines_shipment_id_shipments_id_fk" FOREIGN KEY ("shipment_id") REFERENCES "public"."shipments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "shipment_lines" ADD CONSTRAINT "shipment_lines_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "shipment_lines" ADD CONSTRAINT "shipment_lines_warehouse_id_warehouses_id_fk" FOREIGN KEY ("warehouse_id") REFERENCES "public"."warehouses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "shipment_lines" ADD CONSTRAINT "shipment_lines_bin_id_bins_id_fk" FOREIGN KEY ("bin_id") REFERENCES "public"."bins"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "shipment_lines" ADD CONSTRAINT "shipment_lines_sales_order_line_id_sales_order_lines_id_fk" FOREIGN KEY ("sales_order_line_id") REFERENCES "public"."sales_order_lines"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "purchase_orders" ADD CONSTRAINT "purchase_orders_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "purchase_orders" ADD CONSTRAINT "purchase_orders_supplier_id_suppliers_id_fk" FOREIGN KEY ("supplier_id") REFERENCES "public"."suppliers"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "purchase_order_lines" ADD CONSTRAINT "purchase_order_lines_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "purchase_order_lines" ADD CONSTRAINT "purchase_order_lines_purchase_order_id_purchase_orders_id_fk" FOREIGN KEY ("purchase_order_id") REFERENCES "public"."purchase_orders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "purchase_order_lines" ADD CONSTRAINT "purchase_order_lines_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "receipts" ADD CONSTRAINT "receipts_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "receipts" ADD CONSTRAINT "receipts_purchase_order_id_purchase_orders_id_fk" FOREIGN KEY ("purchase_order_id") REFERENCES "public"."purchase_orders"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "receipt_lines" ADD CONSTRAINT "receipt_lines_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "receipt_lines" ADD CONSTRAINT "receipt_lines_receipt_id_receipts_id_fk" FOREIGN KEY ("receipt_id") REFERENCES "public"."receipts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "receipt_lines" ADD CONSTRAINT "receipt_lines_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "receipt_lines" ADD CONSTRAINT "receipt_lines_warehouse_id_warehouses_id_fk" FOREIGN KEY ("warehouse_id") REFERENCES "public"."warehouses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "receipt_lines" ADD CONSTRAINT "receipt_lines_bin_id_bins_id_fk" FOREIGN KEY ("bin_id") REFERENCES "public"."bins"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "receipt_lines" ADD CONSTRAINT "receipt_lines_purchase_order_line_id_purchase_order_lines_id_fk" FOREIGN KEY ("purchase_order_line_id") REFERENCES "public"."purchase_order_lines"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invoices" ADD CONSTRAINT "invoices_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invoices" ADD CONSTRAINT "invoices_customer_id_customers_id_fk" FOREIGN KEY ("customer_id") REFERENCES "public"."customers"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invoices" ADD CONSTRAINT "invoices_sales_order_id_sales_orders_id_fk" FOREIGN KEY ("sales_order_id") REFERENCES "public"."sales_orders"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invoice_lines" ADD CONSTRAINT "invoice_lines_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invoice_lines" ADD CONSTRAINT "invoice_lines_invoice_id_invoices_id_fk" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invoice_lines" ADD CONSTRAINT "invoice_lines_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "document_sequences" ADD CONSTRAINT "document_sequences_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "addresses_org_idx" ON "addresses" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "bill_lines_org_idx" ON "bill_lines" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "bill_lines_bill_idx" ON "bill_lines" USING btree ("bill_id");--> statement-breakpoint
+CREATE INDEX "bill_lines_product_idx" ON "bill_lines" USING btree ("product_id");--> statement-breakpoint
+CREATE INDEX "bill_org_idx" ON "bills" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "bill_supplier_idx" ON "bills" USING btree ("supplier_id");--> statement-breakpoint
+CREATE INDEX "bill_status_idx" ON "bills" USING btree ("status");--> statement-breakpoint
+CREATE UNIQUE INDEX "bill_org_doc_unique" ON "bills" USING btree ("organization_id","document_number");--> statement-breakpoint
 CREATE INDEX "bins_org_idx" ON "bins" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "bins_warehouse_idx" ON "bins" USING btree ("warehouse_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "bins_org_wh_code_unique" ON "bins" USING btree ("organization_id","warehouse_id",lower("code"));--> statement-breakpoint
@@ -622,6 +822,12 @@ CREATE UNIQUE INDEX "so_org_doc_unique" ON "sales_orders" USING btree ("organiza
 CREATE INDEX "so_lines_org_idx" ON "sales_order_lines" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "so_lines_order_idx" ON "sales_order_lines" USING btree ("sales_order_id");--> statement-breakpoint
 CREATE INDEX "so_lines_product_idx" ON "sales_order_lines" USING btree ("product_id");--> statement-breakpoint
+CREATE INDEX "shipment_org_idx" ON "shipments" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "shipment_so_idx" ON "shipments" USING btree ("sales_order_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "shipment_org_num_unique" ON "shipments" USING btree ("organization_id","shipment_number");--> statement-breakpoint
+CREATE INDEX "shipment_lines_org_idx" ON "shipment_lines" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "shipment_lines_shipment_idx" ON "shipment_lines" USING btree ("shipment_id");--> statement-breakpoint
+CREATE INDEX "shipment_lines_product_idx" ON "shipment_lines" USING btree ("product_id");--> statement-breakpoint
 CREATE INDEX "po_org_idx" ON "purchase_orders" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "po_supplier_idx" ON "purchase_orders" USING btree ("supplier_id");--> statement-breakpoint
 CREATE INDEX "po_status_idx" ON "purchase_orders" USING btree ("status");--> statement-breakpoint
@@ -629,4 +835,17 @@ CREATE UNIQUE INDEX "po_org_doc_unique" ON "purchase_orders" USING btree ("organ
 CREATE INDEX "po_lines_org_idx" ON "purchase_order_lines" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "po_lines_order_idx" ON "purchase_order_lines" USING btree ("purchase_order_id");--> statement-breakpoint
 CREATE INDEX "po_lines_product_idx" ON "purchase_order_lines" USING btree ("product_id");--> statement-breakpoint
+CREATE INDEX "receipt_org_idx" ON "receipts" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "receipt_po_idx" ON "receipts" USING btree ("purchase_order_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "receipt_org_num_unique" ON "receipts" USING btree ("organization_id","receipt_number");--> statement-breakpoint
+CREATE INDEX "receipt_lines_org_idx" ON "receipt_lines" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "receipt_lines_receipt_idx" ON "receipt_lines" USING btree ("receipt_id");--> statement-breakpoint
+CREATE INDEX "receipt_lines_product_idx" ON "receipt_lines" USING btree ("product_id");--> statement-breakpoint
+CREATE INDEX "invoice_org_idx" ON "invoices" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "invoice_customer_idx" ON "invoices" USING btree ("customer_id");--> statement-breakpoint
+CREATE INDEX "invoice_status_idx" ON "invoices" USING btree ("status");--> statement-breakpoint
+CREATE UNIQUE INDEX "invoice_org_doc_unique" ON "invoices" USING btree ("organization_id","document_number");--> statement-breakpoint
+CREATE INDEX "invoice_lines_org_idx" ON "invoice_lines" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "invoice_lines_invoice_idx" ON "invoice_lines" USING btree ("invoice_id");--> statement-breakpoint
+CREATE INDEX "invoice_lines_product_idx" ON "invoice_lines" USING btree ("product_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "doc_seq_org_type_unique" ON "document_sequences" USING btree ("organization_id","type");

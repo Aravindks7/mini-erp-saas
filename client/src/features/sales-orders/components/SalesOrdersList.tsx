@@ -18,7 +18,6 @@ import { useTenantPath } from '@/hooks/useTenantPath';
 import { getColumns } from './columns';
 import { useSalesOrders } from '../hooks/sales-orders.hooks';
 import type { SalesOrderResponse } from '../api/sales-orders.api';
-import { FulfillSalesOrderSheet } from './FulfillSalesOrderSheet';
 
 const searchSchema = z.object({
   documentNumber: z.string().optional(),
@@ -31,22 +30,18 @@ export function SalesOrdersList() {
   const { data: sos, isLoading, isError } = useSalesOrders();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
-  const [fulfillSheetState, setFulfillSheetState] = React.useState<{
-    isOpen: boolean;
-    so?: SalesOrderResponse;
-  }>({
-    isOpen: false,
-  });
-
-  const handleFulfill = (so: SalesOrderResponse) => {
-    setFulfillSheetState({ isOpen: true, so });
-  };
+  const handleFulfill = React.useCallback(
+    (so: SalesOrderResponse) => {
+      navigate(getPath(`/shipments/new?salesOrderId=${so.id}`));
+    },
+    [navigate, getPath],
+  );
 
   const handleAdd = () => {
     navigate(getPath('/sales-orders/new'));
   };
 
-  const columns = React.useMemo(() => getColumns({ onFulfill: handleFulfill }), []);
+  const columns = React.useMemo(() => getColumns({ onFulfill: handleFulfill }), [handleFulfill]);
 
   if (isError) {
     return (
@@ -82,11 +77,6 @@ export function SalesOrdersList() {
             </Button>
           </Can>
         </EmptyState>
-        <FulfillSalesOrderSheet
-          isOpen={fulfillSheetState.isOpen}
-          onClose={() => setFulfillSheetState({ isOpen: false })}
-          so={fulfillSheetState.so}
-        />
       </div>
     );
   }
@@ -116,12 +106,6 @@ export function SalesOrdersList() {
           </Can>
         }
         searchKey="documentNumber"
-      />
-
-      <FulfillSalesOrderSheet
-        isOpen={fulfillSheetState.isOpen}
-        onClose={() => setFulfillSheetState({ isOpen: false })}
-        so={fulfillSheetState.so}
       />
     </>
   );
