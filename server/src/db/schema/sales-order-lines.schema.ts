@@ -5,6 +5,7 @@ import { timestamps, userTracking, versioning, lifecycle } from './audit.schema.
 import { organizations } from './organizations.schema.js';
 import { products } from './products.schema.js';
 import { salesOrders } from './sales-orders.schema.js';
+import { shipmentLines } from './shipment-lines.schema.js';
 import { z } from 'zod';
 
 /**
@@ -41,7 +42,7 @@ export const salesOrderLines = pgTable(
   ],
 );
 
-export const salesOrderLinesRelations = relations(salesOrderLines, ({ one }) => ({
+export const salesOrderLinesRelations = relations(salesOrderLines, ({ one, many }) => ({
   organization: one(organizations, {
     fields: [salesOrderLines.organizationId],
     references: [organizations.id],
@@ -54,6 +55,7 @@ export const salesOrderLinesRelations = relations(salesOrderLines, ({ one }) => 
     fields: [salesOrderLines.productId],
     references: [products.id],
   }),
+  shipmentLines: many(shipmentLines),
 }));
 
 export type SalesOrderLine = typeof salesOrderLines.$inferSelect;

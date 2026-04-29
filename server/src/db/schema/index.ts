@@ -32,7 +32,19 @@ export * from './inventory-adjustment-lines.schema.js';
 export * from './sales-orders.schema.js';
 export * from './sales-order-lines.schema.js';
 
+export * from './shipments.schema.js';
+export * from './shipment-lines.schema.js';
+
 export * from './purchase-orders.schema.js';
 export * from './purchase-order-lines.schema.js';
+
+export * from './receipts.schema.js';
+export * from './receipt-lines.schema.js';
+
+export * from './invoices.schema.js';
+export * from './invoice-lines.schema.js';
+
+export * from './bills.schema.js';
+export * from './bill-lines.schema.js';
 
 export * from './sequences.schema.js';

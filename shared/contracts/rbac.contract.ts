@@ -10,6 +10,7 @@ export const PERMISSIONS = {
   INVENTORY: {
     READ: 'inventory:read',
     ADJUST: 'inventory:adjust',
+    RECEIVE: 'inventory:receive',
   },
   UOM: {
     READ: 'uom:read',
@@ -57,6 +58,45 @@ export const PERMISSIONS = {
     CREATE: 'purchase-orders:create',
     UPDATE: 'purchase-orders:update',
     DELETE: 'purchase-orders:delete',
+  },
+  RECEIPTS: {
+    READ: 'receipts:read',
+    CREATE: 'receipts:create',
+    DELETE: 'receipts:delete',
+  },
+  SHIPMENTS: {
+    READ: 'shipments:read',
+    CREATE: 'shipments:create',
+    DELETE: 'shipments:delete',
+  },
+  INVOICES: {
+    READ: 'invoices:read',
+    CREATE: 'invoices:create',
+    UPDATE: 'invoices:update',
+    DELETE: 'invoices:delete',
+  },
+  BILLS: {
+    READ: 'bills:read',
+    CREATE: 'bills:create',
+    UPDATE: 'bills:update',
+    DELETE: 'bills:delete',
+  },
+  PAYMENTS: {
+    READ: 'payments:read',
+    CREATE: 'payments:create',
+    DELETE: 'payments:delete',
+  },
+  BOM: {
+    READ: 'bom:read',
+    CREATE: 'bom:create',
+    UPDATE: 'bom:update',
+    DELETE: 'bom:delete',
+  },
+  WORK_ORDERS: {
+    READ: 'work-orders:read',
+    CREATE: 'work-orders:create',
+    UPDATE: 'work-orders:update',
+    DELETE: 'work-orders:delete',
   },
   DASHBOARD: {
     READ: 'dashboard:read',

@@ -24,10 +24,4 @@ router.patch(
   salesOrdersController.updateSO,
 );
 
-router.post(
-  '/:id/fulfill',
-  requirePermission(PERMISSIONS.SALES_ORDERS.UPDATE),
-  salesOrdersController.fulfillSO,
-);
-
 export default router;

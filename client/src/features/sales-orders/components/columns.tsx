@@ -57,9 +57,9 @@ export const getColumns = ({ onFulfill }: GetColumnsProps): ColumnDef<SalesOrder
     enableGlobalFilter: true,
   },
   {
-    accessorKey: 'customer.name',
+    accessorKey: 'customer.companyName',
     header: ({ column }) => <DataTableColumnHeader column={column} title="Customer" />,
-    cell: ({ row }) => row.original.customer.name,
+    cell: ({ row }) => row.original.customer.companyName,
     meta: { variant: 'subtitle', label: 'Customer' },
     enableGlobalFilter: true,
   },

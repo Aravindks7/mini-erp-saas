@@ -1,13 +1,9 @@
 import { db } from '../../db/index.js';
 import { salesOrders, salesOrderLines } from '../../db/schema/index.js';
 import { and, desc, eq } from 'drizzle-orm';
-import {
-  CreateSalesOrderInput,
-  FulfillSalesOrderInput,
-} from '#shared/contracts/sales-orders.contract.js';
+import { CreateSalesOrderInput } from '#shared/contracts/sales-orders.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 import { sequencesService } from '../sequences/sequences.service.js';
-import { inventoryService } from '../inventory/inventory.service.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -157,61 +153,6 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
       }
 
       return { id, status: 'draft' };
-    });
-  }
-
-  async fulfillSO(
-    organizationId: string,
-    userId: string,
-    id: string,
-    data: FulfillSalesOrderInput,
-  ) {
-    return await db.transaction(async (tx) => {
-      const so = await this.getSOById(organizationId, id, tx);
-      if (!so) {
-        throw new Error('Sales order not found');
-      }
-
-      if (so.status === 'shipped') {
-        throw new Error('Sales order already shipped');
-      }
-
-      if (so.status === 'cancelled') {
-        throw new Error('Cannot fulfill a cancelled sales order');
-      }
-
-      await tx
-        .update(salesOrders)
-        .set(this.withAudit({ status: 'shipped' }, userId, true))
-        .where(and(eq(salesOrders.id, id), eq(salesOrders.organizationId, organizationId)));
-
-      for (const fulfillLine of data.lines) {
-        const soLine = so.lines.find((l) => l.id === fulfillLine.salesOrderLineId);
-        if (!soLine) {
-          throw new Error(`SO Line ${fulfillLine.salesOrderLineId} not found in this order`);
-        }
-
-        // Outtake via Inventory Adjustment (negative quantity)
-        await inventoryService.createAdjustment(
-          organizationId,
-          userId,
-          {
-            reason: `SO Shipped: ${so.documentNumber}`,
-            reference: so.documentNumber,
-            lines: [
-              {
-                productId: soLine.productId,
-                warehouseId: fulfillLine.warehouseId,
-                binId: fulfillLine.binId,
-                quantityChange: `-${fulfillLine.quantityShipped}`,
-              },
-            ],
-          },
-          tx,
-        );
-      }
-
-      return { id, status: 'shipped' };
     });
   }
 }

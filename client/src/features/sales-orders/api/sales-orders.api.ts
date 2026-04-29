@@ -28,7 +28,7 @@ export interface SalesOrderResponse {
   updatedAt: string;
   customer: {
     id: string;
-    name: string;
+    companyName: string;
   };
   lines: SalesOrderLineResponse[];
 }
