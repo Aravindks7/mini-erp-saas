@@ -1,11 +1,4 @@
-import {
-  type LucideIcon,
-  ShoppingCart,
-  ShoppingBag,
-  Package,
-  Factory,
-  DollarSign,
-} from 'lucide-react';
+import { type LucideIcon, ShoppingCart, ShoppingBag, Package, DollarSign } from 'lucide-react';
 import type { AppRoute } from './types/navigation';
 
 export interface SidebarItem {
@@ -34,7 +27,6 @@ export const SIDEBAR_GROUP_CONFIG: Record<string, { icon: LucideIcon; order: num
   Sales: { icon: ShoppingCart, order: 10 },
   Purchasing: { icon: ShoppingBag, order: 20 },
   Inventory: { icon: Package, order: 30 },
-  Manufacturing: { icon: Factory, order: 40 },
   Financials: { icon: DollarSign, order: 50 },
 };
 

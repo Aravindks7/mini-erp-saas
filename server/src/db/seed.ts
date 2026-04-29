@@ -95,8 +95,6 @@ export async function seedRBAC() {
       PERMISSIONS.BILLS.CREATE,
       PERMISSIONS.BILLS.UPDATE,
       PERMISSIONS.PAYMENTS.READ,
-      PERMISSIONS.BOM.READ,
-      PERMISSIONS.WORK_ORDERS.READ,
     ];
 
     let employeeAccessSet = await db.query.permissionSets.findFirst({

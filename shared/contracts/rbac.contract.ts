@@ -86,18 +86,6 @@ export const PERMISSIONS = {
     CREATE: 'payments:create',
     DELETE: 'payments:delete',
   },
-  BOM: {
-    READ: 'bom:read',
-    CREATE: 'bom:create',
-    UPDATE: 'bom:update',
-    DELETE: 'bom:delete',
-  },
-  WORK_ORDERS: {
-    READ: 'work-orders:read',
-    CREATE: 'work-orders:create',
-    UPDATE: 'work-orders:update',
-    DELETE: 'work-orders:delete',
-  },
   DASHBOARD: {
     READ: 'dashboard:read',
   },
