@@ -59,3 +59,35 @@ export async function createShipment(req: Request, res: Response) {
     res.status(400).json({ error: (error as Error).message || 'Failed to create shipment' });
   }
 }
+
+export async function deleteShipment(req: Request, res: Response) {
+  const { id } = req.params;
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    await shipmentsService.deleteShipment(organizationId, userId, id as string);
+    res.status(204).end();
+  } catch (error: unknown) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to delete shipment');
+    res.status(400).json({ error: (error as Error).message || 'Failed to delete shipment' });
+  }
+}
+
+export async function bulkDeleteShipments(req: Request, res: Response) {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'IDs array is required' });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    await shipmentsService.bulkDeleteShipments(organizationId, userId, ids);
+    res.status(204).end();
+  } catch (error: unknown) {
+    logger.error({ error, organizationId, userId, ids }, 'Failed to bulk delete shipments');
+    res.status(400).json({ error: (error as Error).message || 'Failed to bulk delete shipments' });
+  }
+}

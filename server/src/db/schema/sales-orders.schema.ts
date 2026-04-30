@@ -14,6 +14,7 @@ import { shipments } from './shipments.schema.js';
 export const salesOrderStatusEnum = pgEnum('sales_order_status', [
   'draft',
   'approved',
+  'partially_shipped',
   'shipped',
   'cancelled',
 ]);

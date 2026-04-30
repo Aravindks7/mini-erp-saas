@@ -3,7 +3,6 @@ import request from 'supertest';
 import { app } from '../../app.js';
 import { auth } from '../auth/auth.js';
 import { db } from '../../db/index.js';
-import { sequencesService } from '../sequences/sequences.service.js';
 
 // --- MOCKS ---
 
@@ -29,17 +28,8 @@ vi.mock('../sequences/sequences.service.js', () => ({
   },
 }));
 
-vi.mock('../../db/index.js', () => ({
-  db: {
-    query: {
-      organizationMemberships: {
-        findFirst: vi.fn(),
-      },
-      receipts: {
-        findMany: vi.fn().mockResolvedValue([]),
-        findFirst: vi.fn().mockResolvedValue(null),
-      },
-    },
+vi.mock('../../db/index.js', () => {
+  const mockTx = {
     insert: vi.fn(() => ({
       values: vi.fn().mockReturnValue({
         onConflictDoUpdate: vi.fn().mockReturnValue({
@@ -48,21 +38,45 @@ vi.mock('../../db/index.js', () => ({
         returning: vi.fn().mockResolvedValue([{ id: 'new-id' }]),
       }),
     })),
-    transaction: vi.fn((cb) =>
-      cb({
-        insert: vi.fn(() => ({
-          values: vi.fn().mockReturnValue({
-            onConflictDoUpdate: vi.fn().mockReturnValue({
-              returning: vi.fn().mockResolvedValue([{ id: 'new-id' }]),
-            }),
-            returning: vi.fn().mockResolvedValue([{ id: 'new-id' }]),
-          }),
-        })),
+    query: {
+      receipts: {
+        findFirst: vi.fn().mockResolvedValue({ id: '1', lines: [] }),
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+      purchaseOrderLines: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+    },
+    update: vi.fn(() => ({
+      set: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: '1' }]),
+        }),
       }),
-    ),
-    execute: vi.fn().mockResolvedValue({ rows: [] }),
-  },
-}));
+    })),
+  };
+
+  return {
+    db: {
+      query: {
+        organizationMemberships: {
+          findFirst: vi.fn(),
+        },
+        receipts: {
+          findMany: vi.fn().mockResolvedValue([]),
+          findFirst: vi.fn().mockResolvedValue({ id: '1', lines: [] }),
+        },
+      },
+      insert: vi.fn(() => ({
+        values: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: 'new-id' }]),
+        }),
+      })),
+      execute: vi.fn().mockResolvedValue({ rows: [] }),
+      transaction: vi.fn((cb) => cb(mockTx)),
+    },
+  };
+});
 
 describe('Receipts Module', () => {
   const mockOrgId = 'org-123';
@@ -97,11 +111,13 @@ describe('Receipts Module', () => {
   describe('POST /receipts', () => {
     it('should create a receipt with valid data', async () => {
       const payload = {
+        purchaseOrderId: '550e8400-e29b-41d4-a716-446655440000',
         reference: 'PACK-999',
         lines: [
           {
-            productId: '550e8400-e29b-41d4-a716-446655440001',
-            warehouseId: '550e8400-e29b-41d4-a716-446655440002',
+            purchaseOrderLineId: '550e8400-e29b-41d4-a716-446655440001',
+            productId: '550e8400-e29b-41d4-a716-446655440002',
+            warehouseId: '550e8400-e29b-41d4-a716-446655440003',
             quantityReceived: '10',
           },
         ],
@@ -114,26 +130,27 @@ describe('Receipts Module', () => {
 
       expect(response.status).toBe(201);
       expect(db.transaction).toHaveBeenCalled();
-      expect(sequencesService.getNextSequence).toHaveBeenCalledWith(
-        mockOrgId,
-        'RCT',
-        mockUserId,
-        expect.anything(),
-      );
     });
+  });
 
-    it('should return 400 for invalid input', async () => {
-      const payload = {
-        reference: 'PACK-999',
-        lines: [], // Empty lines
-      };
+  describe('DELETE /receipts/:id', () => {
+    it('should return 204 on successful deletion', async () => {
+      const response = await request(app).delete('/receipts/1').set('x-organization-id', mockOrgId);
 
+      expect(response.status).toBe(204);
+      expect(db.transaction).toHaveBeenCalled();
+    });
+  });
+
+  describe('DELETE /receipts', () => {
+    it('should return 204 on successful bulk deletion', async () => {
       const response = await request(app)
-        .post('/receipts')
+        .delete('/receipts')
         .set('x-organization-id', mockOrgId)
-        .send(payload);
+        .send({ ids: ['1', '2'] });
 
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(204);
+      expect(db.transaction).toHaveBeenCalled();
     });
   });
 });

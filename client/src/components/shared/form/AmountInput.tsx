@@ -3,24 +3,37 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 interface AmountInputProps {
-  value: number | undefined;
-  onChange: (value: number | undefined) => void;
+  value: number | string | undefined;
+  onChange: (value: string) => void;
   currency: string;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
 }
 
-function formatCurrency(val: number, curr: string) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: curr,
-  }).format(val);
+function formatCurrency(val: number | string | undefined, curr: string) {
+  if (val === undefined || val === '') return '';
+
+  const numericValue = typeof val === 'string' ? parseFloat(val) : val;
+  if (isNaN(numericValue)) return '';
+
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: curr || 'USD',
+    }).format(numericValue);
+  } catch {
+    console.warn(`Invalid currency "${curr}" passed to AmountInput, falling back to USD`);
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(numericValue);
+  }
 }
 
 /**
  * Standard Amount Input for ERP SaaS.
- * Requires a mandatory currency prop and uses Intl.NumberFormat for precision.
+ * Supports string/number values and returns string via onChange for contract compatibility.
  */
 export function AmountInput({
   value,
@@ -31,21 +44,15 @@ export function AmountInput({
   className,
 }: AmountInputProps) {
   const [isFocused, setIsFocused] = React.useState(false);
-  const [displayValue, setDisplayValue] = React.useState<string>(
-    value !== undefined ? formatCurrency(value, currency) : '',
-  );
+  const [displayValue, setDisplayValue] = React.useState<string>(formatCurrency(value, currency));
 
   // Sync with external value changes (e.g., form resets)
   React.useEffect(() => {
     // Only sync from prop if NOT focused to avoid fighting the user during typing
     if (!isFocused) {
-      if (value !== undefined) {
-        const formatted = formatCurrency(value, currency);
-        if (formatted !== displayValue) {
-          setDisplayValue(formatted);
-        }
-      } else if (displayValue !== '') {
-        setDisplayValue('');
+      const formatted = formatCurrency(value, currency);
+      if (formatted !== displayValue) {
+        setDisplayValue(formatted);
       }
     }
   }, [value, currency, displayValue, isFocused]);
@@ -59,24 +66,19 @@ export function AmountInput({
     // Only update if it's a valid partial number or empty
     if (numericValue === '' || /^\d*\.?\d*$/.test(numericValue)) {
       setDisplayValue(numericValue);
-      const parsed = parseFloat(numericValue);
-      onChange(isNaN(parsed) ? undefined : parsed);
+      onChange(numericValue);
     }
   };
 
   const handleBlur = () => {
     setIsFocused(false);
-    if (value !== undefined) {
-      setDisplayValue(formatCurrency(value, currency));
-    } else {
-      setDisplayValue('');
-    }
+    setDisplayValue(formatCurrency(value, currency));
   };
 
   const handleFocus = () => {
     setIsFocused(true);
     // When focusing, show just the numeric value for easier editing
-    if (value !== undefined) {
+    if (value !== undefined && value !== '') {
       setDisplayValue(value.toString());
     }
   };

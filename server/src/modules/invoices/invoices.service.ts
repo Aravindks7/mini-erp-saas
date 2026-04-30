@@ -76,6 +76,7 @@ export class InvoicesService extends BaseService<typeof invoices> {
               issueDate: data.issueDate,
               dueDate: data.dueDate,
               totalAmount: totalAmount.toString(),
+              balanceDue: totalAmount.toString(),
               taxAmount: taxAmount.toString(),
               notes: data.notes,
             },

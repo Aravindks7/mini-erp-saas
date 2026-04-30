@@ -22,6 +22,8 @@ import shipmentsRoutes from './modules/shipments/shipments.routes.js';
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 import invoicesRoutes from './modules/invoices/invoices.routes.js';
 import billsRoutes from './modules/bills/bills.routes.js';
+import paymentsRoutes from './modules/payments/payments.routes.js';
+import sequencesRoutes from './modules/sequences/sequences.routes.js';
 
 const app = express();
 
@@ -75,6 +77,8 @@ app.use('/sales-orders', salesOrdersRoutes);
 app.use('/shipments', shipmentsRoutes);
 app.use('/invoices', invoicesRoutes);
 app.use('/bills', billsRoutes);
+app.use('/payments', paymentsRoutes);
+app.use('/sequences', sequencesRoutes);
 app.use('/dashboard', dashboardRoutes);
 
 // Global error handler — must be last

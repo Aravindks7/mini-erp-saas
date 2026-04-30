@@ -10,6 +10,7 @@ import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
+import { DetailView } from '@/components/shared/DetailView';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { productsApi } from '../api/products.api';
@@ -102,40 +103,34 @@ export default function ProductDetailsPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      Product Name
-                    </label>
-                    <p className="text-base font-semibold">{product.name}</p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      SKU / Internal Reference
-                    </label>
-                    <p className="text-base font-mono bg-muted/50 w-fit px-2 py-0.5 rounded border">
-                      {product.sku}
-                    </p>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      Status
-                    </label>
-                    <StatusBadge value={product.status} statusMap={productStatusMap} />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      Description
-                    </label>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {product.description || 'No description provided for this product.'}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <DetailView
+                columns={2}
+                sections={[
+                  {
+                    items: [
+                      {
+                        label: 'Product Name',
+                        value: product.name,
+                      },
+                      {
+                        label: 'SKU / Internal Reference',
+                        value: product.sku,
+                        valueClassName: 'font-mono bg-muted/50 w-fit px-2 py-0.5 rounded border',
+                      },
+                      {
+                        label: 'Status',
+                        value: <StatusBadge value={product.status} statusMap={productStatusMap} />,
+                      },
+                      {
+                        label: 'Description',
+                        value: product.description,
+                        className: 'md:col-span-full',
+                        valueClassName: 'font-normal text-muted-foreground leading-relaxed',
+                      },
+                    ],
+                  },
+                ]}
+              />
             </CardContent>
           </Card>
 
@@ -154,54 +149,48 @@ export default function ProductDetailsPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Tag className="h-3 w-3 text-muted-foreground" />
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
-                      Base Price
-                    </label>
-                  </div>
-                  <p className="text-xl font-bold tracking-tight text-primary">
-                    {new Intl.NumberFormat('en-US', {
-                      style: 'currency',
-                      currency: 'USD',
-                    }).format(Number(product.basePrice))}
-                  </p>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Scale className="h-3 w-3 text-muted-foreground" />
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
-                      Base Unit
-                    </label>
-                  </div>
-                  <p className="text-base font-semibold">{product.baseUom.name}</p>
-                  <p className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded w-fit uppercase">
-                    Code: {product.baseUom.code}
-                  </p>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Receipt className="h-3 w-3 text-muted-foreground" />
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
-                      Tax Configuration
-                    </label>
-                  </div>
-                  {product.tax ? (
-                    <>
-                      <p className="text-base font-semibold">{product.tax.name}</p>
-                      <p className="text-sm font-medium text-muted-foreground">
-                        Rate: {product.tax.rate}%
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">No tax applied</p>
-                  )}
-                </div>
-              </div>
+              <DetailView
+                columns={3}
+                sections={[
+                  {
+                    items: [
+                      {
+                        label: 'Base Price',
+                        icon: Tag,
+                        value: new Intl.NumberFormat('en-US', {
+                          style: 'currency',
+                          currency: 'USD',
+                        }).format(Number(product.basePrice)),
+                        valueClassName: 'text-xl font-bold tracking-tight text-primary',
+                      },
+                      {
+                        label: 'Base Unit',
+                        icon: Scale,
+                        value: (
+                          <div className="space-y-1">
+                            <p>{product.baseUom.name}</p>
+                            <p className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded w-fit uppercase">
+                              Code: {product.baseUom.code}
+                            </p>
+                          </div>
+                        ),
+                      },
+                      {
+                        label: 'Tax Configuration',
+                        icon: Receipt,
+                        value: product.tax ? (
+                          <div className="space-y-1">
+                            <p>{product.tax.name}</p>
+                            <p className="text-xs font-medium text-muted-foreground">
+                              Rate: {product.tax.rate}%
+                            </p>
+                          </div>
+                        ) : null,
+                      },
+                    ],
+                  },
+                ]}
+              />
             </CardContent>
           </Card>
 

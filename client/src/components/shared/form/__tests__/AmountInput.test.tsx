@@ -7,10 +7,10 @@ const AmountInputWrapper = ({
   initialValue,
   currency,
 }: {
-  initialValue?: number;
+  initialValue?: number | string;
   currency: string;
 }) => {
-  const [value, setValue] = React.useState<number | undefined>(initialValue);
+  const [value, setValue] = React.useState<number | string | undefined>(initialValue);
   return <AmountInput value={value} onChange={setValue} currency={currency} />;
 };
 

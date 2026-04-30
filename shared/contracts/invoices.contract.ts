@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const invoiceStatusEnumSchema = z.enum(['draft', 'open', 'paid', 'void']);
+export const invoiceStatusEnumSchema = z.enum(['draft', 'open', 'partially_paid', 'paid', 'void']);
 
 export const invoiceLineInputSchema = z.object({
   productId: z.string().uuid(),
@@ -19,6 +19,7 @@ export const createInvoiceSchema = z.object({
   lines: z.array(invoiceLineInputSchema).min(1, 'At least one line is required'),
   notes: z.string().max(1000).optional().nullable(),
   status: invoiceStatusEnumSchema.default('draft'),
+  balanceDue: z.string().optional().nullable(),
 });
 
 export const updateInvoiceSchema = createInvoiceSchema.partial();

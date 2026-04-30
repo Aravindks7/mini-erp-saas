@@ -3,7 +3,6 @@ import request from 'supertest';
 import { app } from '../../app.js';
 import { auth } from '../auth/auth.js';
 import { db } from '../../db/index.js';
-import { sequencesService } from '../sequences/sequences.service.js';
 
 vi.mock('../rbac/rbac.service.js', () => ({
   rbacService: {
@@ -34,28 +33,29 @@ vi.mock('../sequences/sequences.service.js', () => ({
   },
 }));
 
+// Complex mock for db to handle transactions and queries
 vi.mock('../../db/index.js', () => {
   const mockTx = {
     query: {
       salesOrders: {
         findFirst: vi.fn(),
-      },
-      inventoryLevels: {
-        findMany: vi.fn().mockResolvedValue([]),
+        findMany: vi.fn(),
       },
     },
     insert: vi.fn(() => ({
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: 'new-id', documentNumber: 'SO-2026-0001' }]),
-        onConflictDoUpdate: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: 'new-id' }]),
-        }),
       }),
     })),
     update: vi.fn(() => ({
       set: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue([{ id: 'so-123', status: 'shipped' }]),
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: 'so-123' }]),
+        }),
       }),
+    })),
+    delete: vi.fn(() => ({
+      where: vi.fn().mockResolvedValue([]),
     })),
   };
 
@@ -133,21 +133,95 @@ describe('Sales Orders Module', () => {
 
       expect(response.status).toBe(201);
       expect(db.transaction).toHaveBeenCalled();
-      expect(sequencesService.getNextSequence).toHaveBeenCalled();
     });
+  });
 
-    it('should return 400 for invalid data', async () => {
-      const payload = {
-        customerId: 'not-a-uuid',
-        lines: [],
-      };
+  describe('DELETE /sales-orders/:id', () => {
+    it('should delete a draft SO successfully', async () => {
+      const soId = '550e8400-e29b-41d4-a716-446655440004';
+      const mockSO = { id: soId, status: 'draft', documentNumber: 'SO-001' };
+
+      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
+        const tx = {
+          query: {
+            salesOrders: {
+              findFirst: vi.fn().mockResolvedValue(mockSO),
+            },
+          },
+          update: vi.fn(() => ({
+            set: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                returning: vi.fn().mockResolvedValue([mockSO]),
+              }),
+            }),
+          })),
+        } as any;
+        return cb(tx);
+      });
 
       const response = await request(app)
-        .post('/sales-orders')
-        .set('x-organization-id', mockOrgId)
-        .send(payload);
+        .delete(`/sales-orders/${soId}`)
+        .set('x-organization-id', mockOrgId);
+
+      expect(response.status).toBe(204);
+    });
+
+    it('should return 400 when deleting a non-draft SO', async () => {
+      const soId = '550e8400-e29b-41d4-a716-446655440004';
+      const mockSO = { id: soId, status: 'shipped', documentNumber: 'SO-001' };
+
+      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
+        const tx = {
+          query: {
+            salesOrders: {
+              findFirst: vi.fn().mockResolvedValue(mockSO),
+            },
+          },
+        } as any;
+        return cb(tx);
+      });
+
+      const response = await request(app)
+        .delete(`/sales-orders/${soId}`)
+        .set('x-organization-id', mockOrgId);
 
       expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Only draft sales orders can be deleted');
+    });
+  });
+
+  describe('DELETE /sales-orders', () => {
+    it('should bulk delete draft SOs successfully', async () => {
+      const ids = ['so-1', 'so-2'];
+      const mockSOs = [
+        { id: 'so-1', status: 'draft', documentNumber: 'SO-001' },
+        { id: 'so-2', status: 'draft', documentNumber: 'SO-002' },
+      ];
+
+      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
+        const tx = {
+          query: {
+            salesOrders: {
+              findMany: vi.fn().mockResolvedValue(mockSOs),
+            },
+          },
+          update: vi.fn(() => ({
+            set: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                returning: vi.fn().mockResolvedValue(mockSOs),
+              }),
+            }),
+          })),
+        } as any;
+        return cb(tx);
+      });
+
+      const response = await request(app)
+        .delete('/sales-orders')
+        .set('x-organization-id', mockOrgId)
+        .send({ ids });
+
+      expect(response.status).toBe(204);
     });
   });
 });

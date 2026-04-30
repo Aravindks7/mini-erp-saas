@@ -31,4 +31,16 @@ router.post(
   receiptsController.createReceipt,
 );
 
+router.delete(
+  '/',
+  requirePermission(PERMISSIONS.INVENTORY.RECEIVE),
+  receiptsController.bulkDeleteReceipts,
+);
+
+router.delete(
+  '/:id',
+  requirePermission(PERMISSIONS.INVENTORY.RECEIVE),
+  receiptsController.deleteReceipt,
+);
+
 export default router;

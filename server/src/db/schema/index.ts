@@ -4,7 +4,10 @@ export * from './organizations.schema.js';
 export * from './auth.schema.js';
 export * from './auth-enums.schema.js';
 export * from './permissions.schema.js';
+export * from './permission-sets.schema.js';
+export * from './permission-set-items.schema.js';
 export * from './roles.schema.js';
+export * from './role-permission-sets.schema.js';
 export * from './memberships.schema.js';
 export * from './invites.schema.js';
 
@@ -16,11 +19,14 @@ export * from './products.schema.js';
 export * from './taxes.schema.js';
 
 export * from './suppliers.schema.js';
+export * from './supplier-addresses.schema.js';
+export * from './supplier-contacts.schema.js';
 export * from './customers.schema.js';
 export * from './customer-addresses.schema.js';
 export * from './customer-contacts.schema.js';
 
 export * from './warehouses.schema.js';
+export * from './warehouse-addresses.schema.js';
 export * from './bins.schema.js';
 export * from './dashboard.schema.js';
 
@@ -48,3 +54,4 @@ export * from './bills.schema.js';
 export * from './bill-lines.schema.js';
 
 export * from './sequences.schema.js';
+export * from './payments.schema.js';

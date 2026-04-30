@@ -1,7 +1,9 @@
+import * as React from 'react';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Truck } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { EntityTable } from '@/components/shared/data-table/EntityTable';
 import { AddButton } from '@/components/shared/data-table/AddButton';
@@ -12,10 +14,12 @@ import { PERMISSIONS } from '@shared/index';
 
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 
 import { columns, shipmentStatusOptions } from './columns';
-import { useShipments } from '../hooks/shipments.hooks';
+import { useShipments, useBulkDeleteShipments } from '../hooks/shipments.hooks';
 import { PageHeader } from '@/components/shared/PageHeader';
+import type { ShipmentResponse } from '../api/shipments.api';
 
 const searchSchema = z.object({
   shipmentNumber: z.string().optional(),
@@ -28,7 +32,19 @@ export function ShipmentList() {
   const { getPath } = useTenantPath();
   const queryClient = useQueryClient();
   const { data: shipments, isLoading, isError } = useShipments();
+  const bulkDeleteMutation = useBulkDeleteShipments();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
+
+  // Bulk Delete State
+  const [bulkDeleteState, setBulkDeleteState] = React.useState<{
+    isOpen: boolean;
+    rows: ShipmentResponse[];
+    clearSelection: () => void;
+  }>({
+    isOpen: false,
+    rows: [],
+    clearSelection: () => {},
+  });
 
   if (isError) {
     return (
@@ -39,6 +55,19 @@ export function ShipmentList() {
       />
     );
   }
+
+  const handleBulkDeleteConfirm = async () => {
+    const ids = bulkDeleteState.rows.map((r) => r.id);
+    try {
+      await bulkDeleteMutation.mutateAsync(ids);
+      toast.success(`Successfully deleted ${ids.length} shipment(s)`);
+      bulkDeleteState.clearSelection();
+      setBulkDeleteState((prev) => ({ ...prev, isOpen: false }));
+    } catch (error) {
+      toast.error('Failed to delete selected shipments');
+      console.error('Bulk delete error:', error);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -73,35 +102,56 @@ export function ShipmentList() {
   const handleAddClick = () => navigate(getPath('/shipments/new'));
 
   return (
-    <EntityTable
-      headerVariant="primary"
-      title="Shipments"
-      description="Manage and track your outbound logistics and customer shipments."
-      enableGlobalSearch
-      data={shipments || []}
-      columns={columns}
-      isLoading={isLoading}
-      onAddClick={handleAddClick}
-      viewMode={tableState.viewMode}
-      onViewModeChange={tableSetters.setViewMode}
-      state={tableState}
-      onStateChange={tableSetters}
-      onReset={resetAll}
-      headerActions={
-        <AddButton
-          to="/shipments/new"
-          permission={PERMISSIONS.SHIPMENTS.CREATE}
-          label="Create Shipment"
-        />
-      }
-      searchKey="shipmentNumber"
-      toolbarFilters={(table) => (
-        <DataTableFilter
-          column={table.getColumn('status')}
-          title="Status"
-          options={shipmentStatusOptions}
-        />
-      )}
-    />
+    <>
+      <EntityTable
+        headerVariant="primary"
+        title="Shipments"
+        description="Manage and track your outbound logistics and customer shipments."
+        enableGlobalSearch
+        data={shipments || []}
+        columns={columns}
+        isLoading={isLoading}
+        onAddClick={handleAddClick}
+        viewMode={tableState.viewMode}
+        onViewModeChange={tableSetters.setViewMode}
+        state={tableState}
+        onStateChange={tableSetters}
+        onReset={resetAll}
+        headerActions={
+          <AddButton
+            to="/shipments/new"
+            permission={PERMISSIONS.SHIPMENTS.CREATE}
+            label="Create Shipment"
+          />
+        }
+        bulkActions={[
+          {
+            label: 'Delete Selected',
+            onAction: (rows: ShipmentResponse[], clearSelection) => {
+              setBulkDeleteState({ isOpen: true, rows, clearSelection });
+            },
+            variant: 'destructive',
+          },
+        ]}
+        searchKey="shipmentNumber"
+        toolbarFilters={(table) => (
+          <DataTableFilter
+            column={table.getColumn('status')}
+            title="Status"
+            options={shipmentStatusOptions}
+          />
+        )}
+      />
+
+      <DeleteConfirmDialog
+        isOpen={bulkDeleteState.isOpen}
+        onClose={() => setBulkDeleteState((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={handleBulkDeleteConfirm}
+        title={`Delete ${bulkDeleteState.rows.length} Shipment(s)?`}
+        description={`Are you sure you want to delete ${bulkDeleteState.rows.length} selected shipment(s)? This will reverse all associated inventory movements.`}
+        confirmLabel="Delete Shipments"
+        isLoading={bulkDeleteMutation.isPending}
+      />
+    </>
   );
 }

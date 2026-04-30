@@ -43,7 +43,7 @@ export default function BillFormPage() {
       lines: [],
       notes: '',
       status: 'draft',
-    } as any,
+    },
   });
 
   useEffect(() => {
@@ -63,7 +63,7 @@ export default function BillFormPage() {
         })),
         notes: bill.notes || '',
         status: bill.status as CreateBillInput['status'],
-      } as any);
+      });
     }
   }, [bill, form]);
 

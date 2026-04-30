@@ -1,13 +1,14 @@
-import { Eye } from 'lucide-react';
+import { Eye, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
+import { useState } from 'react';
 import {
   DataTableRowActions,
   type RowAction,
 } from '@/components/shared/data-table/DataTableRowActions';
-
 import type { ShipmentResponse } from '../api/shipments.api';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
+import { useDeleteShipment } from '../hooks/shipments.hooks';
 
 interface ShipmentRowActionsProps {
   row: { original: ShipmentResponse };
@@ -16,7 +17,15 @@ interface ShipmentRowActionsProps {
 export function ShipmentRowActions({ row }: ShipmentRowActionsProps) {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const { mutate: deleteShipment, isPending: isDeleting } = useDeleteShipment();
   const shipment = row.original;
+
+  const handleDelete = () => {
+    deleteShipment(shipment.id, {
+      onSuccess: () => setIsDeleteDialogOpen(false),
+    });
+  };
 
   const primaryActions: RowAction[] = [
     {
@@ -25,7 +34,27 @@ export function ShipmentRowActions({ row }: ShipmentRowActionsProps) {
       onClick: () => navigate(getPath(`/shipments/${shipment.id}`)),
       tooltip: 'View Details',
     },
+    {
+      label: 'Delete',
+      icon: <Trash2 className="h-4 w-4" />,
+      onClick: () => setIsDeleteDialogOpen(true),
+      variant: 'destructive',
+      tooltip: 'Delete Shipment',
+    },
   ];
 
-  return <DataTableRowActions primaryActions={primaryActions} />;
+  return (
+    <>
+      <DataTableRowActions primaryActions={primaryActions} />
+
+      <DeleteConfirmDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDelete}
+        title="Delete Shipment"
+        description={`Are you sure you want to delete ${shipment.shipmentNumber}? This will reverse the associated inventory movements.`}
+        isLoading={isDeleting}
+      />
+    </>
+  );
 }

@@ -76,3 +76,39 @@ export async function updateSO(req: Request, res: Response) {
       .json({ error: error instanceof Error ? error.message : 'Failed to update sales order' });
   }
 }
+
+export async function deleteSO(req: Request, res: Response) {
+  const { id } = req.params;
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    await salesOrdersService.deleteSO(organizationId, userId, id as string);
+    res.status(204).end();
+  } catch (error: unknown) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to delete sales order');
+    res
+      .status(400)
+      .json({ error: error instanceof Error ? error.message : 'Failed to delete sales order' });
+  }
+}
+
+export async function bulkDeleteSOs(req: Request, res: Response) {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'IDs array is required' });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    await salesOrdersService.bulkDeleteSOs(organizationId, userId, ids);
+    res.status(204).end();
+  } catch (error: unknown) {
+    logger.error({ error, organizationId, userId, ids }, 'Failed to bulk delete sales orders');
+    res.status(400).json({
+      error: error instanceof Error ? error.message : 'Failed to bulk delete sales orders',
+    });
+  }
+}

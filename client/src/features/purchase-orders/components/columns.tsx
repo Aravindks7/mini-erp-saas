@@ -9,6 +9,7 @@ import { PurchaseOrderRowActions } from './PurchaseOrderRowActions';
 export const purchaseOrderStatusMap: StatusMap<string> = {
   draft: { label: 'Draft', tone: 'neutral' },
   sent: { label: 'Sent', tone: 'info' },
+  partially_received: { label: 'Partial', tone: 'warning' },
   received: { label: 'Received', tone: 'success' },
   cancelled: { label: 'Cancelled', tone: 'danger' },
 };

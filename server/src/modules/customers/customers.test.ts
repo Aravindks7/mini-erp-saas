@@ -414,6 +414,42 @@ describe('Customers Module Integration', () => {
       });
     });
 
+    describe('Race Condition & Concurrency', () => {
+      it('should fail to prevent duplicates if two requests arrive concurrently (Fixed with Unique Index)', async () => {
+        // Setup: Mock findFirst (checkDuplicate) to return empty list initially for both
+        vi.mocked(db.query.customers.findFirst).mockResolvedValue(undefined);
+
+        // Mock the transaction insertion to fail on the second attempt to simulate
+        // the database-level UNIQUE constraint violation (code 23505)
+        vi.mocked(mockTx.insert)
+          .mockImplementationOnce(
+            () =>
+              ({
+                values: vi.fn().mockReturnValue({
+                  returning: vi.fn().mockResolvedValue([{ id: 'cust-1' }]),
+                }),
+              }) as any,
+          )
+          .mockImplementationOnce(() => {
+            const error = new Error('duplicate key value violates unique constraint');
+            (error as any).code = '23505';
+            throw error;
+          });
+
+        const payload = { companyName: 'Race Corp' };
+
+        // Fire two concurrent requests
+        const [res1, res2] = await Promise.all([
+          request(app).post('/customers').send(payload).set('x-organization-id', mockOrgId),
+          request(app).post('/customers').send(payload).set('x-organization-id', mockOrgId),
+        ]);
+
+        // One should succeed, one should fail with 409 Conflict due to the caught 23505 error
+        const statuses = [res1.status, res2.status].sort();
+        expect(statuses).toEqual([201, 409]);
+      });
+    });
+
     describe('Primary Record Normalization', () => {
       it('should normalize multiple primary addresses to a single primary in createCustomer', async () => {
         vi.mocked(db.query.customers.findFirst).mockResolvedValueOnce(undefined);

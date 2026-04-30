@@ -2,18 +2,21 @@ import * as React from 'react';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Package } from 'lucide-react';
+import { Package, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { EntityTable } from '@/components/shared/data-table/EntityTable';
 import { AddButton } from '@/components/shared/data-table/AddButton';
 import { DataTableFilter } from '@/components/shared/data-table/DataTableFilter';
+import { ExportButton } from '@/components/shared/data-table/ExportButton';
+import { ImportModal } from '@/components/shared/data-table/ImportModal';
 import { useDataTableState } from '@/hooks/useDataTableState';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { PERMISSIONS } from '@shared/index';
 
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { Button } from '@/components/ui/button';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 
 import { columns, productStatusOptions } from './columns';
@@ -34,6 +37,17 @@ export function ProductList() {
   const { data: products, isLoading, isError } = useProducts();
   const bulkDeleteMutation = useBulkDeleteProducts();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
+
+  const handleImportSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['products'] });
+  };
+
+  const importColumns = [
+    { header: 'SKU', accessorKey: 'sku' },
+    { header: 'Name', accessorKey: 'name' },
+    { header: 'Price', accessorKey: 'basePrice' },
+    { header: 'Status', accessorKey: 'status' },
+  ];
 
   // Bulk Delete State
   const [bulkDeleteState, setBulkDeleteState] = React.useState<{
@@ -83,10 +97,22 @@ export function ProductList() {
         <PageHeader title="Products" />
         <EmptyState
           title="Product Catalog is empty"
-          description="You haven't added any products yet. Get started by creating your first product record."
+          description="You haven't added any products yet. Get started by creating your first product record or importing your catalog from a CSV."
           icon={Package}
         >
           <div className="flex items-center justify-center gap-4">
+            <ImportModal
+              endpoint="/products/import"
+              templateEndpoint="/products/import/template"
+              onSuccess={handleImportSuccess}
+              columns={importColumns}
+              trigger={
+                <Button variant="outline" className="gap-2">
+                  <Upload className="h-4 w-4" />
+                  Import CSV
+                </Button>
+              }
+            />
             <AddButton
               to="/products/new"
               permission={PERMISSIONS.PRODUCTS.CREATE}
@@ -119,6 +145,13 @@ export function ProductList() {
         onReset={resetAll}
         headerActions={
           <div className="flex items-center gap-2">
+            <ExportButton endpoint="/products/export" filename="products-export.csv" />
+            <ImportModal
+              endpoint="/products/import"
+              templateEndpoint="/products/import/template"
+              onSuccess={handleImportSuccess}
+              columns={importColumns}
+            />
             <AddButton
               to="/products/new"
               permission={PERMISSIONS.PRODUCTS.CREATE}

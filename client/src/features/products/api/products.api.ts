@@ -47,4 +47,18 @@ export const productsApi = {
       method: 'DELETE',
       body: JSON.stringify({ ids }),
     }),
+  importProducts: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiFetch<{
+      totalProcessed: number;
+      successCount: number;
+      failedCount: number;
+      errors: Array<{ row: number; message: string }>;
+      successfulRecords?: Array<any>;
+    }>('/products/import', {
+      method: 'POST',
+      body: formData,
+    });
+  },
 };

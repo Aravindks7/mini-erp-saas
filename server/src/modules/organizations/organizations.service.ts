@@ -6,6 +6,7 @@ import {
   organizationInvites,
   roles,
   rolePermissionSets,
+  documentSequences,
 } from '../../db/schema/index.js';
 import { and, eq, sql, ne } from 'drizzle-orm';
 import {
@@ -76,6 +77,20 @@ export class OrganizationsService {
         organizationId: newOrg.id,
         roleId: adminRole.id,
       });
+
+      // 5. Seed default document sequences
+      const sequenceTypes = ['SO', 'PO', 'INV', 'REC', 'SHP', 'BILL', 'PAY', 'ADJ'];
+      const sequenceValues = sequenceTypes.map((type) => ({
+        organizationId: newOrg.id,
+        type,
+        prefix: `${type}-`,
+        nextValue: 1,
+        padding: 4,
+        createdBy: userId,
+        updatedBy: userId,
+      }));
+
+      await tx.insert(documentSequences).values(sequenceValues);
 
       return newOrg;
     });

@@ -1,8 +1,5 @@
 import { apiFetch } from '@/lib/api';
-import type {
-  CreatePurchaseOrderInput,
-  ReceivePurchaseOrderInput,
-} from '@shared/contracts/purchase-orders.contract';
+import type { CreatePurchaseOrderInput } from '@shared/contracts/purchase-orders.contract';
 
 export interface PurchaseOrderLineResponse {
   id: string;
@@ -22,7 +19,7 @@ export interface PurchaseOrderResponse {
   id: string;
   supplierId: string;
   documentNumber: string;
-  status: 'draft' | 'sent' | 'received' | 'cancelled';
+  status: 'draft' | 'sent' | 'partially_received' | 'received' | 'cancelled';
   totalAmount: string;
   createdAt: string;
   updatedAt: string;
@@ -46,9 +43,13 @@ export const purchaseOrdersApi = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
-  receivePurchaseOrder: (id: string, data: ReceivePurchaseOrderInput) =>
-    apiFetch<{ id: string; status: 'received' }>(`/purchase-orders/${id}/receive`, {
-      method: 'POST',
-      body: JSON.stringify(data),
+  deletePurchaseOrder: (id: string) =>
+    apiFetch<void>(`/purchase-orders/${id}`, {
+      method: 'DELETE',
+    }),
+  bulkDeletePurchaseOrders: (ids: string[]) =>
+    apiFetch<void>('/purchase-orders', {
+      method: 'DELETE',
+      body: JSON.stringify({ ids }),
     }),
 };

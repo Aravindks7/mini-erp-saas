@@ -16,7 +16,13 @@ import { customers } from './customers.schema.js';
 import { salesOrders } from './sales-orders.schema.js';
 import { invoiceLines } from './invoice-lines.schema.js';
 
-export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'open', 'paid', 'void']);
+export const invoiceStatusEnum = pgEnum('invoice_status', [
+  'draft',
+  'open',
+  'partially_paid',
+  'paid',
+  'void',
+]);
 
 export const invoices = pgTable(
   'invoices',
@@ -36,6 +42,7 @@ export const invoices = pgTable(
     issueDate: timestamp('issue_date').notNull(),
     dueDate: timestamp('due_date').notNull(),
     totalAmount: numeric('total_amount', { precision: 18, scale: 8 }).notNull(),
+    balanceDue: numeric('balance_due', { precision: 18, scale: 8 }).notNull(),
     taxAmount: numeric('tax_amount', { precision: 18, scale: 8 }).notNull(),
     notes: text('notes'),
   },

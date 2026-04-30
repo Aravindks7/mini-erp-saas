@@ -2,6 +2,7 @@ import { db } from '../../db/index.js';
 import { documentSequences } from '../../db/schema/sequences.schema.js';
 import { sql } from 'drizzle-orm';
 import { BaseService } from '../../lib/base.service.js';
+import { UpdateDocumentSequenceInput } from '#shared/contracts/sequences.contract.js';
 
 /**
  * SequencesService: Handles atomic document sequence generation.
@@ -10,6 +11,33 @@ import { BaseService } from '../../lib/base.service.js';
 export class SequencesService extends BaseService<typeof documentSequences> {
   constructor() {
     super(documentSequences);
+  }
+
+  /**
+   * Lists all sequences for an organization.
+   */
+  async listSequences(organizationId: string) {
+    return await db.query.documentSequences.findMany({
+      where: this.getTenantWhere(organizationId),
+    });
+  }
+
+  /**
+   * Updates a specific sequence configuration.
+   */
+  async updateSequence(
+    organizationId: string,
+    userId: string,
+    id: string,
+    data: UpdateDocumentSequenceInput,
+  ) {
+    const [updated] = await db
+      .update(documentSequences)
+      .set(this.withAudit(data, userId, true))
+      .where(this.getTenantWhere(organizationId, id))
+      .returning();
+
+    return updated;
   }
 
   /**

@@ -31,7 +31,31 @@ export function useCreateShipment() {
     mutationFn: (data: CreateShipmentInput) => shipmentsApi.createShipment(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: shipmentKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: ['inventory-levels'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
+    },
+  });
+}
+
+export function useDeleteShipment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => shipmentsApi.deleteShipment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: shipmentKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
+    },
+  });
+}
+
+export function useBulkDeleteShipments() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => shipmentsApi.bulkDeleteShipments(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: shipmentKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
       queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
     },
   });

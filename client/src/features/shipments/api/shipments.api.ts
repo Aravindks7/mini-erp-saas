@@ -48,4 +48,13 @@ export const shipmentsApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  deleteShipment: (id: string) =>
+    apiFetch<void>(`/shipments/${id}`, {
+      method: 'DELETE',
+    }),
+  bulkDeleteShipments: (ids: string[]) =>
+    apiFetch<void>('/shipments', {
+      method: 'DELETE',
+      body: JSON.stringify({ ids }),
+    }),
 };

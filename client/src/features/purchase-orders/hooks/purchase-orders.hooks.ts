@@ -1,8 +1,5 @@
 import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
-import type {
-  CreatePurchaseOrderInput,
-  ReceivePurchaseOrderInput,
-} from '@shared/contracts/purchase-orders.contract';
+import type { CreatePurchaseOrderInput } from '@shared/contracts/purchase-orders.contract';
 import { purchaseOrdersApi } from '../api/purchase-orders.api';
 
 export const purchaseOrderKeys = {
@@ -57,17 +54,24 @@ export function useUpdatePurchaseOrder() {
   });
 }
 
-export function useReceivePurchaseOrder() {
+export function useDeletePurchaseOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: ReceivePurchaseOrderInput }) =>
-      purchaseOrdersApi.receivePurchaseOrder(id, data),
-    onSuccess: (data) => {
+    mutationFn: (id: string) => purchaseOrdersApi.deletePurchaseOrder(id),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.detail(data.id) });
-      // Invalidate inventory keys as well since receiving intaking stock
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    },
+  });
+}
+
+export function useBulkDeletePurchaseOrders() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ids: string[]) => purchaseOrdersApi.bulkDeletePurchaseOrders(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.lists() });
     },
   });
 }

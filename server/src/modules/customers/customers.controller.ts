@@ -49,9 +49,12 @@ export async function createCustomer(req: Request, res: Response) {
   const userId = req.authSession.user.id;
 
   try {
-    // Check for duplicates
-    const existing = await customersService.listCustomers(organizationId);
-    if (existing.some((c) => c.companyName === parseResult.data.companyName)) {
+    // Check for duplicates using targeted service method instead of listCustomers() array scan
+    const existing = await customersService.checkDuplicate(
+      organizationId,
+      parseResult.data.companyName,
+    );
+    if (existing) {
       return res
         .status(409)
         .json({ error: `Customer with name '${parseResult.data.companyName}' already exists` });
@@ -93,6 +96,20 @@ export async function updateCustomer(req: Request, res: Response) {
   const userId = req.authSession.user.id;
 
   try {
+    // Optimization: Check for duplicate name if companyName is being updated
+    if (parseResult.data.companyName) {
+      const duplicate = await customersService.checkDuplicate(
+        organizationId,
+        parseResult.data.companyName,
+        id as string,
+      );
+      if (duplicate) {
+        return res
+          .status(409)
+          .json({ error: `Customer with name '${parseResult.data.companyName}' already exists` });
+      }
+    }
+
     const updatedCustomer = await customersService.updateCustomer(
       organizationId,
       userId,

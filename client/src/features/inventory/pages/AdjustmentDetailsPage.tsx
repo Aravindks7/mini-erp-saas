@@ -7,6 +7,7 @@ import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
+import { DetailView } from '@/components/shared/DetailView';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import {
   Table,
@@ -16,7 +17,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Separator } from '@/components/ui/separator';
 
 const adjustmentStatusMap: StatusMap<string> = {
   draft: { label: 'Draft', tone: 'neutral' },
@@ -129,20 +129,24 @@ export function AdjustmentDetailsPage() {
                 <CardTitle className="text-lg">Summary</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="pt-6 space-y-4">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                  Reason
-                </label>
-                <p className="text-sm font-medium">{adjustment.reason}</p>
-              </div>
-              <Separator />
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                  Total Items
-                </label>
-                <p className="text-sm font-medium">{adjustment.lines.length}</p>
-              </div>
+            <CardContent className="pt-6">
+              <DetailView
+                columns={1}
+                sections={[
+                  {
+                    items: [
+                      {
+                        label: 'Reason',
+                        value: adjustment.reason,
+                      },
+                      {
+                        label: 'Total Items',
+                        value: adjustment.lines.length,
+                      },
+                    ],
+                  },
+                ]}
+              />
             </CardContent>
           </Card>
 

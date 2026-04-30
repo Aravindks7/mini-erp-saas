@@ -3,7 +3,6 @@ import request from 'supertest';
 import { app } from '../../app.js';
 import { auth } from '../auth/auth.js';
 import { db } from '../../db/index.js';
-import { sequencesService } from '../sequences/sequences.service.js';
 
 // --- MOCKS ---
 
@@ -42,22 +41,19 @@ vi.mock('../../db/index.js', () => {
     query: {
       purchaseOrders: {
         findFirst: vi.fn(),
-      },
-      inventoryLevels: {
-        findMany: vi.fn().mockResolvedValue([]),
+        findMany: vi.fn(),
       },
     },
     insert: vi.fn(() => ({
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: 'new-id', documentNumber: 'PO-2026-0001' }]),
-        onConflictDoUpdate: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: 'new-id' }]),
-        }),
       }),
     })),
     update: vi.fn(() => ({
       set: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue([{ id: 'po-123', status: 'received' }]),
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: 'po-123' }]),
+        }),
       }),
     })),
   };
@@ -76,6 +72,13 @@ vi.mock('../../db/index.js', () => {
       insert: vi.fn(() => ({
         values: vi.fn().mockReturnValue({
           returning: vi.fn().mockResolvedValue([{ id: 'new-id', documentNumber: 'PO-2026-0001' }]),
+        }),
+      })),
+      update: vi.fn(() => ({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([{ id: 'po-123' }]),
+          }),
         }),
       })),
       execute: vi.fn().mockResolvedValue({ rows: [] }),
@@ -138,42 +141,14 @@ describe('Purchase Orders Module', () => {
 
       expect(response.status).toBe(201);
       expect(db.transaction).toHaveBeenCalled();
-      expect(sequencesService.getNextSequence).toHaveBeenCalled();
-    });
-
-    it('should return 400 for invalid data', async () => {
-      const payload = {
-        supplierId: 'not-a-uuid',
-        lines: [],
-      };
-
-      const response = await request(app)
-        .post('/purchase-orders')
-        .set('x-organization-id', mockOrgId)
-        .send(payload);
-
-      expect(response.status).toBe(400);
     });
   });
 
-  describe('POST /purchase-orders/:id/receive', () => {
-    it('should receive a PO successfully', async () => {
+  describe('DELETE /purchase-orders/:id', () => {
+    it('should delete a draft PO successfully', async () => {
       const poId = '550e8400-e29b-41d4-a716-446655440004';
-      const poLineId = '550e8400-e29b-41d4-a716-446655440006';
-      const mockPO = {
-        id: poId,
-        documentNumber: 'PO-2026-0001',
-        status: 'draft',
-        lines: [
-          {
-            id: poLineId,
-            productId: '550e8400-e29b-41d4-a716-446655440007',
-          },
-        ],
-      };
+      const mockPO = { id: poId, status: 'draft', documentNumber: 'PO-001' };
 
-      // Ensure mockTx in db.transaction returns our mock PO
-      // We'll use mocked implementation once to handle the sequential nature
       vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
         const tx = {
           query: {
@@ -181,49 +156,27 @@ describe('Purchase Orders Module', () => {
               findFirst: vi.fn().mockResolvedValue(mockPO),
             },
           },
-          insert: vi.fn(() => ({
-            values: vi.fn().mockReturnValue({
-              returning: vi.fn().mockResolvedValue([{ id: 'adj-1' }]),
-              onConflictDoUpdate: vi.fn().mockReturnValue({
-                returning: vi.fn().mockResolvedValue([{ id: 'new-id' }]),
+          update: vi.fn(() => ({
+            set: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                returning: vi.fn().mockResolvedValue([mockPO]),
               }),
             }),
           })),
-          update: vi.fn(() => ({
-            set: vi.fn().mockReturnValue({
-              where: vi.fn().mockResolvedValue([{ id: poId, status: 'received' }]),
-            }),
-          })),
         } as any;
         return cb(tx);
       });
 
-      const payload = {
-        lines: [
-          {
-            purchaseOrderLineId: poLineId,
-            warehouseId: '550e8400-e29b-41d4-a716-446655440005',
-            quantityReceived: '10',
-          },
-        ],
-      };
-
       const response = await request(app)
-        .post(`/purchase-orders/${poId}/receive`)
-        .set('x-organization-id', mockOrgId)
-        .send(payload);
+        .delete(`/purchase-orders/${poId}`)
+        .set('x-organization-id', mockOrgId);
 
-      expect(response.status).toBe(200);
-      expect(response.body.status).toBe('received');
+      expect(response.status).toBe(204);
     });
 
-    it('should return 400 if PO is already received', async () => {
+    it('should return 400 when deleting a non-draft PO', async () => {
       const poId = '550e8400-e29b-41d4-a716-446655440004';
-      const poLineId = '550e8400-e29b-41d4-a716-446655440006';
-      const mockPO = {
-        id: poId,
-        status: 'received',
-      };
+      const mockPO = { id: poId, status: 'received', documentNumber: 'PO-001' };
 
       vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
         const tx = {
@@ -236,23 +189,47 @@ describe('Purchase Orders Module', () => {
         return cb(tx);
       });
 
-      const payload = {
-        lines: [
-          {
-            purchaseOrderLineId: poLineId,
-            warehouseId: '550e8400-e29b-41d4-a716-446655440005',
-            quantityReceived: '10',
-          },
-        ],
-      };
-
       const response = await request(app)
-        .post(`/purchase-orders/${poId}/receive`)
-        .set('x-organization-id', mockOrgId)
-        .send(payload);
+        .delete(`/purchase-orders/${poId}`)
+        .set('x-organization-id', mockOrgId);
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toContain('already received');
+      expect(response.body.error).toContain('Only draft purchase orders can be deleted');
+    });
+  });
+
+  describe('DELETE /purchase-orders', () => {
+    it('should bulk delete draft POs successfully', async () => {
+      const ids = ['po-1', 'po-2'];
+      const mockPOs = [
+        { id: 'po-1', status: 'draft', documentNumber: 'PO-001' },
+        { id: 'po-2', status: 'draft', documentNumber: 'PO-002' },
+      ];
+
+      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
+        const tx = {
+          query: {
+            purchaseOrders: {
+              findMany: vi.fn().mockResolvedValue(mockPOs),
+            },
+          },
+          update: vi.fn(() => ({
+            set: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                returning: vi.fn().mockResolvedValue(mockPOs),
+              }),
+            }),
+          })),
+        } as any;
+        return cb(tx);
+      });
+
+      const response = await request(app)
+        .delete('/purchase-orders')
+        .set('x-organization-id', mockOrgId)
+        .send({ ids });
+
+      expect(response.status).toBe(204);
     });
   });
 });

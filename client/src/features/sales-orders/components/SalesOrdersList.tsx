@@ -3,8 +3,10 @@ import { z } from 'zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { LayoutList, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { EntityTable } from '@/components/shared/data-table/EntityTable';
+import { DataTableFilter } from '@/components/shared/data-table/DataTableFilter';
 import { useDataTableState } from '@/hooks/useDataTableState';
 import { PERMISSIONS } from '@shared/index';
 
@@ -14,13 +16,16 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Can } from '@/components/shared/Can';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 
-import { getColumns } from './columns';
-import { useSalesOrders } from '../hooks/sales-orders.hooks';
+import { getColumns, salesOrderStatusOptions } from './columns';
+import { useSalesOrders, useBulkDeleteSalesOrders } from '../hooks/sales-orders.hooks';
 import type { SalesOrderResponse } from '../api/sales-orders.api';
+import { FulfillSalesOrderSheet } from './FulfillSalesOrderSheet';
 
 const searchSchema = z.object({
   documentNumber: z.string().optional(),
+  status: z.string().optional(),
 });
 
 export function SalesOrdersList() {
@@ -28,17 +33,47 @@ export function SalesOrdersList() {
   const { getPath } = useTenantPath();
   const queryClient = useQueryClient();
   const { data: sos, isLoading, isError } = useSalesOrders();
+  const bulkDeleteMutation = useBulkDeleteSalesOrders();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
-  const handleFulfill = React.useCallback(
-    (so: SalesOrderResponse) => {
-      navigate(getPath(`/shipments/new?salesOrderId=${so.id}`));
-    },
-    [navigate, getPath],
-  );
+  // Fulfillment State
+  const [fulfillState, setFulfillState] = React.useState<{
+    isOpen: boolean;
+    so?: SalesOrderResponse;
+  }>({
+    isOpen: false,
+  });
+
+  // Bulk Delete State
+  const [bulkDeleteState, setBulkDeleteState] = React.useState<{
+    isOpen: boolean;
+    rows: SalesOrderResponse[];
+    clearSelection: () => void;
+  }>({
+    isOpen: false,
+    rows: [],
+    clearSelection: () => {},
+  });
+
+  const handleFulfill = React.useCallback((so: SalesOrderResponse) => {
+    setFulfillState({ isOpen: true, so });
+  }, []);
 
   const handleAdd = () => {
     navigate(getPath('/sales-orders/new'));
+  };
+
+  const handleBulkDeleteConfirm = async () => {
+    const ids = bulkDeleteState.rows.map((r) => r.id);
+    try {
+      await bulkDeleteMutation.mutateAsync(ids);
+      toast.success(`Successfully deleted ${ids.length} order(s)`);
+      bulkDeleteState.clearSelection();
+      setBulkDeleteState((prev) => ({ ...prev, isOpen: false }));
+    } catch (error) {
+      toast.error('Failed to delete selected orders');
+      console.error('Bulk delete error:', error);
+    }
   };
 
   const columns = React.useMemo(() => getColumns({ onFulfill: handleFulfill }), [handleFulfill]);
@@ -105,7 +140,44 @@ export function SalesOrdersList() {
             </Button>
           </Can>
         }
+        bulkActions={[
+          {
+            label: 'Delete Selected',
+            onAction: (rows: SalesOrderResponse[], clearSelection) => {
+              const nonDraft = rows.find((r) => r.status !== 'draft');
+              if (nonDraft) {
+                toast.error('Only draft orders can be deleted');
+                return;
+              }
+              setBulkDeleteState({ isOpen: true, rows, clearSelection });
+            },
+            variant: 'destructive',
+          },
+        ]}
         searchKey="documentNumber"
+        toolbarFilters={(table) => (
+          <DataTableFilter
+            column={table.getColumn('status')}
+            title="Status"
+            options={salesOrderStatusOptions}
+          />
+        )}
+      />
+
+      <DeleteConfirmDialog
+        isOpen={bulkDeleteState.isOpen}
+        onClose={() => setBulkDeleteState((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={handleBulkDeleteConfirm}
+        title={`Delete ${bulkDeleteState.rows.length} Order(s)?`}
+        description={`Are you sure you want to delete ${bulkDeleteState.rows.length} selected order(s)? Only draft orders will be removed.`}
+        confirmLabel="Delete Orders"
+        isLoading={bulkDeleteMutation.isPending}
+      />
+
+      <FulfillSalesOrderSheet
+        isOpen={fulfillState.isOpen}
+        onClose={() => setFulfillState({ isOpen: false })}
+        so={fulfillState.so}
       />
     </>
   );

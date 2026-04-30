@@ -3,12 +3,18 @@ import { products } from '../../db/schema/products.schema.js';
 import { unitOfMeasures } from '../../db/schema/uom.schema.js';
 import { taxes } from '../../db/schema/taxes.schema.js';
 import { and, eq, inArray, ne, sql, type SQL } from 'drizzle-orm';
-import { CreateProductInput, UpdateProductInput } from '#shared/contracts/products.contract.js';
+import {
+  createProductSchema,
+  CreateProductInput,
+  UpdateProductInput,
+} from '#shared/contracts/products.contract.js';
 
 import { BaseService } from '../../lib/base.service.js';
 import { AppError } from '../../utils/AppError.js';
+import { parseCsv } from '../../utils/csv.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type ProductWithRelations = Awaited<ReturnType<ProductsService['getProductById']>>;
 
 export class ProductsService extends BaseService<typeof products> {
   constructor() {
@@ -173,6 +179,124 @@ export class ProductsService extends BaseService<typeof products> {
       .returning();
 
     return results;
+  }
+
+  async exportProducts(organizationId: string) {
+    const data = await this.listProducts(organizationId);
+
+    return data.map((p) => ({
+      sku: p.sku,
+      name: p.name,
+      description: p.description || '',
+      basePrice: p.basePrice,
+      baseUom: p.baseUom.name,
+      tax: p.tax?.name || '',
+      status: p.status,
+      createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : '',
+    }));
+  }
+
+  async importProducts(organizationId: string, userId: string, buffer: Buffer) {
+    const rawData = parseCsv<Record<string, string | undefined>>(buffer);
+
+    // Fetch all UoMs and Taxes for the org to avoid repeated DB calls in the loop
+    const orgUoms = await db.query.unitOfMeasures.findMany({
+      where: and(
+        eq(unitOfMeasures.organizationId, organizationId),
+        sql`${unitOfMeasures.deletedAt} IS NULL`,
+      ),
+    });
+    const orgTaxes = await db.query.taxes.findMany({
+      where: and(eq(taxes.organizationId, organizationId), sql`${taxes.deletedAt} IS NULL`),
+    });
+
+    const summary = {
+      totalProcessed: rawData.length,
+      successCount: 0,
+      failedCount: 0,
+      errors: [] as Array<{ row: number; message: string }>,
+      successfulRecords: [] as ProductWithRelations[],
+    };
+
+    for (let i = 0; i < rawData.length; i++) {
+      const rowNum = i + 1;
+      const row = rawData[i];
+
+      if (!row || !row.sku || !row.name || !row.baseUom) {
+        summary.failedCount++;
+        summary.errors.push({
+          row: rowNum,
+          message: 'Missing required fields (sku, name, baseUom)',
+        });
+        continue;
+      }
+
+      try {
+        // Find UoM ID by name
+        const uom = orgUoms.find((u) => u.name.toLowerCase() === row.baseUom!.toLowerCase());
+        if (!uom) {
+          summary.failedCount++;
+          summary.errors.push({ row: rowNum, message: `UoM '${row.baseUom}' not found` });
+          continue;
+        }
+
+        // Find Tax ID by name if provided
+        let taxId: string | null = null;
+        if (row.tax) {
+          const tax = orgTaxes.find((t) => t.name.toLowerCase() === row.tax!.toLowerCase());
+          if (!tax) {
+            summary.failedCount++;
+            summary.errors.push({ row: rowNum, message: `Tax '${row.tax}' not found` });
+            continue;
+          }
+          taxId = tax.id;
+        }
+
+        const productData: CreateProductInput = {
+          sku: row.sku,
+          name: row.name,
+          description: row.description || undefined,
+          basePrice: row.basePrice || '0',
+          baseUomId: uom.id,
+          taxId: taxId || undefined,
+          status: (row.status || 'active') as CreateProductInput['status'],
+        };
+
+        const validation = createProductSchema.safeParse(productData);
+        if (!validation.success) {
+          summary.failedCount++;
+          summary.errors.push({
+            row: rowNum,
+            message: validation.error.issues
+              .map((e) => `${e.path.join('.')}: ${e.message}`)
+              .join(', '),
+          });
+          continue;
+        }
+
+        const existing = await this.checkDuplicateSku(organizationId, validation.data.sku);
+        if (existing) {
+          summary.failedCount++;
+          summary.errors.push({
+            row: rowNum,
+            message: `Product with SKU '${validation.data.sku}' already exists`,
+          });
+          continue;
+        }
+
+        const newProduct = await this.createProduct(organizationId, userId, validation.data);
+        summary.successCount++;
+        summary.successfulRecords.push(newProduct);
+      } catch (error: unknown) {
+        summary.failedCount++;
+        summary.errors.push({
+          row: rowNum,
+          message: (error as Error).message || 'Unknown error',
+        });
+      }
+    }
+
+    return summary;
   }
 }
 

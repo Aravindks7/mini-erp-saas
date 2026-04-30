@@ -1,6 +1,6 @@
 import { db } from '../../db/index.js';
 import { salesOrders, salesOrderLines } from '../../db/schema/index.js';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import { CreateSalesOrderInput } from '#shared/contracts/sales-orders.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 import { sequencesService } from '../sequences/sequences.service.js';
@@ -153,6 +153,85 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
       }
 
       return { id, status: 'draft' };
+    });
+  }
+
+  /**
+   * Updates the status of a Sales Order.
+   */
+  async updateSOStatus(
+    organizationId: string,
+    userId: string,
+    id: string,
+    status: 'draft' | 'approved' | 'partially_shipped' | 'shipped' | 'cancelled',
+    txIn?: Transaction | typeof db,
+  ) {
+    const operation = async (tx: Transaction | typeof db) => {
+      const [updated] = await tx
+        .update(salesOrders)
+        .set(this.withAudit({ status }, userId, true))
+        .where(and(eq(salesOrders.id, id), eq(salesOrders.organizationId, organizationId)))
+        .returning();
+
+      if (!updated) {
+        throw new Error('Sales order not found or update failed');
+      }
+      return updated;
+    };
+
+    if (txIn) return await operation(txIn);
+    return await db.transaction(operation);
+  }
+
+  /**
+   * Deletes a single draft Sales Order.
+   */
+  async deleteSO(organizationId: string, userId: string, id: string) {
+    return await db.transaction(async (tx) => {
+      const so = await this.getSOById(organizationId, id, tx);
+      if (!so) {
+        throw new Error('Sales order not found');
+      }
+
+      if (so.status !== 'draft') {
+        throw new Error('Only draft sales orders can be deleted');
+      }
+
+      const [deleted] = await tx
+        .update(salesOrders)
+        .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+        .where(and(eq(salesOrders.id, id), eq(salesOrders.organizationId, organizationId)))
+        .returning();
+
+      return deleted;
+    });
+  }
+
+  /**
+   * Bulk deletes draft Sales Orders.
+   */
+  async bulkDeleteSOs(organizationId: string, userId: string, ids: string[]) {
+    if (ids.length === 0) return [];
+
+    return await db.transaction(async (tx) => {
+      const sosToDelete = await tx.query.salesOrders.findMany({
+        where: and(inArray(salesOrders.id, ids), eq(salesOrders.organizationId, organizationId)),
+      });
+
+      const nonDraft = sosToDelete.find((so) => so.status !== 'draft');
+      if (nonDraft) {
+        throw new Error(
+          `Cannot delete SO ${nonDraft.documentNumber} because it is not in draft status`,
+        );
+      }
+
+      const deletedSOs = await tx
+        .update(salesOrders)
+        .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+        .where(and(eq(salesOrders.organizationId, organizationId), inArray(salesOrders.id, ids)))
+        .returning();
+
+      return deletedSOs;
     });
   }
 }

@@ -87,7 +87,12 @@ export function SidebarContent({ onItemClick, isCollapsed, toggle }: SidebarCont
   };
 
   return (
-    <div className={cn('flex flex-col h-full bg-background overflow-hidden', !isDesktop && 'pt-8')}>
+    <div
+      className={cn(
+        'flex flex-col h-full bg-background overflow-hidden border',
+        !isDesktop && 'pt-8',
+      )}
+    >
       <div
         className={cn(
           'flex items-center gap-3 px-4 py-6 font-semibold text-lg',

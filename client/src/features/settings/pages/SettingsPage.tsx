@@ -3,13 +3,14 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { RouteTabs } from '@/components/shared/RouteTabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Outlet, useLocation, Navigate, useParams } from 'react-router-dom';
-import { Building2, Users, Mail, ShieldCheck, KeyRound } from 'lucide-react';
+import { Building2, Users, Mail, ShieldCheck, KeyRound, Hash } from 'lucide-react';
 import { usePermission } from '@/hooks/usePermission';
 import { useMyPermissions } from '@/features/auth/hooks/rbac.hooks';
 import { PERMISSIONS } from '@shared/index';
 
 const tabs = [
   { label: 'Profile', path: 'profile', icon: <Building2 className="h-4 w-4" /> },
+  { label: 'Numbering', path: 'sequences', icon: <Hash className="h-4 w-4" /> },
   {
     label: 'Members',
     path: 'members',

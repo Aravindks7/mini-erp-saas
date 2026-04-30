@@ -10,6 +10,7 @@ import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
+import { DetailView } from '@/components/shared/DetailView';
 import { AddressCard, type Address } from '@/components/shared/domain/AddressCard';
 import { ContactCard, type Contact } from '@/components/shared/domain/ContactCard';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
@@ -108,32 +109,30 @@ export default function SupplierDetailsPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      Supplier Name
-                    </label>
-                    <p className="text-base font-semibold">{supplier.name}</p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      Tax Registration Number
-                    </label>
-                    <p className="text-base font-mono bg-muted/50 w-fit px-2 py-0.5 rounded border">
-                      {supplier.taxNumber || '—'}
-                    </p>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      Relationship Status
-                    </label>
-                    <StatusBadge value={supplier.status} statusMap={supplierStatusMap} />
-                  </div>
-                </div>
-              </div>
+              <DetailView
+                columns={2}
+                sections={[
+                  {
+                    items: [
+                      {
+                        label: 'Supplier Name',
+                        value: supplier.name,
+                      },
+                      {
+                        label: 'Tax Registration Number',
+                        value: supplier.taxNumber,
+                        valueClassName: 'font-mono bg-muted/50 w-fit px-2 py-0.5 rounded border',
+                      },
+                      {
+                        label: 'Relationship Status',
+                        value: (
+                          <StatusBadge value={supplier.status} statusMap={supplierStatusMap} />
+                        ),
+                      },
+                    ],
+                  },
+                ]}
+              />
             </CardContent>
           </Card>
 

@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { seedRBAC } from '../src/db/seed.js';
 import { seedAuth } from '../src/db/seeds/auth.seed.js';
+import { seedSequences } from '../src/db/seeds/sequences.seed.js';
 import { seedTaxes } from '../src/db/seeds/taxes.seed.js';
 import { seedUoms } from '../src/db/seeds/uom.seed.js';
 import { seedSuppliers } from '../src/db/seeds/suppliers.seed.js';
@@ -14,6 +15,7 @@ import { seedReceipts } from '../src/db/seeds/receipts.seed.js';
 import { seedShipments } from '../src/db/seeds/shipments.seed.js';
 import { seedInvoices } from '../src/db/seeds/invoices.seed.js';
 import { seedBills } from '../src/db/seeds/bills.seed.js';
+import { seedPayments } from '../src/db/seeds/payments.seed.js';
 
 async function run() {
   // 1. Production Kill-Switch
@@ -33,6 +35,9 @@ async function run() {
     // Auth & Identity (Requires RBAC roles)
     await seedAuth();
 
+    // Sequences (Requires Org/User from Auth)
+    await seedSequences();
+
     // Reference Data (Requires Org/User from Auth)
     await seedTaxes();
     await seedUoms();
@@ -49,6 +54,7 @@ async function run() {
     await seedShipments();
     await seedInvoices();
     await seedBills();
+    await seedPayments();
 
     console.log('✅ Developer seeding complete successfully.');
   } catch (err) {

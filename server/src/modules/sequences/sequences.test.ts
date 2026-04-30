@@ -5,6 +5,12 @@ import { db } from '../../db/index.js';
 vi.mock('../../db/index.js', () => ({
   db: {
     insert: vi.fn(),
+    update: vi.fn(),
+    query: {
+      documentSequences: {
+        findMany: vi.fn(),
+      },
+    },
     transaction: vi.fn((cb) => cb(db)),
   },
 }));
@@ -15,6 +21,32 @@ describe('SequencesService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('should list sequences for an organization', async () => {
+    const mockSequences = [{ id: '1', type: 'INV' }];
+    vi.mocked(db.query.documentSequences.findMany).mockResolvedValue(mockSequences as any);
+
+    const result = await sequencesService.listSequences(mockOrgId);
+    expect(result).toEqual(mockSequences);
+    expect(db.query.documentSequences.findMany).toHaveBeenCalled();
+  });
+
+  it('should update a sequence configuration', async () => {
+    const mockUpdate = { prefix: 'NEW-', padding: 6 };
+    const mockResult = { id: '1', ...mockUpdate };
+
+    vi.mocked(db.update).mockReturnValue({
+      set: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([mockResult]),
+        }),
+      }),
+    } as any);
+
+    const result = await sequencesService.updateSequence(mockOrgId, mockUserId, '1', mockUpdate);
+    expect(result).toEqual(mockResult);
+    expect(db.update).toHaveBeenCalled();
   });
 
   it('should generate first sequence correctly (inserted)', async () => {

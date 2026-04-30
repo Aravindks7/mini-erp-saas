@@ -1,5 +1,6 @@
-import { useParams } from 'react-router-dom';
-import { Truck, Package, AlertCircle } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Truck, Package, AlertCircle, FileText } from 'lucide-react';
+import * as React from 'react';
 
 import { useReceipt } from '../hooks/receipts.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -7,9 +8,11 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
 import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { DetailView } from '@/components/shared/DetailView';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { formatDate } from '@shared/utils/date';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -27,13 +30,14 @@ const receiptStatusMap: StatusMap<string> = {
 
 export default function ReceiptDetailsPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { getPath } = useTenantPath();
   const { data: receipt, isLoading, isError } = useReceipt(id);
 
   if (isLoading) {
     return (
       <PageContainer>
-        <SkeletonLoader variant="form" rows={3} />
+        <SkeletonLoader variant="details" rows={3} />
       </PageContainer>
     );
   }
@@ -49,6 +53,12 @@ export default function ReceiptDetailsPage() {
           <p className="text-muted-foreground max-w-xs mb-6">
             The receipt record you are looking for doesn't exist or you don't have access.
           </p>
+          <button
+            onClick={() => navigate(getPath('/receipts'))}
+            className="text-primary font-semibold hover:underline"
+          >
+            Return to Receipts List
+          </button>
         </div>
       </PageContainer>
     );
@@ -59,84 +69,107 @@ export default function ReceiptDetailsPage() {
       <PageHeader
         title={receipt.receiptNumber}
         description={`Inbound shipment received on ${formatDate(receipt.receivedDate)}.`}
-        backButton={{ href: getPath('/receipts'), label: 'Back to Receipts' }}
+        backButton={{ onClick: () => navigate(getPath('/receipts')), label: 'Back to Receipts' }}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">
           <StatusBadge value={receipt.status} statusMap={receiptStatusMap} />
         </div>
       </PageHeader>
 
-      <div className="grid gap-6">
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-2 py-3 bg-muted/30">
-              <Truck className="h-4 w-4 text-primary" />
-              <CardTitle className="text-sm font-medium">General Information</CardTitle>
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 lg:w-[400px] h-11 bg-muted/50 p-1">
+          <TabsTrigger value="overview" className="data-[state=active]:shadow-sm">
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="items" className="data-[state=active]:shadow-sm">
+            Received Items
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="mt-6 space-y-6 animate-in fade-in-50 duration-500">
+          <Card className="border-muted-foreground/20 overflow-hidden shadow-sm">
+            <CardHeader className="bg-muted/30 border-b pb-4">
+              <div className="flex items-center gap-2">
+                <Truck className="h-4 w-4 text-primary" />
+                <CardTitle className="text-lg">General Information</CardTitle>
+              </div>
             </CardHeader>
-            <CardContent className="pt-4">
-              <dl className="grid grid-cols-2 gap-y-4 text-sm">
-                <dt className="text-muted-foreground">Receipt Number</dt>
-                <dd className="font-medium">{receipt.receiptNumber}</dd>
-
-                <dt className="text-muted-foreground">Received Date</dt>
-                <dd className="font-medium">{formatDate(receipt.receivedDate)}</dd>
-
-                <dt className="text-muted-foreground">Reference</dt>
-                <dd className="font-medium">{receipt.reference || '-'}</dd>
-
-                <dt className="text-muted-foreground">Purchase Order</dt>
-                <dd className="font-medium">{receipt.purchaseOrder?.documentNumber || '-'}</dd>
-              </dl>
+            <CardContent className="pt-6">
+              <DetailView
+                columns={2}
+                sections={[
+                  {
+                    items: [
+                      {
+                        label: 'Receipt Number',
+                        value: receipt.receiptNumber,
+                        valueClassName: 'font-mono bg-muted/50 px-2 py-0.5 rounded border w-fit',
+                      },
+                      {
+                        label: 'Received Date',
+                        value: formatDate(receipt.receivedDate),
+                      },
+                      {
+                        label: 'Reference / Packing Slip',
+                        value: receipt.reference,
+                      },
+                      {
+                        label: 'Purchase Order',
+                        value: receipt.purchaseOrder?.documentNumber,
+                        icon: FileText,
+                      },
+                    ],
+                  },
+                ]}
+              />
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-2 py-3 bg-muted/30">
-              <AlertCircle className="h-4 w-4 text-primary" />
-              <CardTitle className="text-sm font-medium">Audit Metadata</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <AuditInfo createdAt={receipt.createdAt} updatedAt={receipt.updatedAt} />
-            </CardContent>
-          </Card>
-        </div>
+          <AuditInfo createdAt={receipt.createdAt} updatedAt={receipt.updatedAt} />
+        </TabsContent>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-2 py-3 bg-muted/30">
-            <Package className="h-4 w-4 text-primary" />
-            <CardTitle className="text-sm font-medium">Received Items</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Warehouse</TableHead>
-                  <TableHead>Bin</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {receipt.lines.map((line) => (
-                  <TableRow key={line.id}>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{line.product?.name}</span>
-                        <span className="text-xs text-muted-foreground">{line.product?.sku}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{line.warehouse?.name}</TableCell>
-                    <TableCell>{line.bin?.name || '-'}</TableCell>
-                    <TableCell className="text-right font-medium">
-                      {line.quantityReceived}
-                    </TableCell>
+        <TabsContent value="items" className="mt-6 animate-in slide-in-from-left-2 duration-300">
+          <Card className="border-muted-foreground/20 overflow-hidden shadow-sm">
+            <CardHeader className="bg-muted/30 border-b pb-4">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-primary" />
+                <CardTitle className="text-lg">Fulfillment Details</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="pl-6">Product</TableHead>
+                    <TableHead>Warehouse</TableHead>
+                    <TableHead>Bin</TableHead>
+                    <TableHead className="text-right pr-6">Quantity</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
+                </TableHeader>
+                <TableBody>
+                  {receipt.lines.map((line) => (
+                    <TableRow key={line.id} className="hover:bg-muted/30 transition-colors">
+                      <TableCell className="pl-6">
+                        <div className="flex flex-col">
+                          <span className="font-medium">{line.product?.name}</span>
+                          <span className="text-xs text-muted-foreground font-mono">
+                            {line.product?.sku}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{line.warehouse?.name}</TableCell>
+                      <TableCell>{line.bin?.name || '-'}</TableCell>
+                      <TableCell className="text-right pr-6 font-semibold text-primary">
+                        {line.quantityReceived}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </PageContainer>
   );
 }

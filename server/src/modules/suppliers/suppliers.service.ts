@@ -3,8 +3,9 @@ import {
   suppliers,
   supplierAddresses,
   supplierContacts,
-} from '../../db/schema/suppliers.schema.js';
-import { addresses, contacts } from '../../db/schema/index.js';
+  addresses,
+  contacts,
+} from '../../db/schema/index.js';
 import { and, eq, inArray, ne, sql, type SQL } from 'drizzle-orm';
 import {
   createSupplierSchema,

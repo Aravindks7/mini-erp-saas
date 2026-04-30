@@ -1,8 +1,5 @@
 import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
-import type {
-  CreateSalesOrderInput,
-  FulfillSalesOrderInput,
-} from '@shared/contracts/sales-orders.contract';
+import type { CreateSalesOrderInput } from '@shared/contracts/sales-orders.contract';
 import { salesOrdersApi } from '../api/sales-orders.api';
 
 export const salesOrderKeys = {
@@ -57,17 +54,24 @@ export function useUpdateSalesOrder() {
   });
 }
 
-export function useFulfillSalesOrder() {
+export function useDeleteSalesOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: FulfillSalesOrderInput }) =>
-      salesOrdersApi.fulfillSalesOrder(id, data),
-    onSuccess: (data) => {
+    mutationFn: (id: string) => salesOrdersApi.deleteSalesOrder(id),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: salesOrderKeys.detail(data.id) });
-      // Invalidate inventory keys as well since fulfillment outtakes stock
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    },
+  });
+}
+
+export function useBulkDeleteSalesOrders() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ids: string[]) => salesOrdersApi.bulkDeleteSalesOrders(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: salesOrderKeys.lists() });
     },
   });
 }

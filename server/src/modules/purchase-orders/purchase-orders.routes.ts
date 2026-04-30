@@ -33,10 +33,16 @@ router.patch(
   purchaseOrdersController.updatePO,
 );
 
-router.post(
-  '/:id/receive',
-  requirePermission(PERMISSIONS.PURCHASE_ORDERS.UPDATE),
-  purchaseOrdersController.receivePO,
+router.delete(
+  '/',
+  requirePermission(PERMISSIONS.PURCHASE_ORDERS.DELETE),
+  purchaseOrdersController.bulkDeletePOs,
+);
+
+router.delete(
+  '/:id',
+  requirePermission(PERMISSIONS.PURCHASE_ORDERS.DELETE),
+  purchaseOrdersController.deletePO,
 );
 
 export default router;

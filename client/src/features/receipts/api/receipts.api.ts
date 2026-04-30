@@ -48,4 +48,13 @@ export const receiptsApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  deleteReceipt: (id: string) =>
+    apiFetch<void>(`/receipts/${id}`, {
+      method: 'DELETE',
+    }),
+  bulkDeleteReceipts: (ids: string[]) =>
+    apiFetch<void>('/receipts', {
+      method: 'DELETE',
+      body: JSON.stringify({ ids }),
+    }),
 };

@@ -40,3 +40,39 @@ export function useCreateReceipt() {
     },
   });
 }
+
+export function useDeleteReceipt() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => receiptsApi.deleteReceipt(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: receiptKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      toast.success('Receipt deleted and inventory reversed');
+    },
+    onError: (error) => {
+      console.error('Failed to delete receipt:', error);
+      toast.error('Failed to delete receipt');
+    },
+  });
+}
+
+export function useBulkDeleteReceipts() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ids: string[]) => receiptsApi.bulkDeleteReceipts(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: receiptKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      toast.success('Receipts deleted and inventory reversed');
+    },
+    onError: (error) => {
+      console.error('Failed to bulk delete receipts:', error);
+      toast.error('Failed to bulk delete receipts');
+    },
+  });
+}

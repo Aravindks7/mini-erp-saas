@@ -75,7 +75,7 @@ export function SidebarGroup({ group, onItemClick, forceOpen }: SidebarGroupProp
               const isLast = index === group.items.length - 1;
 
               return (
-                <div key={item.path} className="relative py-0.5">
+                <div key={item.path} className="relative py-0.5 pr-0.5">
                   {/* 
                     Continuous SVG Connector:
                     - By removing parent space-y and using py-0.5 here,

@@ -4,23 +4,27 @@ import {
   FileEdit,
   AlertCircle,
   Truck,
-  Receipt,
   User,
   ReceiptText,
+  Package,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useSalesOrder } from '../hooks/sales-orders.hooks';
+import { useShipments } from '@/features/shipments/hooks/shipments.hooks';
 import { useCreateInvoiceFromSO } from '@/features/invoices/hooks/invoices.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { DocumentSummary } from '@/components/shared/domain/DocumentSummary';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { salesOrderStatusMap } from '../components/columns';
+import { FulfillSalesOrderSheet } from '../components/FulfillSalesOrderSheet';
+import { DetailView } from '@/components/shared/DetailView';
 import {
   Table,
   TableBody,
@@ -29,6 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import React from 'react';
 
 export default function SalesOrderDetailsPage() {
   const { id } = useParams();
@@ -36,6 +41,8 @@ export default function SalesOrderDetailsPage() {
   const { getPath } = useTenantPath();
   const { data: so, isLoading, isError } = useSalesOrder(id);
   const { mutate: generateInvoice, isPending: isGeneratingInvoice } = useCreateInvoiceFromSO();
+
+  const [isFulfillSheetOpen, setIsFulfillSheetOpen] = React.useState(false);
 
   const handleGenerateInvoice = () => {
     if (!so) return;
@@ -85,14 +92,15 @@ export default function SalesOrderDetailsPage() {
     currency: 'USD',
   });
 
-  const canFulfill = so.status === 'draft' || so.status === 'approved';
+  const canShip = so.status === 'approved' || so.status === 'partially_shipped';
+  const canEdit = so.status === 'draft';
 
   return (
     <PageContainer>
       <PageHeader
         title={so.documentNumber}
         description={`Sales document for ${so.customer.companyName}.`}
-        backButton={{ href: getPath('/sales-orders'), label: 'Back to List' }}
+        backButton={{ onClick: () => navigate(getPath('/sales-orders')), label: 'Back to List' }}
         actions={[
           {
             label: 'Generate Invoice',
@@ -103,18 +111,18 @@ export default function SalesOrderDetailsPage() {
             hidden: so.status === 'draft' || so.status === 'cancelled',
           },
           {
-            label: 'Create Shipment',
-            onClick: () => navigate(getPath(`/shipments/new?salesOrderId=${so.id}`)),
+            label: 'Ship Items',
+            onClick: () => setIsFulfillSheetOpen(true),
             icon: <Truck className="h-4 w-4" />,
             variant: 'outline',
-            hidden: !canFulfill,
+            hidden: !canShip,
           },
           {
             label: 'Edit Order',
             onClick: () => navigate(getPath(`/sales-orders/${so.id}/edit`)),
             icon: <FileEdit className="h-4 w-4" />,
             variant: 'default',
-            hidden: !canFulfill,
+            hidden: !canEdit,
           },
         ]}
       >
@@ -124,12 +132,15 @@ export default function SalesOrderDetailsPage() {
       </PageHeader>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 lg:w-[400px] h-11 bg-muted/50 p-1">
+        <TabsList className="grid w-full grid-cols-3 lg:w-[600px] h-11 bg-muted/50 p-1">
           <TabsTrigger value="overview" className="data-[state=active]:shadow-sm">
             Overview
           </TabsTrigger>
           <TabsTrigger value="items" className="data-[state=active]:shadow-sm">
             Line Items ({so.lines?.length || 0})
+          </TabsTrigger>
+          <TabsTrigger value="shipments" className="data-[state=active]:shadow-sm">
+            Shipment History
           </TabsTrigger>
         </TabsList>
 
@@ -143,45 +154,52 @@ export default function SalesOrderDetailsPage() {
                 </div>
               </CardHeader>
               <CardContent className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      Customer Name
-                    </label>
-                    <p className="text-base font-semibold">{so.customer.companyName}</p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      Document Number
-                    </label>
-                    <p className="text-base font-mono bg-muted/50 w-fit px-2 py-0.5 rounded border">
-                      {so.documentNumber}
-                    </p>
-                  </div>
-                </div>
+                <DetailView
+                  columns={2}
+                  sections={[
+                    {
+                      items: [
+                        {
+                          label: 'Customer Name',
+                          value: so.customer.companyName,
+                        },
+                        {
+                          label: 'Document Number',
+                          value: so.documentNumber,
+                          valueClassName: 'font-mono bg-muted/50 w-fit px-2 py-0.5 rounded border',
+                        },
+                      ],
+                    },
+                  ]}
+                />
               </CardContent>
             </Card>
 
-            <Card className="border-muted-foreground/20 overflow-hidden shadow-sm">
-              <CardHeader className="bg-muted/30 border-b pb-4">
-                <div className="flex items-center gap-2">
-                  <Receipt className="h-4 w-4 text-primary" />
-                  <CardTitle className="text-lg">Order Summary</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6 space-y-4">
-                <div className="flex justify-between items-center pb-2 border-b border-dashed">
-                  <span className="text-sm text-muted-foreground">Status</span>
-                  <StatusBadge value={so.status} statusMap={salesOrderStatusMap} />
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Total Amount</span>
-                  <span className="text-xl font-bold text-primary">
-                    {currencyFormatter.format(Number(so.totalAmount))}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+            <DocumentSummary
+              title="Order Summary"
+              status={so.status}
+              statusMap={salesOrderStatusMap}
+              lines={[
+                {
+                  label: 'Subtotal',
+                  value: currencyFormatter.format(
+                    so.lines.reduce((acc, l) => acc + Number(l.quantity) * Number(l.unitPrice), 0),
+                  ),
+                  isSubtotal: true,
+                },
+                {
+                  label: 'Total Tax',
+                  value: currencyFormatter.format(
+                    so.lines.reduce((acc, l) => acc + Number(l.taxAmount), 0),
+                  ),
+                },
+                {
+                  label: 'Order Total',
+                  value: currencyFormatter.format(Number(so.totalAmount)),
+                  isTotal: true,
+                },
+              ]}
+            />
           </div>
 
           <AuditInfo createdAt={so.createdAt} updatedAt={so.updatedAt} />
@@ -261,7 +279,75 @@ export default function SalesOrderDetailsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent
+          value="shipments"
+          className="mt-6 space-y-6 animate-in slide-in-from-right-2 duration-300"
+        >
+          <ShipmentsHistory soId={so.id} />
+        </TabsContent>
       </Tabs>
+
+      <FulfillSalesOrderSheet
+        isOpen={isFulfillSheetOpen}
+        onClose={() => setIsFulfillSheetOpen(false)}
+        so={so}
+      />
     </PageContainer>
+  );
+}
+
+function ShipmentsHistory({ soId }: { soId: string }) {
+  const { data: allShipments, isLoading } = useShipments();
+  const shipments = React.useMemo(
+    () => allShipments?.filter((s) => s.salesOrderId === soId) || [],
+    [allShipments, soId],
+  );
+
+  if (isLoading) return <SkeletonLoader variant="list" rows={3} />;
+
+  if (shipments.length === 0) {
+    return (
+      <Card className="border-dashed border-2">
+        <CardContent className="py-12 flex flex-col items-center justify-center text-center">
+          <Package className="h-10 w-10 text-muted-foreground/40 mb-4" />
+          <p className="text-muted-foreground">
+            No physical shipments recorded for this order yet.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {shipments.map((shipment) => (
+        <Card key={shipment.id} className="overflow-hidden border-muted-foreground/20">
+          <CardHeader className="bg-muted/30 py-3 border-b">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Truck className="h-4 w-4 text-primary" />
+                <span className="font-mono font-semibold">{shipment.shipmentNumber}</span>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                Shipped: {new Date(shipment.shipmentDate).toLocaleDateString()}
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {shipment.lines.map((line) => (
+                <div key={line.id} className="text-sm">
+                  <p className="text-muted-foreground text-xs uppercase tracking-tighter">
+                    {line.product?.name || 'Unknown Product'}
+                  </p>
+                  <p className="font-medium">Qty: {line.quantityShipped}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   );
 }

@@ -9,6 +9,7 @@ import { RolesTab } from '../organizations/components/RolesTab';
 import { PermissionSetsTab } from '../organizations/components/PermissionSetsTab';
 import RoleFormPage from '../organizations/pages/RoleFormPage';
 import PermissionSetFormPage from '../organizations/pages/PermissionSetFormPage';
+import { SequenceSettingsTab } from './components/SequenceSettingsTab';
 
 export const settingsRoutes: AppRoute[] = [
   // The main settings layout with tabs
@@ -32,6 +33,13 @@ export const settingsRoutes: AppRoute[] = [
         element: <OrgProfileTab />,
         handle: {
           title: 'Organization Profile',
+        },
+      },
+      {
+        path: 'sequences',
+        element: <SequenceSettingsTab />,
+        handle: {
+          title: 'Document Numbering',
         },
       },
       {

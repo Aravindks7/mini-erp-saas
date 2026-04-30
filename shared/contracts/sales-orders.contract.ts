@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+export const salesOrderStatusEnumSchema = z.enum([
+  'draft',
+  'approved',
+  'partially_shipped',
+  'shipped',
+  'cancelled',
+]);
+
 export const salesOrderLineInputSchema = z.object({
   productId: z.string().uuid(),
   quantity: z.string().min(1, 'Quantity is required'),

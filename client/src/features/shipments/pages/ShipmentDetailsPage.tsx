@@ -1,7 +1,8 @@
-import { useParams } from 'react-router-dom';
-import { Truck, Package, AlertCircle } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Truck, Package, AlertCircle, FileText } from 'lucide-react';
+import * as React from 'react';
 
-import { useShipment, shipmentKeys } from '../hooks/shipments.hooks';
+import { useShipment } from '../hooks/shipments.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
@@ -10,6 +11,8 @@ import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { formatDate } from '@shared/utils/date';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DetailView } from '@/components/shared/DetailView';
 import {
   Table,
   TableBody,
@@ -18,9 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useQueryClient } from '@tanstack/react-query';
-import { shipmentsApi } from '../api/shipments.api';
-import React from 'react';
 
 const shipmentStatusMap: StatusMap<string> = {
   draft: { label: 'Draft', tone: 'neutral' },
@@ -30,21 +30,14 @@ const shipmentStatusMap: StatusMap<string> = {
 
 export default function ShipmentDetailsPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
   const { data: shipment, isLoading, isError } = useShipment(id || '');
-
-  React.useEffect(() => {
-    queryClient.prefetchQuery({
-      queryKey: shipmentKeys.lists(),
-      queryFn: shipmentsApi.fetchShipments,
-    });
-  }, [queryClient]);
 
   if (isLoading) {
     return (
       <PageContainer>
-        <SkeletonLoader variant="form" rows={3} />
+        <SkeletonLoader variant="details" rows={3} />
       </PageContainer>
     );
   }
@@ -60,6 +53,12 @@ export default function ShipmentDetailsPage() {
           <p className="text-muted-foreground max-w-xs mb-6">
             The shipment record you are looking for doesn't exist or you don't have access.
           </p>
+          <button
+            onClick={() => navigate(getPath('/shipments'))}
+            className="text-primary font-semibold hover:underline"
+          >
+            Return to Shipment List
+          </button>
         </div>
       </PageContainer>
     );
@@ -70,82 +69,107 @@ export default function ShipmentDetailsPage() {
       <PageHeader
         title={shipment.shipmentNumber}
         description={`Outbound shipment recorded on ${formatDate(shipment.shipmentDate)}.`}
-        backButton={{ href: getPath('/shipments'), label: 'Back to Shipments' }}
+        backButton={{ onClick: () => navigate(getPath('/shipments')), label: 'Back to Shipments' }}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">
           <StatusBadge value={shipment.status} statusMap={shipmentStatusMap} />
         </div>
       </PageHeader>
 
-      <div className="grid gap-6">
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-2 py-3 bg-muted/30">
-              <Truck className="h-4 w-4 text-primary" />
-              <CardTitle className="text-sm font-medium">General Information</CardTitle>
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 lg:w-[400px] h-11 bg-muted/50 p-1">
+          <TabsTrigger value="overview" className="data-[state=active]:shadow-sm">
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="items" className="data-[state=active]:shadow-sm">
+            Shipped Items
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="mt-6 space-y-6 animate-in fade-in-50 duration-500">
+          <Card className="border-muted-foreground/20 overflow-hidden shadow-sm">
+            <CardHeader className="bg-muted/30 border-b pb-4">
+              <div className="flex items-center gap-2">
+                <Truck className="h-4 w-4 text-primary" />
+                <CardTitle className="text-lg">General Information</CardTitle>
+              </div>
             </CardHeader>
-            <CardContent className="pt-4">
-              <dl className="grid grid-cols-2 gap-y-4 text-sm">
-                <dt className="text-muted-foreground">Shipment Number</dt>
-                <dd className="font-medium">{shipment.shipmentNumber}</dd>
-
-                <dt className="text-muted-foreground">Shipment Date</dt>
-                <dd className="font-medium">{formatDate(shipment.shipmentDate)}</dd>
-
-                <dt className="text-muted-foreground">Reference</dt>
-                <dd className="font-medium">{shipment.reference || '-'}</dd>
-
-                <dt className="text-muted-foreground">Sales Order</dt>
-                <dd className="font-medium">{shipment.salesOrder?.documentNumber || '-'}</dd>
-              </dl>
+            <CardContent className="pt-6">
+              <DetailView
+                columns={2}
+                sections={[
+                  {
+                    items: [
+                      {
+                        label: 'Shipment Number',
+                        value: shipment.shipmentNumber,
+                        valueClassName: 'font-mono bg-muted/50 px-2 py-0.5 rounded border w-fit',
+                      },
+                      {
+                        label: 'Shipment Date',
+                        value: formatDate(shipment.shipmentDate),
+                      },
+                      {
+                        label: 'Reference / Tracking #',
+                        value: shipment.reference,
+                      },
+                      {
+                        label: 'Sales Order',
+                        value: shipment.salesOrder?.documentNumber,
+                        icon: FileText,
+                      },
+                    ],
+                  },
+                ]}
+              />
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-2 py-3 bg-muted/30">
-              <AlertCircle className="h-4 w-4 text-primary" />
-              <CardTitle className="text-sm font-medium">Audit Metadata</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <AuditInfo createdAt={shipment.createdAt} updatedAt={shipment.updatedAt} />
-            </CardContent>
-          </Card>
-        </div>
+          <AuditInfo createdAt={shipment.createdAt} updatedAt={shipment.updatedAt} />
+        </TabsContent>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-2 py-3 bg-muted/30">
-            <Package className="h-4 w-4 text-primary" />
-            <CardTitle className="text-sm font-medium">Shipped Items</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Warehouse</TableHead>
-                  <TableHead>Bin</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {shipment.lines.map((line) => (
-                  <TableRow key={line.id}>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{line.product?.name}</span>
-                        <span className="text-xs text-muted-foreground">{line.product?.sku}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{line.warehouse?.name}</TableCell>
-                    <TableCell>{line.bin?.name || '-'}</TableCell>
-                    <TableCell className="text-right font-medium">{line.quantityShipped}</TableCell>
+        <TabsContent value="items" className="mt-6 animate-in slide-in-from-left-2 duration-300">
+          <Card className="border-muted-foreground/20 overflow-hidden shadow-sm">
+            <CardHeader className="bg-muted/30 border-b pb-4">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-primary" />
+                <CardTitle className="text-lg">Fulfillment Details</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="pl-6">Product</TableHead>
+                    <TableHead>Warehouse</TableHead>
+                    <TableHead>Bin</TableHead>
+                    <TableHead className="text-right pr-6">Quantity</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
+                </TableHeader>
+                <TableBody>
+                  {shipment.lines.map((line) => (
+                    <TableRow key={line.id} className="hover:bg-muted/30 transition-colors">
+                      <TableCell className="pl-6">
+                        <div className="flex flex-col">
+                          <span className="font-medium">{line.product?.name}</span>
+                          <span className="text-xs text-muted-foreground font-mono">
+                            {line.product?.sku}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{line.warehouse?.name}</TableCell>
+                      <TableCell>{line.bin?.name || '-'}</TableCell>
+                      <TableCell className="text-right pr-6 font-semibold text-primary">
+                        {line.quantityShipped}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </PageContainer>
   );
 }

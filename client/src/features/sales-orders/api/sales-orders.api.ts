@@ -1,8 +1,5 @@
 import { apiFetch } from '@/lib/api';
-import type {
-  CreateSalesOrderInput,
-  FulfillSalesOrderInput,
-} from '@shared/contracts/sales-orders.contract';
+import type { CreateSalesOrderInput } from '@shared/contracts/sales-orders.contract';
 
 export interface SalesOrderLineResponse {
   id: string;
@@ -22,7 +19,7 @@ export interface SalesOrderResponse {
   id: string;
   customerId: string;
   documentNumber: string;
-  status: 'draft' | 'approved' | 'shipped' | 'cancelled';
+  status: 'draft' | 'approved' | 'partially_shipped' | 'shipped' | 'cancelled';
   totalAmount: string;
   createdAt: string;
   updatedAt: string;
@@ -46,9 +43,13 @@ export const salesOrdersApi = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
-  fulfillSalesOrder: (id: string, data: FulfillSalesOrderInput) =>
-    apiFetch<{ id: string; status: 'shipped' }>(`/sales-orders/${id}/fulfill`, {
-      method: 'POST',
-      body: JSON.stringify(data),
+  deleteSalesOrder: (id: string) =>
+    apiFetch<void>(`/sales-orders/${id}`, {
+      method: 'DELETE',
+    }),
+  bulkDeleteSalesOrders: (ids: string[]) =>
+    apiFetch<void>('/sales-orders', {
+      method: 'DELETE',
+      body: JSON.stringify({ ids }),
     }),
 };

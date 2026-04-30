@@ -1,7 +1,7 @@
-import { useForm, useFieldArray } from 'react-hook-form';
+import * as React from 'react';
+import type { UseFormReturn, FieldArrayWithId } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
-import { toast } from 'sonner';
 
 import {
   ResponsiveDrawer,
@@ -17,13 +17,11 @@ import { Form } from '@/components/shared/form/Form';
 import { FormField } from '@/components/shared/form/FormField';
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect';
 
-import {
-  receivePurchaseOrderSchema,
-  type ReceivePurchaseOrderInput,
-} from '@shared/contracts/purchase-orders.contract';
+import { createReceiptSchema, type CreateReceiptInput } from '@shared/contracts/receipts.contract';
 import type { PurchaseOrderResponse } from '../api/purchase-orders.api';
-import { useReceivePurchaseOrder } from '../hooks/purchase-orders.hooks';
+import { useCreateReceipt } from '@/features/receipts/hooks/receipts.hooks';
 import { useWarehouses } from '@/features/warehouses/hooks/warehouses.hooks';
+import type { WarehouseResponse } from '@/features/warehouses/api/warehouses.api';
 
 interface ReceivePurchaseOrderSheetProps {
   isOpen: boolean;
@@ -31,13 +29,109 @@ interface ReceivePurchaseOrderSheetProps {
   po?: PurchaseOrderResponse;
 }
 
+function BinSelector({
+  index,
+  form,
+  warehouseId,
+  warehouses,
+}: {
+  index: number;
+  form: UseFormReturn<CreateReceiptInput, unknown>;
+  warehouseId: string;
+  warehouses: WarehouseResponse[];
+}) {
+  const binOptions = React.useMemo(() => {
+    const selectedWh = warehouses.find((w) => w.id === warehouseId);
+    return (selectedWh?.bins || []).map((b) => ({
+      label: b.name || 'Unnamed Bin',
+      value: b.id || '',
+    }));
+  }, [warehouseId, warehouses]);
+
+  React.useEffect(() => {
+    const currentBinId = form.getValues(`lines.${index}.binId`);
+    const isValidBin = binOptions.some((b) => b.value === currentBinId);
+
+    if (!isValidBin && binOptions.length > 0) {
+      form.setValue(`lines.${index}.binId`, binOptions[0].value);
+    } else if (binOptions.length === 0) {
+      form.setValue(`lines.${index}.binId`, null);
+    }
+  }, [warehouseId, binOptions, form, index]);
+
+  return (
+    <FormField name={`lines.${index}.binId`} label="Bin">
+      {({ field }) => (
+        <SearchableSelect
+          {...field}
+          value={field.value ?? ''}
+          options={binOptions}
+          placeholder="Select Bin"
+          disabled={!warehouseId || binOptions.length === 0}
+        />
+      )}
+    </FormField>
+  );
+}
+
+function ReceiptLineItem({
+  index,
+  field,
+  form,
+  po,
+  warehouseOptions,
+  warehouses,
+}: {
+  index: number;
+  field: FieldArrayWithId<CreateReceiptInput, 'lines'>;
+  form: UseFormReturn<CreateReceiptInput>;
+  po?: PurchaseOrderResponse;
+  warehouseOptions: { label: string; value: string }[];
+  warehouses: WarehouseResponse[];
+}) {
+  const poLine = po?.lines.find((l) => l.id === field.purchaseOrderLineId);
+  const warehouseId = useWatch({
+    control: form.control,
+    name: `lines.${index}.warehouseId`,
+  });
+
+  return (
+    <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
+      <div className="flex justify-between items-start">
+        <div>
+          <p className="font-medium text-sm">{poLine?.product.name}</p>
+          <p className="text-xs text-muted-foreground">{poLine?.product.sku}</p>
+        </div>
+        <p className="text-xs font-semibold">Ordered: {poLine?.quantity}</p>
+      </div>
+
+      <div className="space-y-4">
+        <FormField name={`lines.${index}.warehouseId`} label="Warehouse">
+          {({ field: selectField }) => (
+            <SearchableSelect
+              {...selectField}
+              options={warehouseOptions}
+              placeholder="Select Warehouse"
+            />
+          )}
+        </FormField>
+        <BinSelector index={index} form={form} warehouseId={warehouseId} warehouses={warehouses} />
+      </div>
+      <FormField name={`lines.${index}.quantityReceived`} label="Quantity to Receive">
+        {({ field: inputField }) => <Input {...inputField} type="text" />}
+      </FormField>
+    </div>
+  );
+}
+
 export function ReceivePurchaseOrderSheet({ isOpen, onClose, po }: ReceivePurchaseOrderSheetProps) {
-  const { mutateAsync: receivePO, status } = useReceivePurchaseOrder();
+  const { mutateAsync: createReceipt, isPending: isLoading } = useCreateReceipt();
   const { data: warehouses } = useWarehouses();
 
-  const form = useForm<ReceivePurchaseOrderInput>({
-    resolver: zodResolver(receivePurchaseOrderSchema),
+  const form = useForm<CreateReceiptInput>({
+    resolver: zodResolver(createReceiptSchema),
     defaultValues: {
+      purchaseOrderId: '',
       lines: [],
     },
   });
@@ -47,11 +141,13 @@ export function ReceivePurchaseOrderSheet({ isOpen, onClose, po }: ReceivePurcha
     name: 'lines',
   });
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (po && isOpen) {
       form.reset({
+        purchaseOrderId: po.id,
         lines: po.lines.map((line) => ({
           purchaseOrderLineId: line.id,
+          productId: line.productId,
           warehouseId: '',
           binId: null,
           quantityReceived: line.quantity,
@@ -60,18 +156,17 @@ export function ReceivePurchaseOrderSheet({ isOpen, onClose, po }: ReceivePurcha
     }
   }, [po, form, isOpen]);
 
-  const onSubmit = async (data: ReceivePurchaseOrderInput) => {
+  const onSubmit = async (data: CreateReceiptInput) => {
     if (!po) return;
     try {
-      await receivePO({ id: po.id, data });
-      toast.success('Stock intaken successfully');
+      await createReceipt(data);
       onClose();
-    } catch {
-      toast.error('Failed to intake stock');
+    } catch (error) {
+      // toast.error is handled in the hook
+      console.error('Failed to intake stock:', error);
     }
   };
 
-  const isLoading = status === 'pending';
   const warehouseOptions = (warehouses || []).map((w) => ({
     label: w.name,
     value: w.id,
@@ -88,55 +183,34 @@ export function ReceivePurchaseOrderSheet({ isOpen, onClose, po }: ReceivePurcha
           </ResponsiveDrawerDescription>
         </ResponsiveDrawerHeader>
 
-        <Form<ReceivePurchaseOrderInput, typeof receivePurchaseOrderSchema>
+        <Form<CreateReceiptInput, typeof createReceiptSchema>
           form={form}
-          schema={receivePurchaseOrderSchema}
+          schema={createReceiptSchema}
           onSubmit={onSubmit}
           className="flex flex-col flex-1 overflow-hidden"
         >
           {() => (
             <>
               <div className="space-y-6 px-4 py-4 flex-1 overflow-y-auto">
-                {fields.map((field, index) => {
-                  const poLine = po?.lines.find((l) => l.id === field.purchaseOrderLineId);
-                  return (
-                    <div key={field.id} className="p-4 border rounded-lg bg-muted/30 space-y-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium text-sm">{poLine?.product.name}</p>
-                          <p className="text-xs text-muted-foreground">{poLine?.product.sku}</p>
-                        </div>
-                        <p className="text-xs font-semibold">Ordered: {poLine?.quantity}</p>
-                      </div>
-
-                      <div className="space-y-4">
-                        <FormField name={`lines.${index}.warehouseId`} label="Warehouse">
-                          {({ field: selectField }) => (
-                            <SearchableSelect
-                              {...selectField}
-                              options={warehouseOptions}
-                              placeholder="Select Warehouse"
-                            />
-                          )}
-                        </FormField>
-                        <FormField
-                          name={`lines.${index}.quantityReceived`}
-                          label="Quantity to Receive"
-                        >
-                          {({ field: inputField }) => <Input {...inputField} type="text" />}
-                        </FormField>
-                      </div>
-                    </div>
-                  );
-                })}
+                {fields.map((field, index) => (
+                  <ReceiptLineItem
+                    key={field.id}
+                    index={index}
+                    field={field}
+                    form={form}
+                    po={po}
+                    warehouseOptions={warehouseOptions}
+                    warehouses={warehouses || []}
+                  />
+                ))}
               </div>
 
               <ResponsiveDrawerFooter>
                 <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
                   Cancel
                 </Button>
-                <Button type="submit" loading={isLoading}>
-                  Receive Stock
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? 'Processing...' : 'Receive Stock'}
                 </Button>
               </ResponsiveDrawerFooter>
             </>
