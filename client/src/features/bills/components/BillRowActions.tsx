@@ -1,4 +1,4 @@
-import { Eye, FileEdit, Trash2 } from 'lucide-react';
+import { Eye, FileEdit, Trash2, DollarSign } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Row } from '@tanstack/react-table';
@@ -14,9 +14,10 @@ import type { BillResponse } from '../api/bills.api';
 
 interface BillRowActionsProps {
   row: Row<BillResponse>;
+  onPayBill?: (bill: BillResponse) => void;
 }
 
-export function BillRowActions({ row }: BillRowActionsProps) {
+export function BillRowActions({ row, onPayBill }: BillRowActionsProps) {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -40,6 +41,7 @@ export function BillRowActions({ row }: BillRowActionsProps) {
       label: 'Edit',
       icon: <FileEdit className="h-4 w-4" />,
       onClick: () => navigate(getPath(`/bills/${bill.id}/edit`)),
+      hidden: bill.status === 'paid' || bill.status === 'void',
     },
     {
       label: 'Delete',
@@ -48,6 +50,15 @@ export function BillRowActions({ row }: BillRowActionsProps) {
       variant: 'destructive',
     },
   ];
+
+  if (onPayBill && bill.status === 'open') {
+    actions.unshift({
+      label: 'Pay Bill',
+      icon: <DollarSign className="h-4 w-4 text-emerald-600" />,
+      onClick: () => onPayBill(bill),
+      tooltip: 'Pay Bill',
+    });
+  }
 
   return (
     <>

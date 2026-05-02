@@ -5,6 +5,8 @@ import { paymentsApi } from '../api/payments.api';
 export const paymentKeys = {
   all: ['payments'] as const,
   lists: () => [...paymentKeys.all, 'list'] as const,
+  intents: (filters: { invoiceId?: string; billId?: string }) =>
+    [...paymentKeys.all, 'intents', filters] as const,
   details: () => [...paymentKeys.all, 'detail'] as const,
   detail: (id: string) => [...paymentKeys.details(), id] as const,
 };
@@ -19,6 +21,13 @@ export function usePayments() {
   return useQuery({
     queryKey: paymentKeys.lists(),
     queryFn: paymentsApi.getPayments,
+  });
+}
+
+export function usePaymentIntents(filters: { invoiceId?: string; billId?: string }) {
+  return useQuery({
+    queryKey: paymentKeys.intents(filters),
+    queryFn: () => paymentsApi.getPaymentIntents(filters),
   });
 }
 
@@ -44,6 +53,12 @@ export function useCreatePayment() {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
     },
+  });
+}
+
+export function useCreateStripeSession() {
+  return useMutation({
+    mutationFn: paymentsApi.createStripeSession,
   });
 }
 

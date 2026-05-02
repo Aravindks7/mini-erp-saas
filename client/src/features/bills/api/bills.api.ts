@@ -32,6 +32,8 @@ export interface BillResponse {
   referenceNumber: string;
   issueDate: string;
   dueDate: string;
+  totalAmount: string;
+  taxAmount: string;
   notes?: string | null;
   status: 'draft' | 'open' | 'paid' | 'void';
   createdAt: string;

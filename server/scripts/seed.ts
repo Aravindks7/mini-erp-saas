@@ -9,13 +9,7 @@ import { seedCustomers } from '../src/db/seeds/customers.seed.js';
 import { seedProducts } from '../src/db/seeds/products.seed.js';
 import { seedWarehouses } from '../src/db/seeds/warehouses.seed.js';
 import { seedInventory } from '../src/db/seeds/inventory.seed.js';
-import { seedPurchaseOrders } from '../src/db/seeds/purchase-orders.seed.js';
-import { seedSalesOrders } from '../src/db/seeds/sales-orders.seed.js';
-import { seedReceipts } from '../src/db/seeds/receipts.seed.js';
-import { seedShipments } from '../src/db/seeds/shipments.seed.js';
-import { seedInvoices } from '../src/db/seeds/invoices.seed.js';
-import { seedBills } from '../src/db/seeds/bills.seed.js';
-import { seedPayments } from '../src/db/seeds/payments.seed.js';
+import { seedScenarios } from '../src/db/seeds/scenarios.seed.js';
 
 async function run() {
   // 1. Production Kill-Switch
@@ -48,13 +42,9 @@ async function run() {
     await seedProducts();
     await seedWarehouses();
     await seedInventory();
-    await seedPurchaseOrders();
-    await seedSalesOrders();
-    await seedReceipts();
-    await seedShipments();
-    await seedInvoices();
-    await seedBills();
-    await seedPayments();
+
+    // Execute Deterministic Scenario Engine (Replaces manual seeds)
+    await seedScenarios();
 
     console.log('✅ Developer seeding complete successfully.');
   } catch (err) {

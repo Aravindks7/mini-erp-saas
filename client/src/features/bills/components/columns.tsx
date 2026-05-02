@@ -6,7 +6,7 @@ import { formatDate } from '@shared/utils/date';
 import type { BillResponse } from '../api/bills.api';
 import { BillRowActions } from './BillRowActions';
 
-const billStatusMap: StatusMap<string> = {
+export const billStatusMap: StatusMap<string> = {
   draft: { label: 'Draft', tone: 'neutral' },
   open: { label: 'Open', tone: 'warning' },
   paid: { label: 'Paid', tone: 'success' },
@@ -18,7 +18,16 @@ export const billStatusOptions = Object.entries(billStatusMap).map(([value, conf
   value,
 }));
 
-export const columns: ColumnDef<BillResponse>[] = [
+const currencyFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+});
+
+interface GetColumnsProps {
+  onPayBill?: (bill: BillResponse) => void;
+}
+
+export const getColumns = ({ onPayBill }: GetColumnsProps = {}): ColumnDef<BillResponse>[] => [
   {
     id: 'select',
     header: ({ table }) => (
@@ -41,15 +50,16 @@ export const columns: ColumnDef<BillResponse>[] = [
   },
   {
     accessorKey: 'referenceNumber',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Reference #" />,
-    meta: { variant: 'title', label: 'Reference Number' },
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Reference" />,
+    meta: { variant: 'title', label: 'Reference' },
     enableGlobalFilter: true,
   },
   {
-    accessorKey: 'supplierId',
+    accessorKey: 'supplier.name',
     header: ({ column }) => <DataTableColumnHeader column={column} title="Supplier" />,
-    cell: ({ row }) => row.original.supplier?.name || row.getValue('supplierId'),
+    cell: ({ row }) => row.original.supplier?.name || '—',
     meta: { variant: 'subtitle', label: 'Supplier' },
+    enableGlobalFilter: true,
   },
   {
     accessorKey: 'issueDate',
@@ -64,6 +74,12 @@ export const columns: ColumnDef<BillResponse>[] = [
     meta: { variant: 'field', label: 'Due Date' },
   },
   {
+    accessorKey: 'totalAmount',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Total" />,
+    cell: ({ row }) => currencyFormatter.format(Number(row.getValue('totalAmount'))),
+    meta: { variant: 'field', label: 'Total' },
+  },
+  {
     accessorKey: 'status',
     header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
     filterFn: (row, id, value) => {
@@ -71,14 +87,14 @@ export const columns: ColumnDef<BillResponse>[] = [
       const selectedValues = typeof value === 'string' ? value.split(',') : value;
       return Array.isArray(selectedValues) ? selectedValues.includes(rowValue) : false;
     },
-    cell: ({ row }) => (
-      <StatusBadge value={row.getValue('status') as string} statusMap={billStatusMap} />
-    ),
+    cell: ({ row }) => {
+      return <StatusBadge value={row.getValue('status') as string} statusMap={billStatusMap} />;
+    },
     meta: { variant: 'field', label: 'Status' },
   },
   {
     id: 'actions',
-    cell: ({ row }) => <BillRowActions row={row} />,
+    cell: ({ row }) => <BillRowActions row={row} onPayBill={onPayBill} />,
     meta: { variant: 'actions' },
     enableGlobalFilter: false,
   },

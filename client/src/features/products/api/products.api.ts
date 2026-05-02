@@ -55,7 +55,7 @@ export const productsApi = {
       successCount: number;
       failedCount: number;
       errors: Array<{ row: number; message: string }>;
-      successfulRecords?: Array<any>;
+      successfulRecords?: Array<unknown>;
     }>('/products/import', {
       method: 'POST',
       body: formData,

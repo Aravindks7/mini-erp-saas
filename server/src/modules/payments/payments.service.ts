@@ -1,14 +1,148 @@
 import { db } from '../../db/index.js';
-import { payments, invoices, bills } from '../../db/schema/index.js';
+import { payments, invoices, bills, paymentIntents } from '../../db/schema/index.js';
 import { and, eq, sql, desc } from 'drizzle-orm';
 import { CreatePaymentInput } from '#shared/contracts/payments.contract.js';
 import { BaseService } from '../../lib/base.service.js';
+import { stripe } from '../../lib/stripe.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export class PaymentsService extends BaseService<typeof payments> {
   constructor() {
     super(payments);
+  }
+
+  /**
+   * Creates a Stripe Checkout Session and tracks it as a Payment Intent.
+   * Axiom: Intent (expected funds) is tracked separately from Payment (realized funds).
+   */
+  async createStripeSession(
+    organizationId: string,
+    userId: string,
+    invoiceId: string,
+    amount: string,
+    successUrl: string,
+    cancelUrl: string,
+  ) {
+    const invoice = await db.query.invoices.findFirst({
+      where: and(eq(invoices.id, invoiceId), eq(invoices.organizationId, organizationId)),
+      with: {
+        customer: {
+          with: {
+            contacts: {
+              where: (contacts, { eq }) => eq(contacts.isPrimary, true),
+            },
+          },
+        },
+      },
+    });
+
+    if (!invoice) {
+      throw new Error('Invoice not found');
+    }
+
+    // 1. Create Stripe Session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `Payment for Invoice ${invoice.documentNumber}`,
+              description: `Organization: ${organizationId}`,
+            },
+            unit_amount: Math.round(Number(amount) * 100), // Stripe expects cents
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      client_reference_id: invoiceId,
+      metadata: {
+        organizationId,
+        invoiceId,
+        userId,
+      },
+      customer_email: invoice.customer?.contacts?.[0]?.email ?? undefined,
+    });
+
+    // 2. Track in Local DB as Pending Intent
+    await db.insert(paymentIntents).values(
+      this.withAudit(
+        {
+          organizationId,
+          invoiceId,
+          amount,
+          status: 'pending',
+          provider: 'stripe',
+          providerRef: session.id,
+          metadata: { sessionId: session.id },
+        },
+        userId,
+      ),
+    );
+
+    return { url: session.url };
+  }
+
+  /**
+   * Fulfills a Payment Intent via Webhook.
+   * Atomically: Intent succeeded -> Create Payment -> Reconcile Invoice.
+   */
+  async fulfillPaymentIntent(providerRef: string) {
+    return await db.transaction(async (tx) => {
+      // 1. Find the intent
+      const intent = await tx.query.paymentIntents.findFirst({
+        where: eq(paymentIntents.providerRef, providerRef),
+      });
+
+      if (!intent || intent.status !== 'pending') {
+        return; // Already processed or not found
+      }
+
+      // 2. Mark Intent as Succeeded
+      await tx
+        .update(paymentIntents)
+        .set({ status: 'succeeded', updatedAt: new Date() })
+        .where(eq(paymentIntents.id, intent.id));
+
+      // 3. Create Realized Payment
+      const [payment] = await tx
+        .insert(payments)
+        .values(
+          this.withAudit(
+            {
+              organizationId: intent.organizationId,
+              paymentType: 'inbound',
+              paymentMethod: 'credit_card',
+              status: 'completed',
+              amount: intent.amount,
+              paymentDate: new Date(),
+              referenceNumber: `STRIPE-${providerRef}`,
+              invoiceId: intent.invoiceId,
+              paymentIntentId: intent.id,
+              notes: 'Stripe Checkout Payment',
+            },
+            intent.createdBy || 'system',
+          ),
+        )
+        .returning();
+
+      // 4. Reconcile Invoice (or Bill)
+      if (intent.invoiceId) {
+        await this.reconcileInvoiceStatus(
+          intent.organizationId,
+          intent.createdBy || 'system',
+          intent.invoiceId,
+          tx,
+        );
+      }
+
+      return payment;
+    });
   }
 
   async listPayments(organizationId: string) {

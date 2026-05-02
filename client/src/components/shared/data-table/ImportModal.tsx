@@ -32,7 +32,7 @@ interface ImportResult {
 interface ImportColumn {
   header: string;
   accessorKey: string;
-  format?: (value: any) => string;
+  format?: (value: unknown) => string;
 }
 
 interface ImportModalProps {

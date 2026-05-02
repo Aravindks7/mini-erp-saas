@@ -54,4 +54,5 @@ export * from './bills.schema.js';
 export * from './bill-lines.schema.js';
 
 export * from './sequences.schema.js';
+export * from './payment-intents.schema.js';
 export * from './payments.schema.js';

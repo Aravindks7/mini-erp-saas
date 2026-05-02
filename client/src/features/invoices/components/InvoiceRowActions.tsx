@@ -1,4 +1,4 @@
-import { Eye } from 'lucide-react';
+import { Eye, DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   DataTableRowActions,
@@ -9,9 +9,10 @@ import type { InvoiceResponse } from '../api/invoices.api';
 
 interface InvoiceRowActionsProps {
   row: { original: InvoiceResponse };
+  onAddPayment?: (invoice: InvoiceResponse) => void;
 }
 
-export function InvoiceRowActions({ row }: InvoiceRowActionsProps) {
+export function InvoiceRowActions({ row, onAddPayment }: InvoiceRowActionsProps) {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
   const invoice = row.original;
@@ -25,7 +26,14 @@ export function InvoiceRowActions({ row }: InvoiceRowActionsProps) {
     },
   ];
 
-  // We could add 'Print', 'Mark as Paid', etc. later.
+  if (onAddPayment && invoice.status === 'open') {
+    primaryActions.push({
+      label: 'Record Payment',
+      icon: <DollarSign className="h-4 w-4 text-emerald-600" />,
+      onClick: () => onAddPayment(invoice),
+      tooltip: 'Record Payment',
+    });
+  }
 
   return <DataTableRowActions primaryActions={primaryActions} />;
 }

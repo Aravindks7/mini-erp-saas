@@ -2,6 +2,9 @@ import { Request, Response } from 'express';
 import { paymentsService } from './payments.service.js';
 import { createPaymentSchema } from '#shared/contracts/payments.contract.js';
 import { logger } from '../../utils/logger.js';
+import { db } from '../../db/index.js';
+import { and, eq, desc } from 'drizzle-orm';
+import { paymentIntents } from '../../db/schema/index.js';
 
 export async function listPayments(req: Request, res: Response) {
   const organizationId = req.organizationId;
@@ -84,6 +87,54 @@ export async function bulkDeletePayments(req: Request, res: Response) {
     res.status(204).end();
   } catch (error) {
     logger.error({ error, organizationId, userId, ids }, 'Failed to bulk delete payments');
+    throw error;
+  }
+}
+
+export async function createStripeSession(req: Request, res: Response) {
+  const { invoiceId, amount, successUrl, cancelUrl } = req.body;
+
+  if (!invoiceId || !amount || !successUrl || !cancelUrl) {
+    return res.status(400).json({
+      error: 'invoiceId, amount, successUrl, and cancelUrl are required',
+    });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    const session = await paymentsService.createStripeSession(
+      organizationId,
+      userId,
+      invoiceId,
+      amount,
+      successUrl,
+      cancelUrl,
+    );
+    res.json(session);
+  } catch (error) {
+    logger.error({ error, organizationId, userId, invoiceId }, 'Failed to create Stripe session');
+    res.status(500).json({ error: (error as Error).message });
+  }
+}
+
+export async function listPaymentIntents(req: Request, res: Response) {
+  const { invoiceId, billId } = req.query;
+  const organizationId = req.organizationId;
+
+  try {
+    const results = await db.query.paymentIntents.findMany({
+      where: and(
+        eq(paymentIntents.organizationId, organizationId),
+        invoiceId ? eq(paymentIntents.invoiceId, invoiceId as string) : undefined,
+        billId ? eq(paymentIntents.billId, billId as string) : undefined,
+      ),
+      orderBy: [desc(paymentIntents.createdAt)],
+    });
+    res.json(results);
+  } catch (error) {
+    logger.error({ error, organizationId }, 'Failed to list payment intents');
     throw error;
   }
 }

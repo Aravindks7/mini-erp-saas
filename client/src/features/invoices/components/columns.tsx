@@ -23,7 +23,13 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
   currency: 'USD',
 });
 
-export const columns: ColumnDef<InvoiceResponse>[] = [
+interface GetColumnsProps {
+  onAddPayment?: (invoice: InvoiceResponse) => void;
+}
+
+export const getColumns = ({
+  onAddPayment,
+}: GetColumnsProps = {}): ColumnDef<InvoiceResponse>[] => [
   {
     id: 'select',
     header: ({ table }) => (
@@ -90,7 +96,7 @@ export const columns: ColumnDef<InvoiceResponse>[] = [
   },
   {
     id: 'actions',
-    cell: ({ row }) => <InvoiceRowActions row={row} />,
+    cell: ({ row }) => <InvoiceRowActions row={row} onAddPayment={onAddPayment} />,
     meta: { variant: 'actions' },
     enableGlobalFilter: false,
   },

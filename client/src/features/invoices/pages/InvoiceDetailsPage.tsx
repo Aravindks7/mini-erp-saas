@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ShoppingCart, AlertCircle, User, Calendar, Clock } from 'lucide-react';
+import { ShoppingCart, AlertCircle, User, Calendar, Clock, Plus } from 'lucide-react';
+import * as React from 'react';
 
 import { useInvoice, useUpdateInvoiceStatus } from '../hooks/invoices.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -24,6 +25,8 @@ import {
 } from '@/components/ui/table';
 import { formatDate } from '@shared/utils/date';
 import { toast } from 'sonner';
+import { AddPaymentSheet } from '../components/AddPaymentSheet';
+import { PaymentHistoryTab } from '../components/PaymentHistoryTab';
 
 export default function InvoiceDetailsPage() {
   const { id } = useParams();
@@ -31,6 +34,8 @@ export default function InvoiceDetailsPage() {
   const { getPath } = useTenantPath();
   const { data: invoice, isLoading, isError } = useInvoice(id);
   const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateInvoiceStatus();
+
+  const [isPaymentSheetOpen, setIsPaymentSheetOpen] = React.useState(false);
 
   if (isLoading) {
     return (
@@ -67,6 +72,9 @@ export default function InvoiceDetailsPage() {
     currency: 'USD',
   });
 
+  const totalPaid = Number(invoice.totalAmount) - Number(invoice.balanceDue ?? invoice.totalAmount);
+  const balanceDue = Number(invoice.balanceDue ?? invoice.totalAmount);
+
   const handleStatusChange = (status: 'open' | 'paid' | 'void') => {
     updateStatus(
       { id: invoice.id, data: { status } },
@@ -89,11 +97,11 @@ export default function InvoiceDetailsPage() {
         backButton={{ href: getPath('/invoices'), label: 'Back to List' }}
         actions={[
           {
-            label: 'Mark as Paid',
-            onClick: () => handleStatusChange('paid'),
+            label: 'Add Payment',
+            icon: <Plus className="h-4 w-4" />,
+            onClick: () => setIsPaymentSheetOpen(true),
             variant: 'default',
             hidden: invoice.status === 'paid' || invoice.status === 'void',
-            isLoading: isUpdatingStatus,
           },
           {
             label: 'Send to Customer',
@@ -110,12 +118,15 @@ export default function InvoiceDetailsPage() {
       </PageHeader>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 lg:w-[400px] h-11 bg-muted/50 p-1">
+        <TabsList className="grid w-full grid-cols-3 lg:w-[500px] h-11 bg-muted/50 p-1">
           <TabsTrigger value="overview" className="data-[state=active]:shadow-sm">
             Overview
           </TabsTrigger>
           <TabsTrigger value="items" className="data-[state=active]:shadow-sm">
             Line Items ({invoice.lines?.length || 0})
+          </TabsTrigger>
+          <TabsTrigger value="payments" className="data-[state=active]:shadow-sm">
+            Payments
           </TabsTrigger>
         </TabsList>
 
@@ -203,6 +214,16 @@ export default function InvoiceDetailsPage() {
                   value: currencyFormatter.format(Number(invoice.totalAmount)),
                   isTotal: true,
                 },
+                {
+                  label: 'Paid to Date',
+                  value: currencyFormatter.format(totalPaid),
+                },
+                {
+                  label: 'Balance Due',
+                  value: currencyFormatter.format(balanceDue),
+                  isTotal: true,
+                  className: balanceDue > 0 ? 'text-destructive font-bold' : 'text-emerald-600',
+                },
               ]}
             />
           </div>
@@ -253,7 +274,17 @@ export default function InvoiceDetailsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="payments" className="mt-6">
+          <PaymentHistoryTab invoice={invoice} />
+        </TabsContent>
       </Tabs>
+
+      <AddPaymentSheet
+        invoice={invoice}
+        isOpen={isPaymentSheetOpen}
+        onClose={() => setIsPaymentSheetOpen(false)}
+      />
     </PageContainer>
   );
 }

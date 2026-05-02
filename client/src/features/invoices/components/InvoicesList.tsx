@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { z } from 'zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { LayoutList, Plus } from 'lucide-react';
@@ -14,8 +15,10 @@ import { Button } from '@/components/ui/button';
 import { Can } from '@/components/shared/Can';
 import { useTenantPath } from '@/hooks/useTenantPath';
 
-import { columns } from './columns';
+import { getColumns } from './columns';
 import { useInvoices } from '../hooks/invoices.hooks';
+import { AddPaymentSheet } from './AddPaymentSheet';
+import type { InvoiceResponse } from '../api/invoices.api';
 
 const searchSchema = z.object({
   documentNumber: z.string().optional(),
@@ -28,9 +31,25 @@ export function InvoicesList() {
   const { data: invoices, isLoading, isError } = useInvoices();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
+  const [paymentSheetState, setPaymentSheetState] = React.useState<{
+    isOpen: boolean;
+    invoice?: InvoiceResponse;
+  }>({
+    isOpen: false,
+  });
+
+  const handleAddPayment = React.useCallback((invoice: InvoiceResponse) => {
+    setPaymentSheetState({ isOpen: true, invoice });
+  }, []);
+
   const handleAdd = () => {
     navigate(getPath('/invoices/new'));
   };
+
+  const columns = React.useMemo(
+    () => getColumns({ onAddPayment: handleAddPayment }),
+    [handleAddPayment],
+  );
 
   if (isError) {
     return (
@@ -71,29 +90,39 @@ export function InvoicesList() {
   }
 
   return (
-    <EntityTable
-      headerVariant="primary"
-      title="Invoices"
-      description="Manage customer billing and payment statuses."
-      enableGlobalSearch
-      data={invoices || []}
-      columns={columns}
-      isLoading={isLoading}
-      onAddClick={handleAdd}
-      viewMode={tableState.viewMode}
-      onViewModeChange={tableSetters.setViewMode}
-      state={tableState}
-      onStateChange={tableSetters}
-      onReset={resetAll}
-      headerActions={
-        <Can I={PERMISSIONS.INVOICES.CREATE}>
-          <Button onClick={handleAdd}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Invoice
-          </Button>
-        </Can>
-      }
-      searchKey="documentNumber"
-    />
+    <>
+      <EntityTable
+        headerVariant="primary"
+        title="Invoices"
+        description="Manage customer billing and payment statuses."
+        enableGlobalSearch
+        data={invoices || []}
+        columns={columns}
+        isLoading={isLoading}
+        onAddClick={handleAdd}
+        viewMode={tableState.viewMode}
+        onViewModeChange={tableSetters.setViewMode}
+        state={tableState}
+        onStateChange={tableSetters}
+        onReset={resetAll}
+        headerActions={
+          <Can I={PERMISSIONS.INVOICES.CREATE}>
+            <Button onClick={handleAdd}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Invoice
+            </Button>
+          </Can>
+        }
+        searchKey="documentNumber"
+      />
+
+      {paymentSheetState.invoice && (
+        <AddPaymentSheet
+          invoice={paymentSheetState.invoice}
+          isOpen={paymentSheetState.isOpen}
+          onClose={() => setPaymentSheetState({ isOpen: false })}
+        />
+      )}
+    </>
   );
 }

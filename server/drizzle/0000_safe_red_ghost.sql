@@ -10,6 +10,7 @@ CREATE TYPE "public"."shipment_status" AS ENUM('draft', 'shipped', 'cancelled');
 CREATE TYPE "public"."purchase_order_status" AS ENUM('draft', 'sent', 'partially_received', 'received', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."receipt_status" AS ENUM('draft', 'received', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."invoice_status" AS ENUM('draft', 'open', 'partially_paid', 'paid', 'void');--> statement-breakpoint
+CREATE TYPE "public"."payment_intent_status" AS ENUM('pending', 'succeeded', 'failed', 'expired');--> statement-breakpoint
 CREATE TYPE "public"."payment_method" AS ENUM('cash', 'bank_transfer', 'check', 'credit_card');--> statement-breakpoint
 CREATE TYPE "public"."payment_status" AS ENUM('pending', 'completed', 'failed', 'refunded');--> statement-breakpoint
 CREATE TYPE "public"."payment_type" AS ENUM('inbound', 'outbound');--> statement-breakpoint
@@ -660,6 +661,24 @@ CREATE TABLE "document_sequences" (
 	"padding" integer DEFAULT 4 NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "payment_intents" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_by" uuid,
+	"updated_by" uuid,
+	"deleted_at" timestamp,
+	"invoice_id" uuid,
+	"bill_id" uuid,
+	"amount" numeric(18, 8) NOT NULL,
+	"currency" text DEFAULT 'USD' NOT NULL,
+	"status" "payment_intent_status" DEFAULT 'pending' NOT NULL,
+	"provider" text NOT NULL,
+	"provider_ref" text NOT NULL,
+	"metadata" jsonb
+);
+--> statement-breakpoint
 CREATE TABLE "payments" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"organization_id" uuid NOT NULL,
@@ -678,7 +697,8 @@ CREATE TABLE "payments" (
 	"customer_id" uuid,
 	"supplier_id" uuid,
 	"invoice_id" uuid,
-	"bill_id" uuid
+	"bill_id" uuid,
+	"payment_intent_id" uuid
 );
 --> statement-breakpoint
 ALTER TABLE "addresses" ADD CONSTRAINT "addresses_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -781,11 +801,15 @@ ALTER TABLE "invoice_lines" ADD CONSTRAINT "invoice_lines_organization_id_organi
 ALTER TABLE "invoice_lines" ADD CONSTRAINT "invoice_lines_invoice_id_invoices_id_fk" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "invoice_lines" ADD CONSTRAINT "invoice_lines_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "document_sequences" ADD CONSTRAINT "document_sequences_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "payment_intents" ADD CONSTRAINT "payment_intents_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "payment_intents" ADD CONSTRAINT "payment_intents_invoice_id_invoices_id_fk" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "payment_intents" ADD CONSTRAINT "payment_intents_bill_id_bills_id_fk" FOREIGN KEY ("bill_id") REFERENCES "public"."bills"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "payments" ADD CONSTRAINT "payments_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "payments" ADD CONSTRAINT "payments_customer_id_customers_id_fk" FOREIGN KEY ("customer_id") REFERENCES "public"."customers"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "payments" ADD CONSTRAINT "payments_supplier_id_suppliers_id_fk" FOREIGN KEY ("supplier_id") REFERENCES "public"."suppliers"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "payments" ADD CONSTRAINT "payments_invoice_id_invoices_id_fk" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "payments" ADD CONSTRAINT "payments_bill_id_bills_id_fk" FOREIGN KEY ("bill_id") REFERENCES "public"."bills"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "payments" ADD CONSTRAINT "payments_payment_intent_id_payment_intents_id_fk" FOREIGN KEY ("payment_intent_id") REFERENCES "public"."payment_intents"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "addresses_org_idx" ON "addresses" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "bill_lines_org_idx" ON "bill_lines" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "bill_lines_bill_idx" ON "bill_lines" USING btree ("bill_id");--> statement-breakpoint
@@ -881,6 +905,9 @@ CREATE INDEX "invoice_lines_org_idx" ON "invoice_lines" USING btree ("organizati
 CREATE INDEX "invoice_lines_invoice_idx" ON "invoice_lines" USING btree ("invoice_id");--> statement-breakpoint
 CREATE INDEX "invoice_lines_product_idx" ON "invoice_lines" USING btree ("product_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "doc_seq_org_type_unique" ON "document_sequences" USING btree ("organization_id","type");--> statement-breakpoint
+CREATE INDEX "payment_intents_org_idx" ON "payment_intents" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "payment_intents_invoice_idx" ON "payment_intents" USING btree ("invoice_id");--> statement-breakpoint
+CREATE INDEX "payment_intents_bill_idx" ON "payment_intents" USING btree ("bill_id");--> statement-breakpoint
 CREATE INDEX "payments_org_idx" ON "payments" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "payments_customer_idx" ON "payments" USING btree ("customer_id");--> statement-breakpoint
 CREATE INDEX "payments_supplier_idx" ON "payments" USING btree ("supplier_id");--> statement-breakpoint

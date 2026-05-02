@@ -7,6 +7,7 @@ import { customers } from './customers.schema.js';
 import { suppliers } from './suppliers.schema.js';
 import { invoices } from './invoices.schema.js';
 import { bills } from './bills.schema.js';
+import { paymentIntents } from './payment-intents.schema.js';
 
 export const paymentTypeEnum = pgEnum('payment_type', ['inbound', 'outbound']);
 export const paymentMethodEnum = pgEnum('payment_method', [
@@ -44,6 +45,7 @@ export const payments = pgTable(
     supplierId: uuid('supplier_id').references(() => suppliers.id),
     invoiceId: uuid('invoice_id').references(() => invoices.id),
     billId: uuid('bill_id').references(() => bills.id),
+    paymentIntentId: uuid('payment_intent_id').references(() => paymentIntents.id),
   },
   (table) => [
     index('payments_org_idx').on(table.organizationId),
@@ -74,6 +76,10 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
   bill: one(bills, {
     fields: [payments.billId],
     references: [bills.id],
+  }),
+  paymentIntent: one(paymentIntents, {
+    fields: [payments.paymentIntentId],
+    references: [paymentIntents.id],
   }),
 }));
 

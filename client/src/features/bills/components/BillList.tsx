@@ -20,13 +20,15 @@ import { Button } from '@/components/ui/button';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 import { PageHeader } from '@/components/shared/PageHeader';
 
-import { columns, billStatusOptions } from './columns';
+import { billStatusOptions, getColumns } from './columns';
 import { useBills, useBulkDeleteBills } from '../hooks/bills.hooks';
 import type { BillResponse } from '../api/bills.api';
+import { PayBillSheet } from './PayBillSheet';
 
 const searchSchema = z.object({
   referenceNumber: z.string().optional(),
   status: z.string().optional(),
+  supplierId: z.string().optional(),
 });
 
 export function BillList() {
@@ -36,6 +38,14 @@ export function BillList() {
   const { data: bills, isLoading, isError } = useBills();
   const bulkDeleteMutation = useBulkDeleteBills();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
+
+  const [payBillState, setPayBillState] = React.useState<{
+    isOpen: boolean;
+    bill: BillResponse | null;
+  }>({
+    isOpen: false,
+    bill: null,
+  });
 
   const [bulkDeleteState, setBulkDeleteState] = React.useState<{
     isOpen: boolean;
@@ -78,6 +88,12 @@ export function BillList() {
       </div>
     );
   }
+
+  const handlePayBill = (bill: BillResponse) => {
+    setPayBillState({ isOpen: true, bill });
+  };
+
+  const columns = getColumns({ onPayBill: handlePayBill });
 
   if (!bills || bills.length === 0) {
     return (
@@ -159,6 +175,14 @@ export function BillList() {
           />
         )}
       />
+
+      {payBillState.bill && (
+        <PayBillSheet
+          bill={payBillState.bill}
+          isOpen={payBillState.isOpen}
+          onClose={() => setPayBillState({ isOpen: false, bill: null })}
+        />
+      )}
 
       <DeleteConfirmDialog
         isOpen={bulkDeleteState.isOpen}
