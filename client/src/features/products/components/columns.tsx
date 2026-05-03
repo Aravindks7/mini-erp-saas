@@ -2,7 +2,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
 import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
-import { formatDate } from '@shared/utils/date';
+
 import type { ProductResponse } from '../api/products.api';
 import { ProductRowActions } from './ProductRowActions';
 
@@ -50,6 +50,15 @@ export const columns: ColumnDef<ProductResponse>[] = [
     enableGlobalFilter: true,
   },
   {
+    accessorKey: 'category',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Category" />,
+    cell: ({ row }) => {
+      const category = row.original.category;
+      return category ? category.name : '-';
+    },
+    meta: { variant: 'field', label: 'Category' },
+  },
+  {
     accessorKey: 'basePrice',
     header: ({ column }) => <DataTableColumnHeader column={column} title="Price" />,
     cell: ({ row }) => {
@@ -80,14 +89,7 @@ export const columns: ColumnDef<ProductResponse>[] = [
     },
     meta: { variant: 'field', label: 'Status' },
   },
-  {
-    accessorKey: 'createdAt',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Created At" />,
-    cell: ({ row }) => {
-      return formatDate(row.getValue('createdAt'));
-    },
-    meta: { variant: 'field', label: 'Created' },
-  },
+
   {
     id: 'actions',
     cell: ({ row }) => <ProductRowActions row={row} />,

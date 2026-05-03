@@ -5,7 +5,7 @@ import type { CreateAdjustmentInput } from '@mini-erp/shared';
 export const inventoryKeys = {
   all: ['inventory'] as const,
   levels: () => [...inventoryKeys.all, 'levels'] as const,
-  ledger: (filters: unknown) => [...inventoryKeys.all, 'ledger', { filters }] as const,
+  ledger: () => [...inventoryKeys.all, 'ledger'] as const,
   adjustments: () => [...inventoryKeys.all, 'adjustments'] as const,
   adjustment: (id: string) => [...inventoryKeys.adjustments(), id] as const,
 };
@@ -18,15 +18,26 @@ export function useInventoryLevels() {
   });
 }
 
-export function useInventoryLedger(filters?: {
-  productId?: string;
-  warehouseId?: string;
-  binId?: string;
-}) {
+export function useInventoryLevel(id: string | undefined) {
   return useQuery({
-    queryKey: inventoryKeys.ledger(filters),
-    queryFn: () => inventoryApi.fetchLedger(filters),
-    staleTime: 5000,
+    queryKey: [...inventoryKeys.levels(), id],
+    queryFn: () => inventoryApi.fetchLevel(id as string),
+    enabled: !!id,
+  });
+}
+
+export function useInventoryLedger() {
+  return useQuery({
+    queryKey: inventoryKeys.ledger(),
+    queryFn: () => inventoryApi.fetchLedger(),
+  });
+}
+
+export function useInventoryLevelLedger(id: string | undefined) {
+  return useQuery({
+    queryKey: [...inventoryKeys.ledger(), 'level', id],
+    queryFn: () => inventoryApi.fetchLevelLedger(id as string),
+    enabled: !!id,
   });
 }
 

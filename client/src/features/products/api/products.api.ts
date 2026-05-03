@@ -8,6 +8,7 @@ export interface ProductResponse {
   description?: string | null;
   basePrice: string;
   baseUomId: string;
+  categoryId?: string | null;
   taxId?: string | null;
   status: 'active' | 'inactive';
   createdAt: string;
@@ -18,6 +19,10 @@ export interface ProductResponse {
     code: string;
     name: string;
   };
+  category?: {
+    id: string;
+    name: string;
+  } | null;
   tax?: {
     id: string;
     name: string;

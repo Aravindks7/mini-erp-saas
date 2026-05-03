@@ -41,6 +41,12 @@ export const PERMISSIONS = {
     UPDATE: 'products:update',
     DELETE: 'products:delete',
   },
+  PRODUCT_CATEGORIES: {
+    READ: 'product-categories:read',
+    CREATE: 'product-categories:create',
+    UPDATE: 'product-categories:update',
+    DELETE: 'product-categories:delete',
+  },
   WAREHOUSES: {
     READ: 'warehouses:read',
     CREATE: 'warehouses:create',

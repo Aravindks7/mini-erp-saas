@@ -1,12 +1,12 @@
 import { db } from '../index.js';
-import { suppliers } from '../schema/index.js';
+import { suppliers, contacts, supplierContacts } from '../schema/index.js';
 import { SEED_DATA } from './constants.js';
-import { eq } from 'drizzle-orm';
+import { faker } from '@faker-js/faker';
 
 export async function seedSuppliers() {
-  console.log('🌱 Seeding Suppliers...');
+  console.log('🌱 Seeding Suppliers & Contacts...');
 
-  const items = [
+  const supplierItems = [
     {
       id: SEED_DATA.SUPPLIERS.ACME_CORP,
       name: 'ACME Corporation',
@@ -144,14 +144,54 @@ export async function seedSuppliers() {
     },
   ];
 
-  for (const item of items) {
-    const existing = await db.query.suppliers.findFirst({
-      where: eq(suppliers.id, item.id),
+  for (const item of supplierItems) {
+    const [supplier] = await db
+      .insert(suppliers)
+      .values(item)
+      .onConflictDoUpdate({
+        target: [suppliers.id],
+        set: {
+          name: item.name,
+          status: item.status,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    console.log(`   - Supplier '${supplier!.name}' synced.`);
+
+    // Check if it already has a primary contact
+    const existingContact = await db.query.supplierContacts.findFirst({
+      where: (sc, { and, eq }) => and(eq(sc.supplierId, supplier!.id), eq(sc.isPrimary, true)),
     });
 
-    if (!existing) {
-      await db.insert(suppliers).values(item);
-      console.log(`   - Supplier '${item.name}' created.`);
+    if (!existingContact) {
+      // Create a primary contact for this supplier
+      const firstName = faker.person.firstName();
+      const lastName = faker.person.lastName();
+      const [newContact] = await db
+        .insert(contacts)
+        .values({
+          organizationId: item.organizationId,
+          firstName,
+          lastName,
+          email: faker.internet.email({ firstName, lastName }),
+          phone: faker.phone.number(),
+          jobTitle: faker.person.jobTitle(),
+          createdBy: item.createdBy,
+          updatedBy: item.updatedBy,
+        })
+        .returning();
+
+      await db.insert(supplierContacts).values({
+        organizationId: item.organizationId,
+        supplierId: supplier!.id,
+        contactId: newContact!.id,
+        isPrimary: true,
+        createdBy: item.createdBy,
+        updatedBy: item.updatedBy,
+      });
+      console.log(`     * Contact '${firstName} ${lastName}' linked.`);
     }
   }
 }

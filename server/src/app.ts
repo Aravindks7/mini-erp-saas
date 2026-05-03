@@ -12,6 +12,7 @@ import organizationsRoutes from './modules/organizations/organizations.routes.js
 import rbacRoutes from './modules/rbac/rbac.routes.js';
 import uomRoutes from './modules/uom/uom.routes.js';
 import taxesRoutes from './modules/taxes/taxes.routes.js';
+import productCategoriesRoutes from './modules/product-categories/product-categories.routes.js';
 import productsRoutes from './modules/products/products.routes.js';
 import warehousesRoutes from './modules/warehouses/warehouses.routes.js';
 import inventoryRoutes from './modules/inventory/inventory.routes.js';
@@ -68,6 +69,7 @@ app.use('/organizations', organizationsRoutes);
 app.use('/rbac', rbacRoutes);
 app.use('/uom', uomRoutes);
 app.use('/taxes', taxesRoutes);
+app.use('/product-categories', productCategoriesRoutes);
 app.use('/products', productsRoutes);
 app.use('/warehouses', warehousesRoutes);
 app.use('/inventory', inventoryRoutes);

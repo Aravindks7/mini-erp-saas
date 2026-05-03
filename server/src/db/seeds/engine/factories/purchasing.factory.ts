@@ -6,9 +6,12 @@ import {
   receiptLines,
   bills,
   billLines,
+  inventoryLevels,
+  inventoryLedgers,
 } from '../../../schema/index.js';
 import { generateDeterministicId } from '../utils.js';
 import { SEED_DATA } from '../../constants.js';
+import { sql } from 'drizzle-orm';
 
 export async function createPurchaseOrder(config: {
   scenarioId: string;
@@ -84,6 +87,16 @@ export async function createReceipt(config: {
   createdAt: Date;
   type: 'full' | 'partial';
   originalQuantity: string;
+  /**
+   * Target warehouse for goods receipt. Determines both the receipt_line location
+   * and the inventory_levels / inventory_ledgers entries.
+   * Defaults to MAIN warehouse if omitted.
+   */
+  warehouseId?: string;
+  /**
+   * Target bin within the warehouse. Optional — matches schema nullable binId.
+   */
+  binId?: string;
 }) {
   const docNum = `RCT-2026-${String(config.index).padStart(4, '0')}`;
   const rctId = generateDeterministicId(config.organizationId, docNum);
@@ -92,6 +105,10 @@ export async function createReceipt(config: {
       ? (parseFloat(config.originalQuantity) / 2).toFixed(2)
       : config.originalQuantity;
 
+  // Resolve warehouse/bin — default to Main Warehouse if not specified
+  const targetWarehouseId = config.warehouseId ?? SEED_DATA.WAREHOUSES.MAIN;
+  const targetBinId = config.binId ?? SEED_DATA.BINS.MAIN_A1;
+
   await db
     .insert(receipts)
     .values({
@@ -99,6 +116,7 @@ export async function createReceipt(config: {
       organizationId: config.organizationId,
       purchaseOrderId: config.poId,
       receiptNumber: docNum,
+      reference: `SUP-REF-${config.scenarioId}-${config.index}`,
       status: 'received',
       receivedDate: config.createdAt,
       createdAt: config.createdAt,
@@ -125,12 +143,63 @@ export async function createReceipt(config: {
       organizationId: config.organizationId,
       receiptId: finalRctId,
       productId: config.productId,
-      warehouseId: SEED_DATA.WAREHOUSES.MAIN,
+      warehouseId: targetWarehouseId,
+      binId: targetBinId,
       quantityReceived: quantityReceived,
       createdBy: config.userId,
       updatedBy: config.userId,
     })
     .onConflictDoNothing();
+
+  /**
+   * INVENTORY INBOUND: Every goods receipt increments on-hand stock.
+   *
+   * This is the "po_receipt" event in the double-entry inventory ledger —
+   * the canonical source-of-truth for how stock enters the warehouse.
+   * Without this, the inventory_levels table would never reflect actual
+   * received goods, making stock visibility impossible.
+   */
+  await db
+    .insert(inventoryLevels)
+    .values({
+      organizationId: config.organizationId,
+      productId: config.productId,
+      warehouseId: targetWarehouseId,
+      binId: targetBinId,
+      quantityOnHand: quantityReceived,
+      createdAt: config.createdAt,
+      updatedAt: config.createdAt,
+      createdBy: config.userId,
+      updatedBy: config.userId,
+    })
+    .onConflictDoUpdate({
+      target: [
+        inventoryLevels.organizationId,
+        inventoryLevels.productId,
+        inventoryLevels.warehouseId,
+        inventoryLevels.binId,
+      ],
+      set: {
+        quantityOnHand: sql`GREATEST(0, ${inventoryLevels.quantityOnHand} + ${quantityReceived}::numeric)`,
+        updatedAt: config.createdAt,
+        updatedBy: config.userId,
+      },
+    });
+
+  // Ledger entry: po_receipt — traces back to the receipt header
+  await db.insert(inventoryLedgers).values({
+    organizationId: config.organizationId,
+    productId: config.productId,
+    warehouseId: targetWarehouseId,
+    binId: targetBinId,
+    quantityChange: quantityReceived,
+    referenceType: 'po_receipt',
+    referenceId: finalRctId,
+    createdAt: config.createdAt,
+    updatedAt: config.createdAt,
+    createdBy: config.userId,
+    updatedBy: config.userId,
+  });
 
   return finalRctId;
 }
@@ -167,6 +236,7 @@ export async function createBill(config: {
       issueDate: config.createdAt,
       dueDate: config.createdAt,
       totalAmount: amount,
+      balanceDue: config.status === 'paid' ? '0.00' : amount,
       taxAmount: '0.00',
       createdAt: config.createdAt,
       updatedAt: config.createdAt,

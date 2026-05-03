@@ -1,6 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { Truck, Package, AlertCircle, FileText } from 'lucide-react';
-import * as React from 'react';
 
 import { useReceipt } from '../hooks/receipts.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';

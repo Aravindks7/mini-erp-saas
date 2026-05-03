@@ -8,6 +8,7 @@ import { seedTaxes } from '../src/db/seeds/taxes.seed.js';
 import { seedUoms } from '../src/db/seeds/uom.seed.js';
 import { seedSuppliers } from '../src/db/seeds/suppliers.seed.js';
 import { seedCustomers } from '../src/db/seeds/customers.seed.js';
+import { seedProductCategories } from '../src/db/seeds/product-categories.seed.js';
 import { seedProducts } from '../src/db/seeds/products.seed.js';
 import { seedWarehouses } from '../src/db/seeds/warehouses.seed.js';
 import { seedInventory } from '../src/db/seeds/inventory.seed.js';
@@ -49,6 +50,7 @@ async function reset() {
     await seedUoms();
     await seedSuppliers();
     await seedCustomers();
+    await seedProductCategories();
     await seedProducts();
     await seedWarehouses();
     await seedInventory();

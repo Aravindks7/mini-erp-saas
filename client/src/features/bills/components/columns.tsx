@@ -50,15 +50,8 @@ export const getColumns = ({ onPayBill }: GetColumnsProps = {}): ColumnDef<BillR
   },
   {
     accessorKey: 'referenceNumber',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Reference" />,
-    meta: { variant: 'title', label: 'Reference' },
-    enableGlobalFilter: true,
-  },
-  {
-    accessorKey: 'supplier.name',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Supplier" />,
-    cell: ({ row }) => row.original.supplier?.name || '—',
-    meta: { variant: 'subtitle', label: 'Supplier' },
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Bill Number" />,
+    meta: { variant: 'title', label: 'Bill Number' },
     enableGlobalFilter: true,
   },
   {
@@ -74,10 +67,30 @@ export const getColumns = ({ onPayBill }: GetColumnsProps = {}): ColumnDef<BillR
     meta: { variant: 'field', label: 'Due Date' },
   },
   {
+    accessorKey: 'supplier.name',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Supplier" />,
+    cell: ({ row }) => row.original.supplier?.name || '—',
+    meta: { variant: 'subtitle', label: 'Supplier' },
+    enableGlobalFilter: true,
+  },
+  {
     accessorKey: 'totalAmount',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Total" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Total Amount" />,
     cell: ({ row }) => currencyFormatter.format(Number(row.getValue('totalAmount'))),
-    meta: { variant: 'field', label: 'Total' },
+    meta: { variant: 'field', label: 'Total Amount' },
+  },
+  {
+    accessorKey: 'balanceDue',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Balance Due" />,
+    cell: ({ row }) => {
+      const balance = Number(row.getValue('balanceDue'));
+      return (
+        <span className={balance > 0 ? 'text-destructive font-medium' : ''}>
+          {currencyFormatter.format(balance)}
+        </span>
+      );
+    },
+    meta: { variant: 'field', label: 'Balance Due' },
   },
   {
     accessorKey: 'status',

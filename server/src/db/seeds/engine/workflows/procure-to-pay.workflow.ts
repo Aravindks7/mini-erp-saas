@@ -11,6 +11,10 @@ export async function runP2PScenario(config: {
   createdAt: Date;
   quantity: string;
   unitPrice: string;
+  /** Target warehouse for goods receipt — routed by scenario orchestrator */
+  warehouseId?: string;
+  /** Target bin within the warehouse */
+  binId?: string;
   flow:
     | 'full'
     | 'partial_receipt_full_pay'
@@ -42,22 +46,32 @@ export async function runP2PScenario(config: {
   if (config.flow === 'draft_only' || config.flow === 'cancelled_order') return;
 
   // 2. Receipt
+  // Destructure warehouse routing fields to satisfy exactOptionalPropertyTypes:
+  // spreading config directly carries `warehouseId: string | undefined` which
+  // is incompatible with the factory's `warehouseId?: string` signature.
+  const { warehouseId, binId, ...receiptBaseConfig } = config;
+
   if (config.flow === 'cancelled_receipt') {
-    // In this engine, we skip creating the line if cancelled, or create with cancelled status if schema allowed.
     // Schema says receiptStatusEnum: ['draft', 'received', 'cancelled']
-    const rctType = 'full';
-    await createReceipt({ ...config, poId, type: rctType, originalQuantity: config.quantity });
-    // We'd need to update receipt status to cancelled here, but factory sets 'received'
-    // For now, let's keep it simple or expand factory.
+    await createReceipt({
+      ...receiptBaseConfig,
+      poId,
+      type: 'full',
+      originalQuantity: config.quantity,
+      ...(warehouseId !== undefined && { warehouseId }),
+      ...(binId !== undefined && { binId }),
+    });
     return;
   }
 
   const rctType = config.flow === 'partial_receipt_full_pay' ? 'partial' : 'full';
   const rctId = await createReceipt({
-    ...config,
+    ...receiptBaseConfig,
     poId,
     type: rctType,
     originalQuantity: config.quantity,
+    ...(warehouseId !== undefined && { warehouseId }),
+    ...(binId !== undefined && { binId }),
   });
 
   // 3. Bill

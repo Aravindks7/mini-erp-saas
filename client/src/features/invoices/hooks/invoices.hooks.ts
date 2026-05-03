@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import type {
   CreateInvoiceInput,
   UpdateInvoiceStatusInput,
@@ -66,6 +67,36 @@ export function useUpdateInvoiceStatus() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
       queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(data.id) });
+    },
+  });
+}
+
+export function useDeleteInvoice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => invoicesApi.deleteInvoice(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      toast.success('Invoice processed successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to process invoice');
+    },
+  });
+}
+
+export function useBulkDeleteInvoices() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ids: string[]) => invoicesApi.bulkDeleteInvoices(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      toast.success('Invoices processed successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to process invoices');
     },
   });
 }

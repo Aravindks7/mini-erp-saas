@@ -2,6 +2,7 @@ import { db } from '../../db/index.js';
 import { products } from '../../db/schema/products.schema.js';
 import { unitOfMeasures } from '../../db/schema/uom.schema.js';
 import { taxes } from '../../db/schema/taxes.schema.js';
+import { productCategories } from '../../db/schema/product-categories.schema.js';
 import { and, eq, inArray, ne, sql, type SQL } from 'drizzle-orm';
 import {
   createProductSchema,
@@ -26,6 +27,7 @@ export class ProductsService extends BaseService<typeof products> {
       where: this.getTenantWhere(organizationId),
       with: {
         baseUom: true,
+        category: true,
         tax: true,
       },
       orderBy: (products, { desc }) => [desc(products.createdAt)],
@@ -37,6 +39,7 @@ export class ProductsService extends BaseService<typeof products> {
       where: this.getTenantWhere(organizationId, id),
       with: {
         baseUom: true,
+        category: true,
         tax: true,
       },
     });
@@ -61,6 +64,7 @@ export class ProductsService extends BaseService<typeof products> {
   private async validateReferences(
     organizationId: string,
     baseUomId: string,
+    categoryId?: string | null,
     taxId?: string | null,
   ) {
     // Validate UoM
@@ -74,6 +78,24 @@ export class ProductsService extends BaseService<typeof products> {
 
     if (!uom) {
       throw new AppError('Invalid Base UoM ID or UoM does not belong to your organization', 400);
+    }
+
+    // Validate Category
+    if (categoryId) {
+      const category = await db.query.productCategories.findFirst({
+        where: and(
+          eq(productCategories.id, categoryId),
+          eq(productCategories.organizationId, organizationId),
+          sql`${productCategories.deletedAt} IS NULL`,
+        ),
+      });
+
+      if (!category) {
+        throw new AppError(
+          'Invalid Category ID or Category does not belong to your organization',
+          400,
+        );
+      }
     }
 
     // Validate Tax
@@ -100,7 +122,7 @@ export class ProductsService extends BaseService<typeof products> {
     }
 
     // 2. Reference check
-    await this.validateReferences(organizationId, data.baseUomId, data.taxId);
+    await this.validateReferences(organizationId, data.baseUomId, data.categoryId, data.taxId);
 
     // 3. Create Product
     const [newProduct] = await db
@@ -135,12 +157,13 @@ export class ProductsService extends BaseService<typeof products> {
       }
     }
 
-    // 3. Reference check if UoM or Tax is changing
+    // 3. Reference check if UoM, Category or Tax is changing
     const baseUomId = data.baseUomId || existingProduct.baseUomId;
+    const categoryId = data.categoryId !== undefined ? data.categoryId : existingProduct.categoryId;
     const taxId = data.taxId !== undefined ? data.taxId : existingProduct.taxId;
 
-    if (data.baseUomId || data.taxId !== undefined) {
-      await this.validateReferences(organizationId, baseUomId, taxId);
+    if (data.baseUomId || data.categoryId !== undefined || data.taxId !== undefined) {
+      await this.validateReferences(organizationId, baseUomId, categoryId, taxId);
     }
 
     // 4. Update Product

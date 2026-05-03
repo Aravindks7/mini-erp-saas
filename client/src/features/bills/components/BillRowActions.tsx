@@ -24,6 +24,8 @@ export function BillRowActions({ row, onPayBill }: BillRowActionsProps) {
   const { mutate: deleteBill } = useDeleteBill();
 
   const bill = row.original;
+  const isDraft = bill.status === 'draft';
+  const actionLabel = isDraft ? 'Delete' : 'Void';
 
   const handleDelete = () => {
     deleteBill(bill.id, {
@@ -37,18 +39,25 @@ export function BillRowActions({ row, onPayBill }: BillRowActionsProps) {
       icon: <Eye className="h-4 w-4" />,
       onClick: () => navigate(getPath(`/bills/${bill.id}`)),
     },
-    {
-      label: 'Edit',
-      icon: <FileEdit className="h-4 w-4" />,
-      onClick: () => navigate(getPath(`/bills/${bill.id}/edit`)),
-      hidden: bill.status === 'paid' || bill.status === 'void',
-    },
-    {
-      label: 'Delete',
-      icon: <Trash2 className="h-4 w-4" />,
-      onClick: () => setIsDeleteDialogOpen(true),
-      variant: 'destructive',
-    },
+    ...(bill.status !== 'paid' && bill.status !== 'void'
+      ? [
+          {
+            label: 'Edit',
+            icon: <FileEdit className="h-4 w-4" />,
+            onClick: () => navigate(getPath(`/bills/${bill.id}/edit`)),
+          },
+        ]
+      : []),
+    ...(bill.status !== 'void'
+      ? [
+          {
+            label: actionLabel,
+            icon: <Trash2 className="h-4 w-4" />,
+            onClick: () => setIsDeleteDialogOpen(true),
+            variant: 'destructive' as const,
+          },
+        ]
+      : []),
   ];
 
   if (onPayBill && bill.status === 'open') {
@@ -68,9 +77,13 @@ export function BillRowActions({ row, onPayBill }: BillRowActionsProps) {
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleDelete}
-        title="Delete Bill"
-        description={`Are you sure you want to delete bill ${bill.referenceNumber}? This action cannot be undone.`}
-        confirmLabel="Delete Bill"
+        title={`${actionLabel} Bill`}
+        description={
+          isDraft
+            ? `Are you sure you want to delete bill ${bill.referenceNumber}? This action cannot be undone.`
+            : `Are you sure you want to void bill ${bill.referenceNumber}? This action will reverse any ledger entries and mark the bill as void. This cannot be undone.`
+        }
+        confirmLabel={`${actionLabel} Bill`}
         variant="destructive"
       />
     </>

@@ -1,12 +1,12 @@
 import { db } from '../index.js';
-import { customers } from '../schema/index.js';
+import { customers, contacts, customerContacts } from '../schema/index.js';
 import { SEED_DATA } from './constants.js';
-import { eq } from 'drizzle-orm';
+import { faker } from '@faker-js/faker';
 
 export async function seedCustomers() {
-  console.log('🌱 Seeding Customers...');
+  console.log('🌱 Seeding Customers & Contacts...');
 
-  const items = [
+  const customerItems = [
     {
       id: SEED_DATA.CUSTOMERS.TECH_SOLUTIONS,
       companyName: 'Tech Solutions Inc',
@@ -144,14 +144,54 @@ export async function seedCustomers() {
     },
   ];
 
-  for (const item of items) {
-    const existing = await db.query.customers.findFirst({
-      where: eq(customers.id, item.id),
+  for (const item of customerItems) {
+    const [customer] = await db
+      .insert(customers)
+      .values(item)
+      .onConflictDoUpdate({
+        target: [customers.id],
+        set: {
+          companyName: item.companyName,
+          status: item.status,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    console.log(`   - Customer '${customer!.companyName}' synced.`);
+
+    // Check if it already has a primary contact
+    const existingContact = await db.query.customerContacts.findFirst({
+      where: (cc, { and, eq }) => and(eq(cc.customerId, customer!.id), eq(cc.isPrimary, true)),
     });
 
-    if (!existing) {
-      await db.insert(customers).values(item);
-      console.log(`   - Customer '${item.companyName}' created.`);
+    if (!existingContact) {
+      // Create a primary contact for this customer
+      const firstName = faker.person.firstName();
+      const lastName = faker.person.lastName();
+      const [newContact] = await db
+        .insert(contacts)
+        .values({
+          organizationId: item.organizationId,
+          firstName,
+          lastName,
+          email: faker.internet.email({ firstName, lastName }),
+          phone: faker.phone.number(),
+          jobTitle: faker.person.jobTitle(),
+          createdBy: item.createdBy,
+          updatedBy: item.updatedBy,
+        })
+        .returning();
+
+      await db.insert(customerContacts).values({
+        organizationId: item.organizationId,
+        customerId: customer!.id,
+        contactId: newContact!.id,
+        isPrimary: true,
+        createdBy: item.createdBy,
+        updatedBy: item.updatedBy,
+      });
+      console.log(`     * Contact '${firstName} ${lastName}' linked.`);
     }
   }
 }

@@ -20,6 +20,26 @@ router.get(
 );
 
 /**
+ * GET /inventory/levels/:id
+ * Specific inventory level details.
+ */
+router.get(
+  '/levels/:id',
+  requirePermission(PERMISSIONS.INVENTORY.READ),
+  inventoryController.getInventoryLevel,
+);
+
+/**
+ * GET /inventory/levels/:id/ledger
+ * Ledger entries for a specific level.
+ */
+router.get(
+  '/levels/:id/ledger',
+  requirePermission(PERMISSIONS.INVENTORY.READ),
+  inventoryController.listLevelLedgerEntries,
+);
+
+/**
  * GET /inventory/ledger
  * Movement history for audit trail.
  */

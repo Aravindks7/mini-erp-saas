@@ -1,7 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { History } from 'lucide-react';
 import { z } from 'zod';
-import { useSearchParams } from 'react-router-dom';
 
 import { EntityTable } from '@/components/shared/data-table/EntityTable';
 import { useDataTableState } from '@/hooks/useDataTableState';
@@ -18,21 +17,8 @@ const searchSchema = z.object({
 });
 
 export function InventoryLedgerList() {
-  const [searchParams] = useSearchParams();
-  const productId = searchParams.get('productId') || undefined;
-  const warehouseId = searchParams.get('warehouseId') || undefined;
-  const binId = searchParams.get('binId') || undefined;
-
   const queryClient = useQueryClient();
-  const {
-    data: ledger,
-    isLoading,
-    isError,
-  } = useInventoryLedger({
-    productId,
-    warehouseId,
-    binId,
-  });
+  const { data: ledger, isLoading, isError } = useInventoryLedger();
 
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 

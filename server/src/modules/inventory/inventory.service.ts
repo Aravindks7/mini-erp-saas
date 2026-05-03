@@ -185,7 +185,9 @@ export class InventoryService extends BaseService<typeof inventoryAdjustments> {
         sql`${inventoryLevels.deletedAt} IS NULL`,
       ),
       with: {
-        product: true,
+        product: {
+          with: { baseUom: true },
+        },
         warehouse: true,
         bin: true,
       },
@@ -194,20 +196,60 @@ export class InventoryService extends BaseService<typeof inventoryAdjustments> {
   }
 
   /**
-   * Lists inventory ledger entries (audit trail) with optional filtering.
+   * Retrieves a specific inventory level by ID.
    */
-  async listLedgerEntries(
-    organizationId: string,
-    filters: { productId?: string; warehouseId?: string; binId?: string } = {},
-  ) {
-    const conditions = [eq(inventoryLedgers.organizationId, organizationId)];
+  async getInventoryLevel(organizationId: string, levelId: string) {
+    return await db.query.inventoryLevels.findFirst({
+      where: and(
+        eq(inventoryLevels.organizationId, organizationId),
+        eq(inventoryLevels.id, levelId),
+      ),
+      with: {
+        product: {
+          with: { baseUom: true },
+        },
+        warehouse: true,
+        bin: true,
+      },
+    });
+  }
 
-    if (filters.productId) conditions.push(eq(inventoryLedgers.productId, filters.productId));
-    if (filters.warehouseId) conditions.push(eq(inventoryLedgers.warehouseId, filters.warehouseId));
-    if (filters.binId) conditions.push(eq(inventoryLedgers.binId, filters.binId));
+  /**
+   * Lists ledger entries for a specific inventory level.
+   */
+  async listLevelLedgerEntries(organizationId: string, levelId: string) {
+    const level = await this.getInventoryLevel(organizationId, levelId);
+    if (!level) return [];
+
+    const conditions = [
+      eq(inventoryLedgers.organizationId, organizationId),
+      eq(inventoryLedgers.productId, level.productId),
+      eq(inventoryLedgers.warehouseId, level.warehouseId),
+    ];
+
+    if (level.binId) {
+      conditions.push(eq(inventoryLedgers.binId, level.binId));
+    } else {
+      conditions.push(sql`${inventoryLedgers.binId} IS NULL`);
+    }
 
     return await db.query.inventoryLedgers.findMany({
       where: and(...conditions),
+      with: {
+        product: true,
+        warehouse: true,
+        bin: true,
+      },
+      orderBy: [desc(inventoryLedgers.createdAt)],
+    });
+  }
+
+  /**
+   * Lists inventory ledger entries (audit trail) for the organization.
+   */
+  async listLedgerEntries(organizationId: string) {
+    return await db.query.inventoryLedgers.findMany({
+      where: eq(inventoryLedgers.organizationId, organizationId),
       with: {
         product: true,
         warehouse: true,

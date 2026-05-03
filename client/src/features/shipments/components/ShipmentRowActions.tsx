@@ -21,6 +21,12 @@ export function ShipmentRowActions({ row }: ShipmentRowActionsProps) {
   const { mutate: deleteShipment, isPending: isDeleting } = useDeleteShipment();
   const shipment = row.original;
 
+  const isDraft = shipment.status === 'draft';
+  const actionLabel = isDraft ? 'Delete' : 'Void';
+  const dialogDescription = isDraft
+    ? `Are you sure you want to permanently delete draft shipment ${shipment.shipmentNumber}?`
+    : `Are you sure you want to void shipment ${shipment.shipmentNumber}? This will reverse the associated inventory movements.`;
+
   const handleDelete = () => {
     deleteShipment(shipment.id, {
       onSuccess: () => setIsDeleteDialogOpen(false),
@@ -34,13 +40,17 @@ export function ShipmentRowActions({ row }: ShipmentRowActionsProps) {
       onClick: () => navigate(getPath(`/shipments/${shipment.id}`)),
       tooltip: 'View Details',
     },
-    {
-      label: 'Delete',
-      icon: <Trash2 className="h-4 w-4" />,
-      onClick: () => setIsDeleteDialogOpen(true),
-      variant: 'destructive',
-      tooltip: 'Delete Shipment',
-    },
+    ...(shipment.status !== 'cancelled'
+      ? [
+          {
+            label: actionLabel,
+            icon: <Trash2 className="h-4 w-4" />,
+            onClick: () => setIsDeleteDialogOpen(true),
+            variant: 'destructive' as const,
+            tooltip: `${actionLabel} Shipment`,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -51,8 +61,9 @@ export function ShipmentRowActions({ row }: ShipmentRowActionsProps) {
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleDelete}
-        title="Delete Shipment"
-        description={`Are you sure you want to delete ${shipment.shipmentNumber}? This will reverse the associated inventory movements.`}
+        title={`${actionLabel} Shipment`}
+        description={dialogDescription}
+        confirmLabel={actionLabel}
         isLoading={isDeleting}
       />
     </>

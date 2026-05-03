@@ -149,7 +149,9 @@ export class ShipmentsService extends BaseService<typeof shipments> {
   }
 
   /**
-   * Reverses a shipment, updates inventory levels, and reconciles SO status.
+   * Refactor deleteShipment to implement a deletion router.
+   * If 'draft': Soft-delete only.
+   * If not 'draft': Reverse inventory and transition to 'cancelled'.
    */
   async deleteShipment(organizationId: string, userId: string, id: string) {
     return await db.transaction(async (tx) => {
@@ -158,55 +160,67 @@ export class ShipmentsService extends BaseService<typeof shipments> {
         throw new Error('Shipment not found');
       }
 
-      // 1. Reverse Inventory Changes for each line
-      for (const line of shipment.lines) {
-        // A. Increment Inventory Level (adding back what was shipped)
+      if (shipment.status === 'draft') {
+        // 1. Draft Path: Soft-delete only
         await tx
-          .update(inventoryLevels)
-          .set({
-            quantityOnHand: sql`${inventoryLevels.quantityOnHand} + ${line.quantityShipped}::numeric`,
-            updatedAt: new Date(),
-            updatedBy: userId,
-          })
-          .where(
-            and(
-              eq(inventoryLevels.organizationId, organizationId),
-              eq(inventoryLevels.productId, line.productId),
-              eq(inventoryLevels.warehouseId, line.warehouseId),
-              eq(inventoryLevels.binId, line.binId as string),
+          .update(shipments)
+          .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+          .where(and(eq(shipments.id, id), eq(shipments.organizationId, organizationId)));
+
+        return { action: 'deleted' };
+      } else {
+        // 2. Committed Path: Inventory Reversal + Status Void (No soft delete)
+
+        // Reverse Inventory Changes for each line
+        for (const line of shipment.lines) {
+          // A. Increment Inventory Level (adding back what was shipped)
+          await tx
+            .update(inventoryLevels)
+            .set({
+              quantityOnHand: sql`${inventoryLevels.quantityOnHand} + ${line.quantityShipped}::numeric`,
+              updatedAt: new Date(),
+              updatedBy: userId,
+            })
+            .where(
+              and(
+                eq(inventoryLevels.organizationId, organizationId),
+                eq(inventoryLevels.productId, line.productId),
+                eq(inventoryLevels.warehouseId, line.warehouseId),
+                eq(inventoryLevels.binId, line.binId as string),
+              ),
+            );
+
+          // B. Insert Reversal Ledger Entry
+          await tx.insert(inventoryLedgers).values(
+            this.withAudit(
+              {
+                organizationId,
+                productId: line.productId,
+                warehouseId: line.warehouseId,
+                binId: line.binId,
+                quantityChange: line.quantityShipped, // Positive change to restore stock
+                referenceType: 'so_shipment',
+                referenceId: shipment.id,
+                notes: 'Shipment Void Reversal',
+              },
+              userId,
             ),
           );
+        }
 
-        // B. Insert Reversal Ledger Entry
-        await tx.insert(inventoryLedgers).values(
-          this.withAudit(
-            {
-              organizationId,
-              productId: line.productId,
-              warehouseId: line.warehouseId,
-              binId: line.binId,
-              quantityChange: line.quantityShipped, // Positive change to restore stock
-              referenceType: 'so_shipment',
-              referenceId: shipment.id,
-              notes: 'Shipment Deletion Reversal',
-            },
-            userId,
-          ),
-        );
+        // Transition status to cancelled instead of soft deleting
+        await tx
+          .update(shipments)
+          .set(this.withAudit({ status: 'cancelled' }, userId, true))
+          .where(and(eq(shipments.id, id), eq(shipments.organizationId, organizationId)));
+
+        // Reconcile SO Status
+        if (shipment.salesOrderId) {
+          await this.reconcileSOStatus(organizationId, userId, shipment.salesOrderId, tx);
+        }
+
+        return { action: 'voided' };
       }
-
-      // 2. Soft Delete Shipment
-      await tx
-        .update(shipments)
-        .set(this.withAudit({ deletedAt: new Date() }, userId, true))
-        .where(and(eq(shipments.id, id), eq(shipments.organizationId, organizationId)));
-
-      // 3. Reconcile SO Status
-      if (shipment.salesOrderId) {
-        await this.reconcileSOStatus(organizationId, userId, shipment.salesOrderId, tx);
-      }
-
-      return true;
     });
   }
 
@@ -243,6 +257,7 @@ export class ShipmentsService extends BaseService<typeof shipments> {
         eq(shipments.salesOrderId, soId),
         eq(shipments.organizationId, organizationId),
         sql`${shipments.deletedAt} IS NULL`,
+        sql`${shipments.status} != 'cancelled'`,
       ),
       with: {
         lines: true,

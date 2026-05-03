@@ -73,11 +73,11 @@ export function BillList() {
     const ids = bulkDeleteState.rows.map((r) => r.id);
     try {
       await bulkDeleteMutation.mutateAsync(ids);
-      toast.success(`Successfully deleted ${ids.length} bill(s)`);
+      toast.success(`Successfully processed ${ids.length} bill(s)`);
       bulkDeleteState.clearSelection();
       setBulkDeleteState((prev) => ({ ...prev, isOpen: false }));
     } catch {
-      toast.error('Failed to delete selected bills');
+      toast.error('Failed to process selected bills');
     }
   };
 
@@ -159,7 +159,7 @@ export function BillList() {
         }
         bulkActions={[
           {
-            label: 'Delete Selected',
+            label: 'Delete / Void Selected',
             onAction: (rows: BillResponse[], clearSelection) => {
               setBulkDeleteState({ isOpen: true, rows, clearSelection });
             },
@@ -188,9 +188,9 @@ export function BillList() {
         isOpen={bulkDeleteState.isOpen}
         onClose={() => setBulkDeleteState((prev) => ({ ...prev, isOpen: false }))}
         onConfirm={handleBulkDeleteConfirm}
-        title={`Delete ${bulkDeleteState.rows.length} Bill(s)?`}
-        description="Are you sure you want to delete the selected bill(s)? This action is permanent."
-        confirmLabel="Delete Bills"
+        title={`Delete / Void ${bulkDeleteState.rows.length} Bill(s)?`}
+        description="Are you sure you want to process the selected bill(s)? Drafts will be permanently deleted, while open or paid bills will be marked as void and their ledger entries reversed. This action cannot be undone."
+        confirmLabel="Confirm Action"
         isLoading={bulkDeleteMutation.isPending}
       />
     </>

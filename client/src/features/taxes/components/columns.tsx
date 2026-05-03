@@ -1,7 +1,7 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { formatDate } from '@shared/utils/date';
+
 import type { TaxResponse } from '../api/taxes.api';
 import { TaxRowActions } from './TaxRowActions';
 
@@ -50,12 +50,7 @@ export const getColumns = ({ onEdit }: ColumnProps): ColumnDef<TaxResponse>[] =>
     meta: { variant: 'field', label: 'Description' },
     enableGlobalFilter: true,
   },
-  {
-    accessorKey: 'createdAt',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Created At" />,
-    cell: ({ row }) => formatDate(row.getValue('createdAt')),
-    meta: { variant: 'field', label: 'Created' },
-  },
+
   {
     id: 'actions',
     cell: ({ row }) => <TaxRowActions row={row} onEdit={onEdit} />,

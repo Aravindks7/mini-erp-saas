@@ -102,3 +102,41 @@ export async function updateInvoiceStatus(req: Request, res: Response) {
     throw error;
   }
 }
+
+export async function deleteInvoice(req: Request, res: Response) {
+  const { id } = req.params;
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    await invoicesService.deleteInvoice(organizationId, userId, id as string);
+    res.status(204).end();
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Cannot void invoice')) {
+      return res.status(400).json({ error: error.message });
+    }
+    logger.error({ error, organizationId, userId, id }, 'Failed to delete invoice');
+    throw error;
+  }
+}
+
+export async function bulkDeleteInvoices(req: Request, res: Response) {
+  const { ids } = req.body;
+  if (!Array.isArray(ids)) {
+    return res.status(400).json({ error: 'ids must be an array' });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    await invoicesService.bulkDeleteInvoices(organizationId, userId, ids);
+    res.status(204).end();
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Cannot void invoice')) {
+      return res.status(400).json({ error: error.message });
+    }
+    logger.error({ error, organizationId, userId, ids }, 'Failed to bulk delete invoices');
+    throw error;
+  }
+}

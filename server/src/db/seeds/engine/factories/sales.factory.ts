@@ -1,7 +1,15 @@
 import { db } from '../../../index.js';
-import { salesOrders, salesOrderLines, shipments, shipmentLines } from '../../../schema/index.js';
+import {
+  salesOrders,
+  salesOrderLines,
+  shipments,
+  shipmentLines,
+  inventoryLevels,
+  inventoryLedgers,
+} from '../../../schema/index.js';
 import { generateDeterministicId } from '../utils.js';
 import { SEED_DATA } from '../../constants.js';
+import { sql } from 'drizzle-orm';
 
 export async function createSalesOrder(config: {
   scenarioId: string;
@@ -64,6 +72,41 @@ export async function createSalesOrder(config: {
     })
     .onConflictDoNothing();
 
+  /**
+   * ALLOCATION LOGIC:
+   * When an order is approved (or partially/fully shipped), we must allocate stock.
+   * This ensures the 'Available' quantity on the dashboard reflects commitments.
+   */
+  const isActive = ['approved', 'partially_shipped', 'shipped'].includes(config.status);
+  if (isActive) {
+    await db
+      .insert(inventoryLevels)
+      .values({
+        organizationId: config.organizationId,
+        productId: config.productId,
+        warehouseId: SEED_DATA.WAREHOUSES.MAIN,
+        binId: SEED_DATA.BINS.MAIN_A1,
+        quantityAllocated: config.quantity,
+        createdAt: config.createdAt,
+        updatedAt: config.createdAt,
+        createdBy: config.userId,
+        updatedBy: config.userId,
+      })
+      .onConflictDoUpdate({
+        target: [
+          inventoryLevels.organizationId,
+          inventoryLevels.productId,
+          inventoryLevels.warehouseId,
+          inventoryLevels.binId,
+        ],
+        set: {
+          quantityAllocated: sql`GREATEST(0, ${inventoryLevels.quantityAllocated} + ${config.quantity}::numeric)`,
+          updatedAt: config.createdAt,
+          updatedBy: config.userId,
+        },
+      });
+  }
+
   return finalSoId;
 }
 
@@ -76,6 +119,7 @@ export async function createShipment(config: {
   userId: string;
   createdAt: Date;
   type: 'full' | 'partial';
+  status: 'draft' | 'shipped' | 'cancelled';
   originalQuantity: string;
 }) {
   const docNum = `SHP-2026-${String(config.index).padStart(4, '0')}`;
@@ -92,7 +136,8 @@ export async function createShipment(config: {
       organizationId: config.organizationId,
       salesOrderId: config.soId,
       shipmentNumber: docNum,
-      status: 'shipped',
+      reference: `REF-${config.scenarioId}-${config.index}`,
+      status: config.status,
       shipmentDate: config.createdAt,
       createdAt: config.createdAt,
       updatedAt: config.createdAt,
@@ -119,11 +164,66 @@ export async function createShipment(config: {
       shipmentId: finalShpId,
       productId: config.productId,
       warehouseId: SEED_DATA.WAREHOUSES.MAIN,
+      binId: SEED_DATA.BINS.MAIN_A1,
       quantityShipped: quantityToShip,
       createdBy: config.userId,
       updatedBy: config.userId,
     })
     .onConflictDoNothing();
+
+  // ONLY process inventory side-effects if the shipment is actually SHIPPED
+  if (config.status !== 'shipped') {
+    return finalShpId;
+  }
+
+  /**
+   * INVENTORY OUTBOUND & DE-ALLOCATION:
+   * 1. Decrement 'on_hand' because goods have physically left the building.
+   * 2. Decrement 'allocated' because the customer commitment has been fulfilled.
+   */
+  await db
+    .insert(inventoryLevels)
+    .values({
+      organizationId: config.organizationId,
+      productId: config.productId,
+      warehouseId: SEED_DATA.WAREHOUSES.MAIN,
+      binId: SEED_DATA.BINS.MAIN_A1,
+      quantityOnHand: '0',
+      quantityAllocated: '0',
+      createdAt: config.createdAt,
+      updatedAt: config.createdAt,
+      createdBy: config.userId,
+      updatedBy: config.userId,
+    })
+    .onConflictDoUpdate({
+      target: [
+        inventoryLevels.organizationId,
+        inventoryLevels.productId,
+        inventoryLevels.warehouseId,
+        inventoryLevels.binId,
+      ],
+      set: {
+        quantityOnHand: sql`GREATEST(0, ${inventoryLevels.quantityOnHand} - ${quantityToShip}::numeric)`,
+        quantityAllocated: sql`GREATEST(0, ${inventoryLevels.quantityAllocated} - ${quantityToShip}::numeric)`,
+        updatedAt: config.createdAt,
+        updatedBy: config.userId,
+      },
+    });
+
+  // Ledger entry: so_shipment — negative qty = outbound movement
+  await db.insert(inventoryLedgers).values({
+    organizationId: config.organizationId,
+    productId: config.productId,
+    warehouseId: SEED_DATA.WAREHOUSES.MAIN,
+    binId: SEED_DATA.BINS.MAIN_A1,
+    quantityChange: `-${quantityToShip}`,
+    referenceType: 'so_shipment',
+    referenceId: finalShpId,
+    createdAt: config.createdAt,
+    updatedAt: config.createdAt,
+    createdBy: config.userId,
+    updatedBy: config.userId,
+  });
 
   return finalShpId;
 }

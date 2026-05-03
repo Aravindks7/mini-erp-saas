@@ -53,9 +53,15 @@ export const getColumns = ({ onFulfill }: GetColumnsProps): ColumnDef<SalesOrder
   },
   {
     accessorKey: 'documentNumber',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Document #" />,
-    meta: { variant: 'title', label: 'Document' },
+    header: ({ column }) => <DataTableColumnHeader column={column} title="SO Number" />,
+    meta: { variant: 'title', label: 'SO Number' },
     enableGlobalFilter: true,
+  },
+  {
+    accessorKey: 'createdAt',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Order Date" />,
+    cell: ({ row }) => formatDate(row.getValue('createdAt')),
+    meta: { variant: 'field', label: 'Order Date' },
   },
   {
     accessorKey: 'customer.companyName',
@@ -85,14 +91,7 @@ export const getColumns = ({ onFulfill }: GetColumnsProps): ColumnDef<SalesOrder
     },
     meta: { variant: 'field', label: 'Status' },
   },
-  {
-    accessorKey: 'createdAt',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Created At" />,
-    cell: ({ row }) => {
-      return formatDate(row.getValue('createdAt'));
-    },
-    meta: { variant: 'field', label: 'Created' },
-  },
+
   {
     id: 'actions',
     cell: ({ row }) => <SalesOrderRowActions row={row} onFulfill={onFulfill} />,

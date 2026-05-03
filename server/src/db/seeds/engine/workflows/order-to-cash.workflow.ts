@@ -51,7 +51,13 @@ export async function runO2CScenario(config: {
   }
 
   const shipType = config.flow === 'partial_ship_full_pay' ? 'partial' : 'full';
-  await createShipment({ ...config, soId, type: shipType, originalQuantity: config.quantity });
+  await createShipment({
+    ...config,
+    soId,
+    type: shipType,
+    status: shipStatus,
+    originalQuantity: config.quantity,
+  });
 
   if (config.flow === 'cancelled_shipment') return;
 

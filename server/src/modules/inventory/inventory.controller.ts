@@ -88,17 +88,41 @@ export async function listInventoryLevels(req: Request, res: Response) {
   }
 }
 
+export async function getInventoryLevel(req: Request, res: Response) {
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+  const { id } = req.params;
+
+  try {
+    const result = await inventoryService.getInventoryLevel(organizationId, id as string);
+    if (!result) return res.status(404).json({ error: 'Inventory level not found' });
+    res.json(result);
+  } catch (error) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to get inventory level');
+    throw error;
+  }
+}
+
+export async function listLevelLedgerEntries(req: Request, res: Response) {
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+  const { id } = req.params;
+
+  try {
+    const results = await inventoryService.listLevelLedgerEntries(organizationId, id as string);
+    res.json(results);
+  } catch (error) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to list level ledger entries');
+    throw error;
+  }
+}
+
 export async function listLedgerEntries(req: Request, res: Response) {
   const organizationId = req.organizationId;
   const userId = req.authSession.user.id;
-  const { productId, warehouseId, binId } = req.query;
 
   try {
-    const results = await inventoryService.listLedgerEntries(organizationId, {
-      productId: productId as string,
-      warehouseId: warehouseId as string,
-      binId: binId as string,
-    });
+    const results = await inventoryService.listLedgerEntries(organizationId);
     res.json(results);
   } catch (error) {
     logger.error({ error, organizationId, userId }, 'Failed to list ledger entries');

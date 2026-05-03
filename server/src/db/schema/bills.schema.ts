@@ -39,6 +39,7 @@ export const bills = pgTable(
     issueDate: timestamp('issue_date').notNull(),
     dueDate: timestamp('due_date').notNull(),
     totalAmount: numeric('total_amount', { precision: 18, scale: 8 }).notNull(),
+    balanceDue: numeric('balance_due', { precision: 18, scale: 8 }).notNull().default('0'),
     taxAmount: numeric('tax_amount', { precision: 18, scale: 8 }).notNull(),
     notes: text('notes'),
   },

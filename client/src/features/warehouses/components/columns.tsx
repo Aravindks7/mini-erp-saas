@@ -1,7 +1,7 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { formatDate } from '@shared/utils/date';
+
 import type { WarehouseResponse } from '../api/warehouses.api';
 import { WarehouseRowActions } from './WarehouseRowActions';
 
@@ -39,12 +39,23 @@ export const columns: ColumnDef<WarehouseResponse>[] = [
     enableGlobalFilter: true,
   },
   {
-    accessorKey: 'createdAt',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Created At" />,
+    id: 'address',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Address" />,
     cell: ({ row }) => {
-      return formatDate(row.getValue('createdAt'));
+      const primaryAddress =
+        row.original.addresses?.find((a) => a.isPrimary) || row.original.addresses?.[0];
+      if (!primaryAddress) return '-';
+      const parts = [
+        primaryAddress.addressLine1,
+        primaryAddress.addressLine2,
+        primaryAddress.city,
+        primaryAddress.state,
+        primaryAddress.postalCode,
+        primaryAddress.country,
+      ].filter(Boolean);
+      return parts.length > 0 ? parts.join(', ') : '-';
     },
-    meta: { variant: 'field', label: 'Created' },
+    meta: { variant: 'field', label: 'Address' },
   },
   {
     id: 'actions',

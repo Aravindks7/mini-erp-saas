@@ -6,6 +6,7 @@ import { dashboardRoutes as coreDashboardRoutes } from '@/features/dashboard/rou
 import { customerRoutes } from '@/features/customers/routes';
 import { supplierRoutes } from '@/features/suppliers/routes';
 import { productRoutes } from '@/features/products/routes';
+import { productCategoryRoutes } from '@/features/product-categories/routes';
 import { uomRoutes } from '@/features/uom/routes';
 import { taxRoutes } from '@/features/taxes/routes';
 import { warehouseRoutes } from '@/features/warehouses/routes';
@@ -29,6 +30,7 @@ export const dashboardRoutes: AppRoute[] = [
   ...customerRoutes,
   ...supplierRoutes,
   ...productRoutes,
+  ...productCategoryRoutes,
   ...uomRoutes,
   ...taxRoutes,
   ...warehouseRoutes,

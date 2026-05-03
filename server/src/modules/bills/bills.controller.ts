@@ -98,3 +98,47 @@ export async function updateBillStatus(req: Request, res: Response) {
     throw error;
   }
 }
+
+export async function deleteBill(req: Request, res: Response) {
+  const { id } = req.params;
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    const deleted = await billsService.deleteBill(organizationId, userId, id as string);
+    res.json(deleted);
+  } catch (error: any) {
+    if (
+      error.message ===
+      'Cannot void bill with existing completed payments. Void the payments first.'
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
+    logger.error({ error, organizationId, userId, id }, 'Failed to delete bill');
+    throw error;
+  }
+}
+
+export async function bulkDeleteBills(req: Request, res: Response) {
+  const { ids } = req.body;
+  if (!ids || !Array.isArray(ids)) {
+    return res.status(400).json({ error: 'IDs are required and must be an array' });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    const results = await billsService.bulkDeleteBills(organizationId, userId, ids);
+    res.json(results);
+  } catch (error: any) {
+    if (
+      error.message ===
+      'Cannot void bill with existing completed payments. Void the payments first.'
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
+    logger.error({ error, organizationId, userId }, 'Failed to bulk delete bills');
+    throw error;
+  }
+}

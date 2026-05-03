@@ -15,9 +15,19 @@ const referenceTypeMap: Record<string, string> = {
 export const columns: ColumnDef<InventoryLedgerResponse>[] = [
   {
     accessorKey: 'createdAt',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Date & Time" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Date" />,
     cell: ({ row }) => formatDate(row.getValue('createdAt')),
     meta: { variant: 'field', label: 'Date' },
+  },
+  {
+    accessorKey: 'referenceType',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Type" />,
+    cell: ({ row }) => (
+      <Badge variant="outline">
+        {referenceTypeMap[row.original.referenceType] || row.original.referenceType}
+      </Badge>
+    ),
+    meta: { variant: 'field', label: 'Type' },
   },
   {
     accessorKey: 'product.name',
@@ -44,14 +54,17 @@ export const columns: ColumnDef<InventoryLedgerResponse>[] = [
     meta: { variant: 'field', label: 'Location' },
   },
   {
-    accessorKey: 'referenceType',
+    accessorKey: 'referenceId',
     header: ({ column }) => <DataTableColumnHeader column={column} title="Reference" />,
-    cell: ({ row }) => (
-      <Badge variant="outline">
-        {referenceTypeMap[row.original.referenceType] || row.original.referenceType}
-      </Badge>
-    ),
-    meta: { variant: 'field', label: 'Ref Type' },
+    cell: ({ row }) => {
+      // In a real app we'd fetch the document number, but for now we'll just show the ID or dash
+      return row.original.referenceId ? (
+        <span className="font-mono text-xs">{row.original.referenceId.slice(0, 8)}...</span>
+      ) : (
+        '-'
+      );
+    },
+    meta: { variant: 'field', label: 'Reference' },
   },
   {
     accessorKey: 'quantityChange',

@@ -16,9 +16,10 @@ import { Can } from '@/components/shared/Can';
 import { useTenantPath } from '@/hooks/useTenantPath';
 
 import { getColumns } from './columns';
-import { useInvoices } from '../hooks/invoices.hooks';
+import { useInvoices, useBulkDeleteInvoices } from '../hooks/invoices.hooks';
 import { AddPaymentSheet } from './AddPaymentSheet';
 import type { InvoiceResponse } from '../api/invoices.api';
+import { Trash2 } from 'lucide-react';
 
 const searchSchema = z.object({
   documentNumber: z.string().optional(),
@@ -30,6 +31,7 @@ export function InvoicesList() {
   const queryClient = useQueryClient();
   const { data: invoices, isLoading, isError } = useInvoices();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
+  const { mutate: bulkDelete } = useBulkDeleteInvoices();
 
   const [paymentSheetState, setPaymentSheetState] = React.useState<{
     isOpen: boolean;
@@ -37,6 +39,13 @@ export function InvoicesList() {
   }>({
     isOpen: false,
   });
+
+  const handleBulkDeleteConfirm = React.useCallback(
+    (rows: InvoiceResponse[]) => {
+      bulkDelete(rows.map((r) => r.id));
+    },
+    [bulkDelete],
+  );
 
   const handleAddPayment = React.useCallback((invoice: InvoiceResponse) => {
     setPaymentSheetState({ isOpen: true, invoice });
@@ -105,6 +114,17 @@ export function InvoicesList() {
         state={tableState}
         onStateChange={tableSetters}
         onReset={resetAll}
+        bulkActions={[
+          {
+            label: 'Delete/Void',
+            icon: <Trash2 className="mr-2 h-4 w-4" />,
+            onConfirm: handleBulkDeleteConfirm,
+            variant: 'destructive',
+            title: 'Delete/Void Selected Invoices',
+            description:
+              'Are you sure you want to process the selected invoices? Drafts will be deleted permanently, and committed invoices will be voided.',
+          },
+        ]}
         headerActions={
           <Can I={PERMISSIONS.INVOICES.CREATE}>
             <Button onClick={handleAdd}>

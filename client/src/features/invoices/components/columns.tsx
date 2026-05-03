@@ -52,9 +52,21 @@ export const getColumns = ({
   },
   {
     accessorKey: 'documentNumber',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Invoice #" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Invoice Number" />,
     meta: { variant: 'title', label: 'Invoice' },
     enableGlobalFilter: true,
+  },
+  {
+    accessorKey: 'issueDate',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Issue Date" />,
+    cell: ({ row }) => formatDate(row.getValue('issueDate')),
+    meta: { variant: 'field', label: 'Issue Date' },
+  },
+  {
+    accessorKey: 'dueDate',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Due Date" />,
+    cell: ({ row }) => formatDate(row.getValue('dueDate')),
+    meta: { variant: 'field', label: 'Due Date' },
   },
   {
     accessorKey: 'customer.companyName',
@@ -65,9 +77,22 @@ export const getColumns = ({
   },
   {
     accessorKey: 'totalAmount',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Total" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Total Amount" />,
     cell: ({ row }) => currencyFormatter.format(Number(row.getValue('totalAmount'))),
-    meta: { variant: 'field', label: 'Total' },
+    meta: { variant: 'field', label: 'Total Amount' },
+  },
+  {
+    accessorKey: 'balanceDue',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Balance Due" />,
+    cell: ({ row }) => {
+      const balance = Number(row.getValue('balanceDue'));
+      return (
+        <span className={balance > 0 ? 'text-destructive font-medium' : ''}>
+          {currencyFormatter.format(balance)}
+        </span>
+      );
+    },
+    meta: { variant: 'field', label: 'Balance Due' },
   },
   {
     accessorKey: 'status',
@@ -81,18 +106,6 @@ export const getColumns = ({
       return <StatusBadge value={row.getValue('status') as string} statusMap={invoiceStatusMap} />;
     },
     meta: { variant: 'field', label: 'Status' },
-  },
-  {
-    accessorKey: 'issueDate',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Issue Date" />,
-    cell: ({ row }) => formatDate(row.getValue('issueDate')),
-    meta: { variant: 'field', label: 'Issue Date' },
-  },
-  {
-    accessorKey: 'dueDate',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Due Date" />,
-    cell: ({ row }) => formatDate(row.getValue('dueDate')),
-    meta: { variant: 'field', label: 'Due Date' },
   },
   {
     id: 'actions',

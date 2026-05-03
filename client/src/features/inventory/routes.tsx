@@ -1,9 +1,14 @@
 import { lazy } from 'react';
-import { Boxes, ClipboardList } from 'lucide-react';
+import { Boxes, ClipboardList, History } from 'lucide-react';
 import type { AppRoute } from '@/lib/types/navigation';
 
 const InventoryLevelsPage = lazy(() =>
   import('./pages/InventoryLevelsPage').then((m) => ({ default: m.InventoryLevelsPage })),
+);
+const InventoryLevelDetailsPage = lazy(() =>
+  import('./pages/InventoryLevelDetailsPage').then((m) => ({
+    default: m.InventoryLevelDetailsPage,
+  })),
 );
 const AdjustmentsListPage = lazy(() =>
   import('./pages/AdjustmentsListPage').then((m) => ({ default: m.AdjustmentsListPage })),
@@ -34,13 +39,22 @@ export const inventoryRoutes: AppRoute[] = [
         index: true,
         element: <InventoryLevelsPage />,
       },
+      {
+        path: ':id',
+        element: <InventoryLevelDetailsPage />,
+        handle: { crumb: 'Level Details' },
+      },
     ],
   },
   {
     path: 'ledger',
     element: <InventoryLedgerPage />,
     handle: {
-      title: 'Ledger',
+      title: 'Movement Ledger',
+      icon: History,
+      showInSidebar: true,
+      sidebarGroup: 'Inventory',
+      order: 45,
       crumb: 'Movement Ledger',
     },
   },

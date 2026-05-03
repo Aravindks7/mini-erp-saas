@@ -28,6 +28,7 @@ export interface InvoiceResponse {
   issueDate: string;
   dueDate: string;
   totalAmount: string;
+  balanceDue: string;
   taxAmount: string;
   notes: string | null;
   createdAt: string;
@@ -59,5 +60,14 @@ export const invoicesApi = {
     apiFetch<InvoiceResponse>(`/invoices/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify(data),
+    }),
+  deleteInvoice: (id: string) =>
+    apiFetch<{ message: string }>(`/invoices/${id}`, {
+      method: 'DELETE',
+    }),
+  bulkDeleteInvoices: (ids: string[]) =>
+    apiFetch<{ message: string }>('/invoices/bulk-delete', {
+      method: 'DELETE',
+      body: JSON.stringify({ ids }),
     }),
 };

@@ -15,6 +15,7 @@ export * from './addresses.schema.js';
 export * from './contacts.schema.js';
 
 export * from './uom.schema.js';
+export * from './product-categories.schema.js';
 export * from './products.schema.js';
 export * from './taxes.schema.js';
 

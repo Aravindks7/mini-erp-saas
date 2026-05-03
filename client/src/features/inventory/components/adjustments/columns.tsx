@@ -26,6 +26,12 @@ export const columns: ColumnDef<InventoryAdjustmentResponse>[] = [
     enableGlobalFilter: true,
   },
   {
+    accessorKey: 'adjustmentDate',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Date" />,
+    cell: ({ row }) => formatDate(row.getValue('adjustmentDate')),
+    meta: { variant: 'field', label: 'Date' },
+  },
+  {
     accessorKey: 'reason',
     header: ({ column }) => <DataTableColumnHeader column={column} title="Reason" />,
     meta: { variant: 'subtitle', label: 'Reason' },
@@ -40,12 +46,6 @@ export const columns: ColumnDef<InventoryAdjustmentResponse>[] = [
       );
     },
     meta: { variant: 'field', label: 'Status' },
-  },
-  {
-    accessorKey: 'adjustmentDate',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Adjustment Date" />,
-    cell: ({ row }) => formatDate(row.getValue('adjustmentDate')),
-    meta: { variant: 'field', label: 'Date' },
   },
   {
     accessorKey: 'lines',

@@ -4,6 +4,7 @@ export * from './contracts/customers.contract.js';
 export * from './contracts/organizations.contract.js';
 export * from './contracts/rbac.contract.js';
 export * from './contracts/uom.contract.js';
+export * from './contracts/product-categories.contract.js';
 export * from './contracts/taxes.contract.js';
 export * from './contracts/suppliers.contract.js';
 export * from './contracts/products.contract.js';

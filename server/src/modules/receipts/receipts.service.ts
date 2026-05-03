@@ -146,7 +146,9 @@ export class ReceiptsService extends BaseService<typeof receipts> {
   }
 
   /**
-   * Reverses a receipt, updates inventory levels, and reconciles PO status.
+   * Refactored Deletion Router:
+   * - If 'draft': Soft-delete only.
+   * - If not 'draft': Reverse inventory levels, create reversing ledger entries, and transition to 'cancelled'.
    */
   async deleteReceipt(organizationId: string, userId: string, id: string) {
     return await db.transaction(async (tx) => {
@@ -155,55 +157,65 @@ export class ReceiptsService extends BaseService<typeof receipts> {
         throw new Error('Receipt not found');
       }
 
-      // 1. Reverse Inventory Changes for each line
-      for (const line of receipt.lines) {
-        // A. Decrement Inventory Level
+      if (receipt.status === 'draft') {
+        // 1. Draft Path: Soft-delete only
         await tx
-          .update(inventoryLevels)
-          .set({
-            quantityOnHand: sql`${inventoryLevels.quantityOnHand} - ${line.quantityReceived}::numeric`,
-            updatedAt: new Date(),
-            updatedBy: userId,
-          })
-          .where(
-            and(
-              eq(inventoryLevels.organizationId, organizationId),
-              eq(inventoryLevels.productId, line.productId),
-              eq(inventoryLevels.warehouseId, line.warehouseId),
-              eq(inventoryLevels.binId, line.binId as string), // Casting as non-null since we recorded it
+          .update(receipts)
+          .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+          .where(and(eq(receipts.id, id), eq(receipts.organizationId, organizationId)));
+
+        return { action: 'deleted' };
+      } else {
+        // 2. Committed Path: Inventory Reversal + Status Void
+
+        for (const line of receipt.lines) {
+          // A. Decrement Inventory Level
+          await tx
+            .update(inventoryLevels)
+            .set({
+              quantityOnHand: sql`${inventoryLevels.quantityOnHand} - ${line.quantityReceived}::numeric`,
+              updatedAt: new Date(),
+              updatedBy: userId,
+            })
+            .where(
+              and(
+                eq(inventoryLevels.organizationId, organizationId),
+                eq(inventoryLevels.productId, line.productId),
+                eq(inventoryLevels.warehouseId, line.warehouseId),
+                eq(inventoryLevels.binId, line.binId as string),
+              ),
+            );
+
+          // B. Insert Reversal Ledger Entry
+          await tx.insert(inventoryLedgers).values(
+            this.withAudit(
+              {
+                organizationId,
+                productId: line.productId,
+                warehouseId: line.warehouseId,
+                binId: line.binId,
+                quantityChange: (-Number(line.quantityReceived)).toString(),
+                referenceType: 'po_receipt',
+                referenceId: receipt.id,
+                notes: 'Receipt Void Reversal',
+              },
+              userId,
             ),
           );
+        }
 
-        // B. Insert Reversal Ledger Entry
-        await tx.insert(inventoryLedgers).values(
-          this.withAudit(
-            {
-              organizationId,
-              productId: line.productId,
-              warehouseId: line.warehouseId,
-              binId: line.binId,
-              quantityChange: (-Number(line.quantityReceived)).toString(),
-              referenceType: 'po_receipt',
-              referenceId: receipt.id,
-              notes: 'Receipt Deletion Reversal',
-            },
-            userId,
-          ),
-        );
+        // Transition status to cancelled
+        await tx
+          .update(receipts)
+          .set(this.withAudit({ status: 'cancelled' }, userId, true))
+          .where(and(eq(receipts.id, id), eq(receipts.organizationId, organizationId)));
+
+        if (receipt.purchaseOrderId) {
+          await this.reconcilePOStatus(organizationId, userId, receipt.purchaseOrderId, tx);
+        }
+
+        return { action: 'voided' };
       }
-
-      // 2. Soft Delete Receipt
-      await tx
-        .update(receipts)
-        .set(this.withAudit({ deletedAt: new Date() }, userId, true))
-        .where(and(eq(receipts.id, id), eq(receipts.organizationId, organizationId)));
-
-      // 3. Reconcile PO Status
-      if (receipt.purchaseOrderId) {
-        await this.reconcilePOStatus(organizationId, userId, receipt.purchaseOrderId, tx);
-      }
-
-      return true;
     });
   }
 
@@ -253,6 +265,7 @@ export class ReceiptsService extends BaseService<typeof receipts> {
         eq(receipts.purchaseOrderId, poId),
         eq(receipts.organizationId, organizationId),
         sql`${receipts.deletedAt} IS NULL`,
+        sql`${receipts.status} != 'cancelled'`,
       ),
       with: {
         lines: true,

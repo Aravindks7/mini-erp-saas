@@ -33,6 +33,7 @@ export interface BillResponse {
   issueDate: string;
   dueDate: string;
   totalAmount: string;
+  balanceDue: string;
   taxAmount: string;
   notes?: string | null;
   status: 'draft' | 'open' | 'paid' | 'void';

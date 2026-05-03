@@ -118,6 +118,7 @@ CREATE TABLE "bills" (
 	"issue_date" timestamp NOT NULL,
 	"due_date" timestamp NOT NULL,
 	"total_amount" numeric(18, 8) NOT NULL,
+	"balance_due" numeric(18, 8) DEFAULT '0' NOT NULL,
 	"tax_amount" numeric(18, 8) NOT NULL,
 	"notes" text
 );
@@ -305,6 +306,21 @@ CREATE TABLE "unit_of_measures" (
 	"deleted_at" timestamp
 );
 --> statement-breakpoint
+CREATE TABLE "product_categories" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_by" uuid,
+	"updated_by" uuid,
+	"version" integer DEFAULT 1 NOT NULL,
+	"deleted_at" timestamp,
+	"name" text NOT NULL,
+	"code" text NOT NULL,
+	"description" text,
+	"parent_id" uuid
+);
+--> statement-breakpoint
 CREATE TABLE "products" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"organization_id" uuid NOT NULL,
@@ -319,6 +335,7 @@ CREATE TABLE "products" (
 	"description" text,
 	"base_price" numeric(18, 8) NOT NULL,
 	"base_uom_id" uuid NOT NULL,
+	"category_id" uuid,
 	"tax_id" uuid,
 	"status" "product_status" DEFAULT 'active' NOT NULL,
 	CONSTRAINT "products_base_price_check" CHECK ("products"."base_price" >= 0)
@@ -739,8 +756,11 @@ ALTER TABLE "product_uom_conversions" ADD CONSTRAINT "product_uom_conversions_pr
 ALTER TABLE "product_uom_conversions" ADD CONSTRAINT "product_uom_conversions_from_uom_id_unit_of_measures_id_fk" FOREIGN KEY ("from_uom_id") REFERENCES "public"."unit_of_measures"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "product_uom_conversions" ADD CONSTRAINT "product_uom_conversions_to_uom_id_unit_of_measures_id_fk" FOREIGN KEY ("to_uom_id") REFERENCES "public"."unit_of_measures"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "unit_of_measures" ADD CONSTRAINT "unit_of_measures_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "product_categories" ADD CONSTRAINT "product_categories_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "product_categories" ADD CONSTRAINT "product_categories_parent_id_product_categories_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."product_categories"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "products" ADD CONSTRAINT "products_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "products" ADD CONSTRAINT "products_base_uom_id_unit_of_measures_id_fk" FOREIGN KEY ("base_uom_id") REFERENCES "public"."unit_of_measures"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "products" ADD CONSTRAINT "products_category_id_product_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."product_categories"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "products" ADD CONSTRAINT "products_tax_id_taxes_id_fk" FOREIGN KEY ("tax_id") REFERENCES "public"."taxes"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "taxes" ADD CONSTRAINT "taxes_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "suppliers" ADD CONSTRAINT "suppliers_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -843,8 +863,12 @@ CREATE INDEX "uom_conv_org_idx" ON "product_uom_conversions" USING btree ("organ
 CREATE INDEX "uom_conv_product_idx" ON "product_uom_conversions" USING btree ("product_id");--> statement-breakpoint
 CREATE INDEX "uom_org_idx" ON "unit_of_measures" USING btree ("organization_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "uom_org_code_unique" ON "unit_of_measures" USING btree ("organization_id",lower("code"));--> statement-breakpoint
+CREATE INDEX "pc_org_idx" ON "product_categories" USING btree ("organization_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "pc_org_code_unique" ON "product_categories" USING btree ("organization_id","code") WHERE "product_categories"."deleted_at" IS NULL;--> statement-breakpoint
+CREATE INDEX "pc_parent_idx" ON "product_categories" USING btree ("parent_id");--> statement-breakpoint
 CREATE INDEX "products_org_idx" ON "products" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "products_name_idx" ON "products" USING btree ("name");--> statement-breakpoint
+CREATE INDEX "products_category_idx" ON "products" USING btree ("category_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "products_org_sku_unique" ON "products" USING btree ("organization_id",lower("sku")) WHERE "products"."sku" IS NOT NULL AND "products"."deleted_at" IS NULL;--> statement-breakpoint
 CREATE INDEX "taxes_org_idx" ON "taxes" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "suppliers_org_idx" ON "suppliers" USING btree ("organization_id");--> statement-breakpoint

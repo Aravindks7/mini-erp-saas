@@ -1,6 +1,6 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { formatDate } from '@shared/utils/date';
+
 import type { InventoryLevelResponse } from '../../api/inventory.api';
 import { InventoryLevelRowActions } from './InventoryLevelRowActions';
 
@@ -39,10 +39,31 @@ export const columns: ColumnDef<InventoryLevelResponse>[] = [
     meta: { variant: 'field', label: 'Quantity' },
   },
   {
-    accessorKey: 'updatedAt',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Last Updated" />,
-    cell: ({ row }) => formatDate(row.getValue('updatedAt')),
-    meta: { variant: 'field', label: 'Last Updated' },
+    accessorKey: 'quantityAllocated',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Allocated" />,
+    cell: ({ row }) => (
+      <span className="font-mono text-muted-foreground">
+        {Number(row.original.quantityAllocated).toLocaleString()}
+      </span>
+    ),
+    meta: { variant: 'field', label: 'Allocated' },
+  },
+  {
+    id: 'available',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Available" />,
+    cell: ({ row }) => {
+      const onHand = Number(row.original.quantityOnHand);
+      const allocated = Number(row.original.quantityAllocated);
+      const available = onHand - allocated;
+      return <span className="font-mono font-bold text-success">{available.toLocaleString()}</span>;
+    },
+    meta: { variant: 'field', label: 'Available' },
+  },
+  {
+    id: 'uom',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="UoM" />,
+    cell: ({ row }) => row.original.product.baseUom?.code || '-',
+    meta: { variant: 'field', label: 'UoM' },
   },
   {
     id: 'actions',

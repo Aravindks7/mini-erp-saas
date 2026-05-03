@@ -26,4 +26,16 @@ router.patch(
   invoicesController.updateInvoiceStatus,
 );
 
+router.delete(
+  '/',
+  requirePermission(PERMISSIONS.INVOICES.DELETE),
+  invoicesController.bulkDeleteInvoices,
+);
+
+router.delete(
+  '/:id',
+  requirePermission(PERMISSIONS.INVOICES.DELETE),
+  invoicesController.deleteInvoice,
+);
+
 export default router;

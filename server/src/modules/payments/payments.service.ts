@@ -31,6 +31,7 @@ export class PaymentsService extends BaseService<typeof payments> {
           with: {
             contacts: {
               where: (contacts, { eq }) => eq(contacts.isPrimary, true),
+              with: { contact: true },
             },
           },
         },
@@ -66,7 +67,9 @@ export class PaymentsService extends BaseService<typeof payments> {
         invoiceId,
         userId,
       },
-      customer_email: invoice.customer?.contacts?.[0]?.email ?? undefined,
+      ...(invoice.customer?.contacts?.[0]?.contact?.email && {
+        customer_email: invoice.customer.contacts[0].contact.email,
+      }),
     });
 
     // 2. Track in Local DB as Pending Intent
@@ -222,8 +225,11 @@ export class PaymentsService extends BaseService<typeof payments> {
         throw new Error('Payment not found');
       }
 
+      const newStatus = payment.status === 'pending' ? 'failed' : 'refunded';
+
       await tx
-        .delete(payments)
+        .update(payments)
+        .set(this.withAudit({ status: newStatus }, userId, true))
         .where(and(eq(payments.id, id), eq(payments.organizationId, organizationId)));
 
       if (payment.invoiceId) {
@@ -238,21 +244,24 @@ export class PaymentsService extends BaseService<typeof payments> {
 
   async bulkDeletePayments(organizationId: string, userId: string, ids: string[]) {
     return await db.transaction(async (tx) => {
-      const paymentsToDelete = await tx.query.payments.findMany({
+      const paymentsToUpdate = await tx.query.payments.findMany({
         where: and(sql`${payments.id} IN ${ids}`, eq(payments.organizationId, organizationId)),
       });
 
       const invoiceIds = new Set<string>();
       const billIds = new Set<string>();
 
-      paymentsToDelete.forEach((p) => {
+      for (const p of paymentsToUpdate) {
+        const newStatus = p.status === 'pending' ? 'failed' : 'refunded';
+
+        await tx
+          .update(payments)
+          .set(this.withAudit({ status: newStatus }, userId, true))
+          .where(and(eq(payments.id, p.id), eq(payments.organizationId, organizationId)));
+
         if (p.invoiceId) invoiceIds.add(p.invoiceId);
         if (p.billId) billIds.add(p.billId);
-      });
-
-      await tx
-        .delete(payments)
-        .where(and(sql`${payments.id} IN ${ids}`, eq(payments.organizationId, organizationId)));
+      }
 
       for (const invId of invoiceIds) {
         await this.reconcileInvoiceStatus(organizationId, userId, invId, tx);

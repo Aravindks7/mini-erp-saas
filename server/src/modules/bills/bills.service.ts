@@ -1,6 +1,6 @@
 import { db } from '../../db/index.js';
-import { bills, billLines, receipts } from '../../db/schema/index.js';
-import { and, desc, eq } from 'drizzle-orm';
+import { bills, billLines, receipts, payments } from '../../db/schema/index.js';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { CreateBillInput, UpdateBillStatusInput } from '#shared/contracts/bills.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 import { sequencesService } from '../sequences/sequences.service.js';
@@ -183,6 +183,62 @@ export class BillsService extends BaseService<typeof bills> {
       .returning();
 
     return updated;
+  }
+
+  async deleteBill(organizationId: string, userId: string, id: string) {
+    return await db.transaction(async (tx) => {
+      const bill = await tx.query.bills.findFirst({
+        where: and(eq(bills.id, id), eq(bills.organizationId, organizationId)),
+      });
+
+      if (!bill) {
+        throw new Error('Bill not found');
+      }
+
+      if (bill.status === 'draft') {
+        // Soft-delete only
+        const [updated] = await tx
+          .update(bills)
+          .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+          .where(and(eq(bills.id, id), eq(bills.organizationId, organizationId)))
+          .returning();
+        return updated;
+      } else {
+        // Check for completed payments
+        const existingPayments = await tx.query.payments.findMany({
+          where: and(
+            eq(payments.billId, id),
+            eq(payments.organizationId, organizationId),
+            eq(payments.status, 'completed'),
+            sql`${payments.deletedAt} IS NULL`,
+          ),
+        });
+
+        if (existingPayments.length > 0) {
+          throw new Error(
+            'Cannot void bill with existing completed payments. Void the payments first.',
+          );
+        }
+
+        // Transition status to void (Do NOT soft-delete)
+        const [updated] = await tx
+          .update(bills)
+          .set(this.withAudit({ status: 'void' }, userId, true))
+          .where(and(eq(bills.id, id), eq(bills.organizationId, organizationId)))
+          .returning();
+        return updated;
+      }
+    });
+  }
+
+  async bulkDeleteBills(organizationId: string, userId: string, ids: string[]) {
+    return await db.transaction(async (tx) => {
+      const results = [];
+      for (const id of ids) {
+        results.push(await this.deleteBill(organizationId, userId, id));
+      }
+      return results;
+    });
   }
 }
 

@@ -15,6 +15,11 @@ export interface InventoryLevelResponse {
     id: string;
     sku: string;
     name: string;
+    baseUom?: {
+      id: string;
+      code: string;
+      name: string;
+    };
   };
   warehouse: {
     id: string;
@@ -90,9 +95,14 @@ export const inventoryApi = {
   fetchLevels: async () => {
     return apiFetch<InventoryLevelResponse[]>('/inventory/levels');
   },
-  fetchLedger: async (params?: { productId?: string; warehouseId?: string; binId?: string }) => {
-    const query = new URLSearchParams(params as Record<string, string>).toString();
-    return apiFetch<InventoryLedgerResponse[]>(`/inventory/ledger${query ? `?${query}` : ''}`);
+  fetchLedger: async () => {
+    return apiFetch<InventoryLedgerResponse[]>('/inventory/ledger');
+  },
+  fetchLevel: async (id: string) => {
+    return apiFetch<InventoryLevelResponse>(`/inventory/levels/${id}`);
+  },
+  fetchLevelLedger: async (id: string) => {
+    return apiFetch<InventoryLedgerResponse[]>(`/inventory/levels/${id}/ledger`);
   },
   fetchAdjustments: async () => {
     return apiFetch<InventoryAdjustmentResponse[]>('/inventory/adjustments');

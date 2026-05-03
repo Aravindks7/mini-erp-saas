@@ -34,7 +34,7 @@ export async function authMiddleware(
   // DEV-ONLY BYPASS: Allows httpie smoke tests to function without a real session
   if (!sessionData && process.env.NODE_ENV === 'development' && req.headers['x-dev-bypass']) {
     logger.info('Auth bypass triggered via x-dev-bypass header');
-    const mockUserId = '00000000-0000-0000-0000-000000000001';
+    const mockUserId = '00000000-0000-4000-a000-000000000002';
     sessionData = {
       user: {
         id: mockUserId,

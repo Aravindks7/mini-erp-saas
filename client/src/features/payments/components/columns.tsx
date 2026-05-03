@@ -9,7 +9,7 @@ import { PaymentRowActions } from './PaymentRowActions';
 const paymentStatusMap: StatusMap<string> = {
   pending: { label: 'Pending', tone: 'warning' },
   completed: { label: 'Completed', tone: 'success' },
-  failed: { label: 'Failed', tone: 'destructive' },
+  failed: { label: 'Failed', tone: 'danger' },
   refunded: { label: 'Refunded', tone: 'neutral' },
 };
 
@@ -65,16 +65,16 @@ export const columns: ColumnDef<PaymentResponse>[] = [
   },
   {
     id: 'entity',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Customer/Supplier" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Payee/Payer" />,
     cell: ({ row }) => {
       const payment = row.original;
-      return payment.customer?.companyName || payment.supplier?.companyName || '-';
+      return payment.customer?.companyName || payment.supplier?.name || '-';
     },
     meta: { variant: 'subtitle', label: 'Entity' },
   },
   {
     id: 'document',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Invoice/Bill" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Reference" />,
     cell: ({ row }) => {
       const payment = row.original;
       return payment.invoice?.documentNumber || payment.bill?.documentNumber || '-';
