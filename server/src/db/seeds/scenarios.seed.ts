@@ -75,12 +75,14 @@ export async function seedScenarios() {
     { warehouseId: WAREHOUSES.DIST_CENTER, binId: BINS.DC_RACK_2 },
   ];
 
-  // 1. Order-to-Cash Flows (13 flow types × 3 instances = 39 scenarios)
+  // 1. Order-to-Cash Flows (15 flow types)
   const o2cFlows: Array<Parameters<typeof runO2CScenario>[0]['flow']> = [
     'full',
     'partial_ship_full_pay',
     'full_ship_partial_pay',
     'draft_only',
+    'draft_shipment',
+    'draft_invoice',
     'overdue_invoice',
     'cancelled_order',
     'cancelled_shipment',
@@ -92,37 +94,55 @@ export async function seedScenarios() {
     'stripe_expired',
   ];
 
-  console.log(`   - Generating ${o2cFlows.length * 3} O2C Scenarios...`);
+  console.log(`   - Generating ${o2cFlows.length * 8} O2C Scenarios (Over 180 Days)...`);
   let o2cCount = 0;
+  const o2cConfigs: Parameters<typeof runO2CScenario>[0][] = [];
+
   for (let i = 0; i < o2cFlows.length; i++) {
     const flow = o2cFlows[i]!;
-    for (let j = 0; j < 3; j++) {
+    for (let j = 0; j < 8; j++) {
       o2cCount++;
       const customer = customerList[o2cCount % customerList.length]!;
       const product = activeProductIds[o2cCount % activeProductIds.length]!;
 
-      await runO2CScenario({
+      o2cConfigs.push({
         scenarioId: 'O2C',
         index: o2cCount,
         organizationId: ORGANIZATION_ID,
         userId: USER_ID,
         customerId: customer,
         productId: product,
-        // Spread scenarios across the last 60 days for time-series analytics
-        createdAt: subDays(now, 60 - o2cCount),
-        quantity: String((j + 1) * 5) + '.00',
+        createdAt: subDays(
+          now,
+          Math.max(0, 180 - Math.floor(o2cCount * (180 / (o2cFlows.length * 8)))),
+        ),
+        quantity: String(((j % 5) + 1) * 5) + '.00',
         unitPrice: String((i + 1) * 25) + '.00',
         flow,
       });
     }
   }
 
-  // 2. Procure-to-Pay Flows (10 flow types × 3 instances = 30 scenarios)
+  // Batch process O2C scenarios (Concurrent batches of 30)
+  const O2C_BATCH_SIZE = 30;
+  for (let i = 0; i < o2cConfigs.length; i += O2C_BATCH_SIZE) {
+    const batch = o2cConfigs.slice(i, i + O2C_BATCH_SIZE);
+    await Promise.all(batch.map((config) => runO2CScenario(config)));
+    if ((i + O2C_BATCH_SIZE) % 60 === 0 || i + O2C_BATCH_SIZE >= o2cConfigs.length) {
+      console.log(
+        `     * Processed ${Math.min(i + O2C_BATCH_SIZE, o2cConfigs.length)} / ${o2cConfigs.length} O2C scenarios...`,
+      );
+    }
+  }
+
+  // 2. Procure-to-Pay Flows (12 flow types)
   const p2pFlows: Array<Parameters<typeof runP2PScenario>[0]['flow']> = [
     'full',
     'partial_receipt_full_pay',
     'full_receipt_partial_pay',
     'draft_only',
+    'draft_receipt',
+    'draft_bill',
     'overdue_bill',
     'cancelled_order',
     'cancelled_receipt',
@@ -131,33 +151,47 @@ export async function seedScenarios() {
     'refunded_payment',
   ];
 
-  console.log(`   - Generating ${p2pFlows.length * 3} P2P Scenarios...`);
+  console.log(`   - Generating ${p2pFlows.length * 6} P2P Scenarios (Over 180 Days)...`);
   let p2pCount = 0;
+  const p2pConfigs: Parameters<typeof runP2PScenario>[0][] = [];
+
   for (let i = 0; i < p2pFlows.length; i++) {
     const flow = p2pFlows[i]!;
-    for (let j = 0; j < 3; j++) {
+    for (let j = 0; j < 6; j++) {
       p2pCount++;
       const supplier = supplierList[p2pCount % supplierList.length]!;
       const product = activeProductIds[p2pCount % activeProductIds.length]!;
-
-      // Rotate through warehouse/bin pairs to spread po_receipt ledger entries
       const warehouseTarget = p2pWarehouseRotation[p2pCount % p2pWarehouseRotation.length]!;
 
-      await runP2PScenario({
+      p2pConfigs.push({
         scenarioId: 'P2P',
         index: p2pCount,
         organizationId: ORGANIZATION_ID,
         userId: USER_ID,
         supplierId: supplier,
         productId: product,
-        // Spread scenarios across the last 30 days for time-series analytics
-        createdAt: subDays(now, 30 - p2pCount),
-        quantity: String((j + 1) * 10) + '.00',
+        createdAt: subDays(
+          now,
+          Math.max(0, 180 - Math.floor(p2pCount * (180 / (p2pFlows.length * 6)))),
+        ),
+        quantity: String(((j % 5) + 1) * 10) + '.00',
         unitPrice: String((i + 1) * 15) + '.00',
         flow,
         warehouseId: warehouseTarget.warehouseId,
         binId: warehouseTarget.binId,
       });
+    }
+  }
+
+  // Batch process P2P scenarios (Concurrent batches of 30)
+  const P2P_BATCH_SIZE = 30;
+  for (let i = 0; i < p2pConfigs.length; i += P2P_BATCH_SIZE) {
+    const batch = p2pConfigs.slice(i, i + P2P_BATCH_SIZE);
+    await Promise.all(batch.map((config) => runP2PScenario(config)));
+    if ((i + P2P_BATCH_SIZE) % 60 === 0 || i + P2P_BATCH_SIZE >= p2pConfigs.length) {
+      console.log(
+        `     * Processed ${Math.min(i + P2P_BATCH_SIZE, p2pConfigs.length)} / ${p2pConfigs.length} P2P scenarios...`,
+      );
     }
   }
 

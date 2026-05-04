@@ -1,4 +1,4 @@
-import { Eye, FileEdit, Trash2, DollarSign } from 'lucide-react';
+import { Eye, FileEdit, Trash2, DollarSign, Ban, Send } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Row } from '@tanstack/react-table';
@@ -38,34 +38,43 @@ export function BillRowActions({ row, onPayBill }: BillRowActionsProps) {
       label: 'View',
       icon: <Eye className="h-4 w-4" />,
       onClick: () => navigate(getPath(`/bills/${bill.id}`)),
+      tooltip: 'View Details',
     },
-    ...(bill.status !== 'paid' && bill.status !== 'void'
-      ? [
-          {
-            label: 'Edit',
-            icon: <FileEdit className="h-4 w-4" />,
-            onClick: () => navigate(getPath(`/bills/${bill.id}/edit`)),
-          },
-        ]
-      : []),
-    ...(bill.status !== 'void'
-      ? [
-          {
-            label: actionLabel,
-            icon: <Trash2 className="h-4 w-4" />,
-            onClick: () => setIsDeleteDialogOpen(true),
-            variant: 'destructive' as const,
-          },
-        ]
-      : []),
   ];
 
+  if (isDraft) {
+    actions.push(
+      {
+        label: 'Edit',
+        icon: <FileEdit className="h-4 w-4" />,
+        onClick: () => navigate(getPath(`/bills/${bill.id}/edit`)),
+        tooltip: 'Edit Bill',
+      },
+      {
+        label: 'Post Bill',
+        icon: <Send className="h-4 w-4" />,
+        onClick: () => {}, // TODO: Implement post logic
+        tooltip: 'Post to Ledger',
+      },
+    );
+  }
+
   if (onPayBill && bill.status === 'open') {
-    actions.unshift({
+    actions.push({
       label: 'Pay Bill',
       icon: <DollarSign className="h-4 w-4 text-emerald-600" />,
       onClick: () => onPayBill(bill),
       tooltip: 'Pay Bill',
+    });
+  }
+
+  if (bill.status !== 'void' && bill.status !== 'paid') {
+    actions.push({
+      label: actionLabel,
+      icon: isDraft ? <Trash2 className="h-4 w-4" /> : <Ban className="h-4 w-4" />,
+      onClick: () => setIsDeleteDialogOpen(true),
+      variant: 'destructive',
+      tooltip: `${actionLabel} Bill`,
     });
   }
 
@@ -84,7 +93,7 @@ export function BillRowActions({ row, onPayBill }: BillRowActionsProps) {
             : `Are you sure you want to void bill ${bill.referenceNumber}? This action will reverse any ledger entries and mark the bill as void. This cannot be undone.`
         }
         confirmLabel={`${actionLabel} Bill`}
-        variant="destructive"
+        variant={isDraft ? 'destructive' : 'default'}
       />
     </>
   );

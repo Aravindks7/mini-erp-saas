@@ -1,6 +1,6 @@
 import { db } from '../../db/index.js';
 import { invoices, invoiceLines, salesOrders, payments } from '../../db/schema/index.js';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import {
   CreateInvoiceInput,
   UpdateInvoiceStatusInput,
@@ -179,6 +179,12 @@ export class InvoicesService extends BaseService<typeof invoices> {
         );
       }
 
+      // If created as 'open', post to GL
+      if (invoice.status === 'open') {
+        const { PostingService } = await import('../finance/posting.service.js');
+        await PostingService.postInvoice(invoice.id, organizationId);
+      }
+
       return await this.getInvoiceById(organizationId, invoice.id, tx);
     };
 
@@ -242,13 +248,20 @@ export class InvoicesService extends BaseService<typeof invoices> {
     id: string,
     data: UpdateInvoiceStatusInput,
   ) {
-    const [updated] = await db
-      .update(invoices)
-      .set(this.withAudit({ status: data.status }, userId, true))
-      .where(and(eq(invoices.id, id), eq(invoices.organizationId, organizationId)))
-      .returning();
+    return await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(invoices)
+        .set(this.withAudit({ status: data.status }, userId, true))
+        .where(and(eq(invoices.id, id), eq(invoices.organizationId, organizationId)))
+        .returning();
 
-    return updated;
+      if (updated && data.status === 'open') {
+        const { PostingService } = await import('../finance/posting.service.js');
+        await PostingService.postInvoice(id, organizationId);
+      }
+
+      return updated;
+    });
   }
 }
 

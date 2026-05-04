@@ -24,7 +24,7 @@ export interface InvoiceResponse {
   customerId: string;
   salesOrderId: string | null;
   documentNumber: string;
-  status: 'draft' | 'open' | 'paid' | 'void';
+  status: 'draft' | 'open' | 'partially_paid' | 'paid' | 'void';
   issueDate: string;
   dueDate: string;
   totalAmount: string;

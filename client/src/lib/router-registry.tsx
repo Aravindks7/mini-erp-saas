@@ -18,6 +18,9 @@ import { billRoutes } from '@/features/bills/routes';
 import { paymentRoutes } from '@/features/payments/routes';
 import { shipmentRoutes } from '@/features/shipments/routes';
 import { invoiceRoutes } from '@/features/invoices/routes';
+import { accountRoutes } from '@/features/accounts/routes';
+import { journalEntryRoutes } from '@/features/journal-entries/routes';
+import { financeReportsRoutes } from '@/features/finance-reports/routes';
 import { settingsRoutes } from '@/features/settings/routes';
 
 /**
@@ -42,6 +45,9 @@ export const dashboardRoutes: AppRoute[] = [
   ...paymentRoutes,
   ...shipmentRoutes,
   ...invoiceRoutes,
+  ...accountRoutes,
+  ...journalEntryRoutes,
+  ...financeReportsRoutes,
   ...settingsRoutes,
 ];
 

@@ -14,7 +14,7 @@ export const invoiceRoutes: AppRoute[] = [
       icon: FileText,
       showInSidebar: true,
       sidebarGroup: 'Sales',
-      order: 40,
+      order: 20,
       crumb: 'Invoices',
     },
     children: [

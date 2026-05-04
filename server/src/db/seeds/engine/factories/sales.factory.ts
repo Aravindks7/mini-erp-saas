@@ -26,7 +26,7 @@ export async function createSalesOrder(config: {
   const docNum = `SO-2026-${String(config.index).padStart(4, '0')}`;
   const soId = generateDeterministicId(config.organizationId, docNum);
 
-  await db
+  const results = await db
     .insert(salesOrders)
     .values({
       id: soId,
@@ -47,13 +47,10 @@ export async function createSalesOrder(config: {
         totalAmount: (parseFloat(config.quantity) * parseFloat(config.unitPrice)).toFixed(2),
         updatedAt: config.createdAt,
       },
-    });
+    })
+    .returning({ id: salesOrders.id });
 
-  const existing = await db.query.salesOrders.findFirst({
-    where: (so, { and, eq }) =>
-      and(eq(so.organizationId, config.organizationId), eq(so.documentNumber, docNum)),
-  });
-  const finalSoId = existing!.id;
+  const finalSoId = results[0]!.id;
 
   const soLineId = generateDeterministicId(config.organizationId, `${docNum}-L1`);
   await db
@@ -129,7 +126,7 @@ export async function createShipment(config: {
       ? (parseFloat(config.originalQuantity) / 2).toFixed(2)
       : config.originalQuantity;
 
-  await db
+  const results = await db
     .insert(shipments)
     .values({
       id: shpId,
@@ -147,13 +144,10 @@ export async function createShipment(config: {
     .onConflictDoUpdate({
       target: [shipments.organizationId, shipments.shipmentNumber],
       set: { updatedAt: config.createdAt },
-    });
+    })
+    .returning({ id: shipments.id });
 
-  const existing = await db.query.shipments.findFirst({
-    where: (sh, { and, eq }) =>
-      and(eq(sh.organizationId, config.organizationId), eq(sh.shipmentNumber, docNum)),
-  });
-  const finalShpId = existing!.id;
+  const finalShpId = results[0]!.id;
 
   const shpLineId = generateDeterministicId(config.organizationId, `${docNum}-L1`);
   await db

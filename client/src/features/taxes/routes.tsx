@@ -15,8 +15,8 @@ export const taxRoutes: AppRoute[] = [
       title: 'Taxes',
       icon: Percent,
       showInSidebar: true,
-      sidebarGroup: 'Inventory',
-      order: 60,
+      sidebarGroup: 'Setup',
+      order: 30,
       crumb: 'Taxes',
     },
     children: [

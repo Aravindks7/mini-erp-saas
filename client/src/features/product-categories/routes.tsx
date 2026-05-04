@@ -15,8 +15,8 @@ export const productCategoryRoutes: AppRoute[] = [
       permission: PERMISSIONS.PRODUCTS.READ,
       crumb: 'Product Categories',
       showInSidebar: true,
-      sidebarGroup: 'Inventory',
-      order: 2,
+      sidebarGroup: 'Setup',
+      order: 10,
     },
   },
 ];

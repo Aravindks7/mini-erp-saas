@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 export interface SearchableSelectOption {
   label: string;
   value: string;
+  group?: string;
 }
 
 interface SearchableSelectProps {
@@ -49,6 +50,18 @@ export function SearchableSelect({
 
   const selectedOption = options.find((option) => option.value === value);
 
+  const groupedOptions = React.useMemo(() => {
+    const groups: Record<string, SearchableSelectOption[]> = {};
+    options.forEach((option) => {
+      const group = option.group || '';
+      if (!groups[group]) {
+        groups[group] = [];
+      }
+      groups[group].push(option);
+    });
+    return groups;
+  }, [options]);
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -76,27 +89,29 @@ export function SearchableSelect({
           <CommandInput placeholder={`Search ${placeholder.toLowerCase()}...`} />
           <CommandList>
             <CommandEmpty>{emptyMessage}</CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.label}
-                  onSelect={() => {
-                    onChange(option.value === value ? undefined : option.value);
-                    setOpen(false);
-                  }}
-                  className="cursor-pointer"
-                >
-                  <Check
-                    className={cn(
-                      'mr-2 h-4 w-4',
-                      value === option.value ? 'opacity-100' : 'opacity-0',
-                    )}
-                  />
-                  {option.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {Object.entries(groupedOptions).map(([group, groupOptions]) => (
+              <CommandGroup key={group} heading={group || undefined}>
+                {groupOptions.map((option) => (
+                  <CommandItem
+                    key={option.value}
+                    value={option.label}
+                    onSelect={() => {
+                      onChange(option.value === value ? undefined : option.value);
+                      setOpen(false);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Check
+                      className={cn(
+                        'mr-2 h-4 w-4',
+                        value === option.value ? 'opacity-100' : 'opacity-0',
+                      )}
+                    />
+                    {option.label}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ))}
           </CommandList>
         </Command>
       </PopoverContent>

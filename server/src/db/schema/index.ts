@@ -57,3 +57,8 @@ export * from './bill-lines.schema.js';
 export * from './sequences.schema.js';
 export * from './payment-intents.schema.js';
 export * from './payments.schema.js';
+
+export * from './accounts.schema.js';
+export * from './journal-entries.schema.js';
+export * from './journal-entry-lines.schema.js';
+export * from './finance-reports.schema.js';

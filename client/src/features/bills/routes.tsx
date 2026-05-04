@@ -17,7 +17,7 @@ export const billRoutes: AppRoute[] = [
       icon: ReceiptText,
       showInSidebar: true,
       sidebarGroup: 'Purchasing',
-      order: 40,
+      order: 30,
       crumb: 'Vendor Bills',
     },
     children: [

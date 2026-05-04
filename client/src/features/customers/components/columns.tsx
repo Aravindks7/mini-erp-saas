@@ -46,32 +46,47 @@ export const columns: ColumnDef<CustomerResponse>[] = [
   {
     id: 'contactPerson',
     header: ({ column }) => <DataTableColumnHeader column={column} title="Contact Person" />,
+    accessorFn: (row) => {
+      const primaryContact = row.contacts?.find((c) => c.isPrimary) || row.contacts?.[0];
+      return primaryContact ? `${primaryContact.firstName} ${primaryContact.lastName}` : '';
+    },
     cell: ({ row }) => {
       const primaryContact =
         row.original.contacts?.find((c) => c.isPrimary) || row.original.contacts?.[0];
       return primaryContact ? `${primaryContact.firstName} ${primaryContact.lastName}` : '-';
     },
     meta: { variant: 'field', label: 'Contact Person' },
+    enableGlobalFilter: true,
   },
   {
     id: 'email',
     header: ({ column }) => <DataTableColumnHeader column={column} title="Email" />,
+    accessorFn: (row) => {
+      const primaryContact = row.contacts?.find((c) => c.isPrimary) || row.contacts?.[0];
+      return primaryContact?.email || '';
+    },
     cell: ({ row }) => {
       const primaryContact =
         row.original.contacts?.find((c) => c.isPrimary) || row.original.contacts?.[0];
       return primaryContact?.email || '-';
     },
     meta: { variant: 'field', label: 'Email' },
+    enableGlobalFilter: true,
   },
   {
     id: 'phone',
     header: ({ column }) => <DataTableColumnHeader column={column} title="Phone" />,
+    accessorFn: (row) => {
+      const primaryContact = row.contacts?.find((c) => c.isPrimary) || row.contacts?.[0];
+      return primaryContact?.phone || '';
+    },
     cell: ({ row }) => {
       const primaryContact =
         row.original.contacts?.find((c) => c.isPrimary) || row.original.contacts?.[0];
       return primaryContact?.phone || '-';
     },
     meta: { variant: 'field', label: 'Phone' },
+    enableGlobalFilter: true,
   },
   {
     accessorKey: 'status',

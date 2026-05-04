@@ -29,15 +29,11 @@ export function DatePicker({
       <PopoverTrigger asChild>
         <Button
           variant={'outline'}
-          className={cn(
-            'w-full justify-start text-left font-normal h-8 px-3',
-            !date && 'text-muted-foreground',
-            className,
-          )}
+          className={cn('', !date && 'text-muted-foreground', className)}
           disabled={disabled}
         >
           <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
-          {date ? format(date, 'PPP') : <span>{placeholder}</span>}
+          {date ? format(date, 'LLL dd, yyyy') : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">

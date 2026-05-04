@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { Truck, Package, AlertCircle, FileText } from 'lucide-react';
+import { Truck, Package, AlertCircle, FileText, Ban, FileEdit, PackageCheck } from 'lucide-react';
 import * as React from 'react';
 
 import { useShipment } from '../hooks/shipments.hooks';
@@ -64,12 +64,42 @@ export default function ShipmentDetailsPage() {
     );
   }
 
+  const isDraft = shipment.status === 'draft';
+  const isShipped = shipment.status === 'shipped';
+
+  const actions = [];
+
+  if (isDraft) {
+    actions.push(
+      {
+        label: 'Mark as Shipped',
+        onClick: () => {}, // TODO
+        icon: <PackageCheck className="h-4 w-4" />,
+      },
+      {
+        label: 'Edit',
+        onClick: () => navigate(getPath(`/shipments/${shipment.id}/edit`)),
+        icon: <FileEdit className="h-4 w-4" />,
+      },
+    );
+  }
+
+  if (isShipped) {
+    actions.push({
+      label: 'Cancel Shipment',
+      onClick: () => {}, // TODO
+      icon: <Ban className="h-4 w-4" />,
+      variant: 'destructive' as const,
+    });
+  }
+
   return (
     <PageContainer>
       <PageHeader
         title={shipment.shipmentNumber}
         description={`Outbound shipment recorded on ${formatDate(shipment.shipmentDate)}.`}
         backButton={{ onClick: () => navigate(getPath('/shipments')), label: 'Back to Shipments' }}
+        actions={actions}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">
           <StatusBadge value={shipment.status} statusMap={shipmentStatusMap} />

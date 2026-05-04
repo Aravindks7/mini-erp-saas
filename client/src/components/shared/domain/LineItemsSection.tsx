@@ -43,6 +43,7 @@ export function LineItemsSection<TFieldValues extends FieldValues>({
   const productOptions = (products || []).map((p) => ({
     label: `${p.name} (${p.sku})`,
     value: p.id,
+    group: p.category?.name || 'Uncategorized',
   }));
 
   // Auto-calculate line totals and tax when product/quantity/price changes

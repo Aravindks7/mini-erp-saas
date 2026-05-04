@@ -41,55 +41,55 @@ export async function seedInventory() {
       id: SEED_DATA.INVENTORY_ADJUSTMENTS.INITIAL_STOCK,
       reference: 'ADJ-OPEN-MAIN-001',
       reason: 'Opening Stock Load — Main Warehouse',
-      date: subDays(now, 60),
+      date: subDays(now, 180),
       lines: [
         {
           productId: SEED_DATA.PRODUCTS.WIDGET_A,
           warehouseId: SEED_DATA.WAREHOUSES.MAIN,
           binId: SEED_DATA.BINS.MAIN_A1,
-          quantity: '500',
+          quantity: '1500',
         },
         {
           productId: SEED_DATA.PRODUCTS.WIDGET_B,
           warehouseId: SEED_DATA.WAREHOUSES.MAIN,
           binId: SEED_DATA.BINS.MAIN_B1,
-          quantity: '600',
+          quantity: '1800',
         },
         {
           productId: SEED_DATA.PRODUCTS.STEEL_SHEET,
           warehouseId: SEED_DATA.WAREHOUSES.MAIN,
           binId: SEED_DATA.BINS.MAIN_A1,
-          quantity: '300',
+          quantity: '900',
         },
         {
           productId: SEED_DATA.PRODUCTS.COPPER_WIRE,
           warehouseId: SEED_DATA.WAREHOUSES.MAIN,
           binId: SEED_DATA.BINS.MAIN_B1,
-          quantity: '400',
+          quantity: '1200',
         },
         {
           productId: SEED_DATA.PRODUCTS.OFFICE_PAPER,
           warehouseId: SEED_DATA.WAREHOUSES.MAIN,
           binId: SEED_DATA.BINS.MAIN_A1,
-          quantity: '350',
+          quantity: '1000',
         },
         {
           productId: SEED_DATA.PRODUCTS.INK_CARTRIDGE,
           warehouseId: SEED_DATA.WAREHOUSES.MAIN,
           binId: SEED_DATA.BINS.MAIN_B1,
-          quantity: '250',
+          quantity: '750',
         },
         {
           productId: SEED_DATA.PRODUCTS.PACKAGING_BOX,
           warehouseId: SEED_DATA.WAREHOUSES.MAIN,
           binId: SEED_DATA.BINS.MAIN_A1,
-          quantity: '800',
+          quantity: '2400',
         },
         {
           productId: SEED_DATA.PRODUCTS.ASSEMBLY_KIT,
           warehouseId: SEED_DATA.WAREHOUSES.MAIN,
           binId: SEED_DATA.BINS.MAIN_B1,
-          quantity: '150',
+          quantity: '450',
         },
       ],
     },
@@ -103,31 +103,31 @@ export async function seedInventory() {
       id: SEED_DATA.INVENTORY_ADJUSTMENTS.INITIAL_STOCK_DC,
       reference: 'ADJ-OPEN-DC-001',
       reason: 'Opening Stock Load — Distribution Center',
-      date: subDays(now, 60),
+      date: subDays(now, 180),
       lines: [
         {
           productId: SEED_DATA.PRODUCTS.MICROCHIP_X,
           warehouseId: SEED_DATA.WAREHOUSES.DIST_CENTER,
           binId: SEED_DATA.BINS.DC_RACK_1,
-          quantity: '2000',
+          quantity: '5000',
         },
         {
           productId: SEED_DATA.PRODUCTS.LED_DISPLAY,
           warehouseId: SEED_DATA.WAREHOUSES.DIST_CENTER,
           binId: SEED_DATA.BINS.DC_RACK_2,
-          quantity: '1200',
+          quantity: '3000',
         },
         {
           productId: SEED_DATA.PRODUCTS.WIDGET_A,
           warehouseId: SEED_DATA.WAREHOUSES.DIST_CENTER,
           binId: SEED_DATA.BINS.DC_RACK_1,
-          quantity: '300',
+          quantity: '900',
         },
         {
           productId: SEED_DATA.PRODUCTS.COPPER_WIRE,
           warehouseId: SEED_DATA.WAREHOUSES.DIST_CENTER,
           binId: SEED_DATA.BINS.DC_RACK_2,
-          quantity: '200',
+          quantity: '600',
         },
       ],
     },
@@ -141,7 +141,7 @@ export async function seedInventory() {
       id: SEED_DATA.INVENTORY_ADJUSTMENTS.ENRICHMENT_STOCK,
       reference: 'ADJ-ENRICH-001',
       reason: 'Enrichment — Low Stock Alert Items',
-      date: subDays(now, 55),
+      date: subDays(now, 175),
       lines: [
         {
           productId: SEED_DATA.PRODUCTS.INK_CARTRIDGE,
@@ -174,7 +174,7 @@ export async function seedInventory() {
       id: SEED_DATA.INVENTORY_ADJUSTMENTS.DAMAGE_WRITEOFF,
       reference: 'ADJ-DMGWRIT-Q1-001',
       reason: 'Damage Write-off — Q1 Physical Count Variance',
-      date: subDays(now, 45),
+      date: subDays(now, 145),
       lines: [
         {
           productId: SEED_DATA.PRODUCTS.WIDGET_A,
@@ -207,7 +207,7 @@ export async function seedInventory() {
       id: SEED_DATA.INVENTORY_ADJUSTMENTS.CYCLE_COUNT_VARIANCE,
       reference: 'ADJ-CYCLECOUNT-ANN-001',
       reason: 'Annual Cycle Count — Stock Reconciliation',
-      date: subDays(now, 30),
+      date: subDays(now, 90),
       lines: [
         {
           productId: SEED_DATA.PRODUCTS.COPPER_WIRE,
@@ -250,7 +250,7 @@ export async function seedInventory() {
       id: SEED_DATA.INVENTORY_ADJUSTMENTS.TRANSFER_MAIN_TO_SEC,
       reference: 'ADJ-XFER-MAIN-SEC-001-OUT',
       reason: 'Inter-Warehouse Transfer (Outbound) — Main → Secondary Storage',
-      date: subDays(now, 15),
+      date: subDays(now, 30),
       lines: [
         {
           productId: SEED_DATA.PRODUCTS.WIDGET_B,
@@ -276,7 +276,7 @@ export async function seedInventory() {
       id: SEED_DATA.INVENTORY_ADJUSTMENTS.TRANSFER_MAIN_TO_SEC_INBOUND,
       reference: 'ADJ-XFER-MAIN-SEC-001-IN',
       reason: 'Inter-Warehouse Transfer (Inbound) — Main → Secondary Storage',
-      date: subDays(now, 15),
+      date: subDays(now, 30),
       lines: [
         {
           productId: SEED_DATA.PRODUCTS.WIDGET_B,

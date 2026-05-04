@@ -16,6 +16,8 @@ export async function runO2CScenario(config: {
     | 'partial_ship_full_pay'
     | 'full_ship_partial_pay'
     | 'draft_only'
+    | 'draft_shipment'
+    | 'draft_invoice'
     | 'overdue_invoice'
     | 'cancelled_order'
     | 'cancelled_shipment'
@@ -48,6 +50,8 @@ export async function runO2CScenario(config: {
   let shipStatus: 'draft' | 'shipped' | 'cancelled' = 'shipped';
   if (config.flow === 'cancelled_shipment') {
     shipStatus = 'cancelled';
+  } else if (config.flow === 'draft_shipment') {
+    shipStatus = 'draft';
   }
 
   const shipType = config.flow === 'partial_ship_full_pay' ? 'partial' : 'full';
@@ -59,7 +63,7 @@ export async function runO2CScenario(config: {
     originalQuantity: config.quantity,
   });
 
-  if (config.flow === 'cancelled_shipment') return;
+  if (config.flow === 'cancelled_shipment' || config.flow === 'draft_shipment') return;
 
   // 3. Invoice
   let invStatus: 'draft' | 'open' | 'paid' | 'partially_paid' | 'void' = 'open';
@@ -73,11 +77,13 @@ export async function runO2CScenario(config: {
     invStatus = 'partially_paid';
   } else if (config.flow === 'void_invoice') {
     invStatus = 'void';
+  } else if (config.flow === 'draft_invoice') {
+    invStatus = 'draft';
   }
 
   const { invId, amount } = await createInvoice({ ...config, soId, status: invStatus });
 
-  if (config.flow === 'void_invoice') return;
+  if (config.flow === 'void_invoice' || config.flow === 'draft_invoice') return;
 
   // 4. Stripe Simulation (Payment Intents)
   if (config.flow.startsWith('stripe_')) {

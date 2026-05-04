@@ -18,3 +18,4 @@ export * from './contracts/dashboard.contract.js';
 export * from './contracts/invoices.contract.js';
 export * from './contracts/bills.contract.js';
 export * from './contracts/payments.contract.js';
+export * from './contracts/finance.contract.js';

@@ -1,5 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { FileEdit, AlertCircle, User, Calendar, Clock, ShoppingCart } from 'lucide-react';
+import {
+  FileEdit,
+  AlertCircle,
+  User,
+  Calendar,
+  Clock,
+  ShoppingCart,
+  Ban,
+  Send,
+  DollarSign,
+} from 'lucide-react';
 import * as React from 'react';
 import { toast } from 'sonner';
 
@@ -98,13 +108,15 @@ export default function BillDetailsPage() {
           {
             label: 'Mark as Paid',
             onClick: () => handleStatusChange('paid'),
+            icon: <DollarSign className="h-4 w-4" />,
             variant: 'default',
-            hidden: bill.status === 'paid' || bill.status === 'void',
+            hidden: bill.status !== 'open',
             isLoading: isUpdatingStatus,
           },
           {
             label: 'Approve Bill',
             onClick: () => handleStatusChange('open'),
+            icon: <Send className="h-4 w-4" />,
             variant: 'outline',
             hidden: bill.status !== 'draft',
             isLoading: isUpdatingStatus,
@@ -114,7 +126,15 @@ export default function BillDetailsPage() {
             onClick: () => navigate(getPath(`/bills/${bill.id}/edit`)),
             icon: <FileEdit className="h-4 w-4" />,
             variant: 'outline',
-            hidden: bill.status === 'paid' || bill.status === 'void',
+            hidden: bill.status !== 'draft',
+          },
+          {
+            label: 'Void Bill',
+            onClick: () => handleStatusChange('void'),
+            icon: <Ban className="h-4 w-4" />,
+            variant: 'destructive',
+            hidden: bill.status === 'paid' || bill.status === 'void' || bill.status === 'draft',
+            isLoading: isUpdatingStatus,
           },
         ]}
       >

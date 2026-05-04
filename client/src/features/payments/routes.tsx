@@ -16,8 +16,8 @@ export const paymentRoutes: AppRoute[] = [
       title: 'Payments',
       icon: CreditCard,
       showInSidebar: true,
-      sidebarGroup: 'Financials',
-      order: 10,
+      sidebarGroup: 'Finance',
+      order: 30,
       crumb: 'Payments',
     },
     children: [

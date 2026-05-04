@@ -95,6 +95,12 @@ export const PERMISSIONS = {
   DASHBOARD: {
     READ: 'dashboard:read',
   },
+  FINANCE: {
+    READ: 'finance:read',
+    CREATE: 'finance:create',
+    UPDATE: 'finance:update',
+    DELETE: 'finance:delete',
+  },
 } as const;
 
 // Helper to extract all values from the nested object

@@ -3,6 +3,7 @@ import { db } from '../src/db/index.js';
 import { sql } from 'drizzle-orm';
 import { seedRBAC } from '../src/db/seed.js';
 import { seedAuth } from '../src/db/seeds/auth.seed.js';
+import { seedFinance } from '../src/db/seeds/finance.seed.js';
 import { seedSequences } from '../src/db/seeds/sequences.seed.js';
 import { seedTaxes } from '../src/db/seeds/taxes.seed.js';
 import { seedUoms } from '../src/db/seeds/uom.seed.js';
@@ -44,6 +45,9 @@ async function run() {
 
     // Auth & Identity (Requires RBAC roles)
     await seedAuth();
+
+    // Finance (COA & GL)
+    await seedFinance();
 
     // Sequences (Requires Org/User from Auth)
     await seedSequences();

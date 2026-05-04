@@ -27,12 +27,12 @@ export const inventoryRoutes: AppRoute[] = [
   {
     path: 'inventory',
     handle: {
-      title: 'Inventory',
+      title: 'Stock Levels',
       icon: Boxes,
       showInSidebar: true,
       sidebarGroup: 'Inventory',
-      order: 40,
-      crumb: 'Inventory',
+      order: 20,
+      crumb: 'Stock Levels',
     },
     children: [
       {
@@ -54,7 +54,7 @@ export const inventoryRoutes: AppRoute[] = [
       icon: History,
       showInSidebar: true,
       sidebarGroup: 'Inventory',
-      order: 45,
+      order: 40,
       crumb: 'Movement Ledger',
     },
   },
@@ -65,7 +65,7 @@ export const inventoryRoutes: AppRoute[] = [
       icon: ClipboardList,
       showInSidebar: true,
       sidebarGroup: 'Inventory',
-      order: 50,
+      order: 30,
       crumb: 'Adjustments',
     },
     children: [

@@ -1,5 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ShoppingCart, AlertCircle, User, Calendar, Clock, Plus } from 'lucide-react';
+import {
+  ShoppingCart,
+  AlertCircle,
+  User,
+  Calendar,
+  Clock,
+  Ban,
+  Send,
+  FileEdit,
+  DollarSign,
+} from 'lucide-react';
 import * as React from 'react';
 
 import { useInvoice, useUpdateInvoiceStatus } from '../hooks/invoices.hooks';
@@ -89,6 +99,9 @@ export default function InvoiceDetailsPage() {
     );
   };
 
+  const isDraft = invoice.status === 'draft';
+  const isOpen = invoice.status === 'open' || invoice.status === 'partially_paid';
+
   return (
     <PageContainer>
       <PageHeader
@@ -97,17 +110,33 @@ export default function InvoiceDetailsPage() {
         backButton={{ href: getPath('/invoices'), label: 'Back to List' }}
         actions={[
           {
-            label: 'Add Payment',
-            icon: <Plus className="h-4 w-4" />,
+            label: 'Record Payment',
+            icon: <DollarSign className="h-4 w-4" />,
             onClick: () => setIsPaymentSheetOpen(true),
             variant: 'default',
-            hidden: invoice.status === 'paid' || invoice.status === 'void',
+            hidden: !isOpen,
           },
           {
             label: 'Send to Customer',
             onClick: () => handleStatusChange('open'),
+            icon: <Send className="h-4 w-4" />,
             variant: 'outline',
-            hidden: invoice.status !== 'draft',
+            hidden: !isDraft,
+            isLoading: isUpdatingStatus,
+          },
+          {
+            label: 'Edit Invoice',
+            onClick: () => navigate(getPath(`/invoices/${invoice.id}/edit`)),
+            icon: <FileEdit className="h-4 w-4" />,
+            variant: 'outline',
+            hidden: !isDraft,
+          },
+          {
+            label: 'Void Invoice',
+            onClick: () => handleStatusChange('void'),
+            icon: <Ban className="h-4 w-4" />,
+            variant: 'destructive',
+            hidden: !isOpen,
             isLoading: isUpdatingStatus,
           },
         ]}

@@ -17,6 +17,7 @@ export interface RowAction {
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost';
   tooltip?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 interface DataTableRowActionsProps {
@@ -50,6 +51,7 @@ export function DataTableRowActions({
                   e.stopPropagation();
                   action.onClick();
                 }}
+                disabled={action.disabled}
               >
                 {action.icon}
                 <span className="sr-only">{action.label}</span>
@@ -82,6 +84,7 @@ export function DataTableRowActions({
                     e.stopPropagation();
                     action.onClick();
                   }}
+                  disabled={action.disabled}
                   className={cn(
                     'flex items-center gap-2 cursor-pointer',
                     action.variant === 'destructive' &&

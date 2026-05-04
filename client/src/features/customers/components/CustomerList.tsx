@@ -25,7 +25,7 @@ import type { CustomerResponse } from '../api/customers.api';
 import { PageHeader } from '@/components/shared/PageHeader';
 
 const searchSchema = z.object({
-  companyName: z.string().optional(),
+  search: z.string().optional(),
   status: z.string().optional(),
 });
 
@@ -158,7 +158,6 @@ export function CustomerList() {
             variant: 'destructive',
           },
         ]}
-        searchKey="companyName"
         toolbarFilters={(table) => (
           <DataTableFilter
             column={table.getColumn('status')}

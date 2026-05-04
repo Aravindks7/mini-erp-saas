@@ -1,4 +1,4 @@
-import { Eye, Trash2 } from 'lucide-react';
+import { Eye, Trash2, Ban, FileEdit, PackageCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import {
@@ -22,10 +22,10 @@ export function ShipmentRowActions({ row }: ShipmentRowActionsProps) {
   const shipment = row.original;
 
   const isDraft = shipment.status === 'draft';
-  const actionLabel = isDraft ? 'Delete' : 'Void';
+  const actionLabel = isDraft ? 'Delete' : 'Cancel';
   const dialogDescription = isDraft
     ? `Are you sure you want to permanently delete draft shipment ${shipment.shipmentNumber}?`
-    : `Are you sure you want to void shipment ${shipment.shipmentNumber}? This will reverse the associated inventory movements.`;
+    : `Are you sure you want to cancel shipment ${shipment.shipmentNumber}? This will reverse the associated inventory movements.`;
 
   const handleDelete = () => {
     deleteShipment(shipment.id, {
@@ -40,18 +40,34 @@ export function ShipmentRowActions({ row }: ShipmentRowActionsProps) {
       onClick: () => navigate(getPath(`/shipments/${shipment.id}`)),
       tooltip: 'View Details',
     },
-    ...(shipment.status !== 'cancelled'
-      ? [
-          {
-            label: actionLabel,
-            icon: <Trash2 className="h-4 w-4" />,
-            onClick: () => setIsDeleteDialogOpen(true),
-            variant: 'destructive' as const,
-            tooltip: `${actionLabel} Shipment`,
-          },
-        ]
-      : []),
   ];
+
+  if (isDraft) {
+    primaryActions.push(
+      {
+        label: 'Edit',
+        icon: <FileEdit className="h-4 w-4" />,
+        onClick: () => navigate(getPath(`/shipments/${shipment.id}/edit`)),
+        tooltip: 'Edit Shipment',
+      },
+      {
+        label: 'Ship',
+        icon: <PackageCheck className="h-4 w-4" />,
+        onClick: () => {}, // TODO: Implement ship logic
+        tooltip: 'Mark as Shipped',
+      },
+    );
+  }
+
+  if (shipment.status !== 'cancelled') {
+    primaryActions.push({
+      label: actionLabel,
+      icon: isDraft ? <Trash2 className="h-4 w-4" /> : <Ban className="h-4 w-4" />,
+      onClick: () => setIsDeleteDialogOpen(true),
+      variant: 'destructive',
+      tooltip: `${actionLabel} Shipment`,
+    });
+  }
 
   return (
     <>
@@ -65,6 +81,7 @@ export function ShipmentRowActions({ row }: ShipmentRowActionsProps) {
         description={dialogDescription}
         confirmLabel={actionLabel}
         isLoading={isDeleting}
+        variant={isDraft ? 'destructive' : 'default'}
       />
     </>
   );

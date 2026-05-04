@@ -134,6 +134,12 @@ export class PaymentsService extends BaseService<typeof payments> {
         )
         .returning();
 
+      // 3a. Post to GL
+      if (payment) {
+        const { PostingService } = await import('../finance/posting.service.js');
+        await PostingService.postPayment(payment.id, intent.organizationId);
+      }
+
       // 4. Reconcile Invoice (or Bill)
       if (intent.invoiceId) {
         await this.reconcileInvoiceStatus(
@@ -198,6 +204,10 @@ export class PaymentsService extends BaseService<typeof payments> {
       if (!payment) {
         throw new Error('Failed to create payment record');
       }
+
+      // 1a. Post to GL
+      const { PostingService } = await import('../finance/posting.service.js');
+      await PostingService.postPayment(payment.id, organizationId);
 
       // 2. Handle status updates for linked documents
       if (data.invoiceId) {

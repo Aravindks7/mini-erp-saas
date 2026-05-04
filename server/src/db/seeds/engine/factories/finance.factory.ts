@@ -1,6 +1,7 @@
 import { db } from '../../../index.js';
 import { invoices, invoiceLines, payments, paymentIntents } from '../../../schema/index.js';
 import { generateDeterministicId } from '../utils.js';
+import { PostingService } from '../../../../modules/finance/posting.service.js';
 
 export async function createInvoice(config: {
   scenarioId: string;
@@ -20,7 +21,7 @@ export async function createInvoice(config: {
   const amount = (parseFloat(config.quantity) * parseFloat(config.unitPrice)).toFixed(2);
   const balanceDue = config.status === 'paid' ? '0.00' : amount;
 
-  await db
+  const results = await db
     .insert(invoices)
     .values({
       id: invId,
@@ -46,13 +47,10 @@ export async function createInvoice(config: {
         balanceDue: balanceDue,
         updatedAt: config.createdAt,
       },
-    });
+    })
+    .returning({ id: invoices.id });
 
-  const existing = await db.query.invoices.findFirst({
-    where: (inv, { and, eq }) =>
-      and(eq(inv.organizationId, config.organizationId), eq(inv.documentNumber, docNum)),
-  });
-  const finalInvId = existing!.id;
+  const finalInvId = results[0]!.id;
 
   const invLineId = generateDeterministicId(config.organizationId, `${docNum}-L1`);
   await db
@@ -71,6 +69,11 @@ export async function createInvoice(config: {
       updatedBy: config.userId,
     })
     .onConflictDoNothing();
+
+  // Post to General Ledger - ONLY if NOT draft
+  if (config.status !== 'draft') {
+    await PostingService.postInvoice(finalInvId, config.organizationId);
+  }
 
   return { invId: finalInvId, amount };
 }
@@ -124,6 +127,11 @@ export async function createPayment(config: {
         updatedAt: config.createdAt,
       },
     });
+
+  // Post to General Ledger - ONLY if COMPLETED
+  if (config.status === 'completed' || config.status === undefined) {
+    await PostingService.postPayment(pmtId, config.organizationId);
+  }
 }
 
 export async function createPaymentIntent(config: {

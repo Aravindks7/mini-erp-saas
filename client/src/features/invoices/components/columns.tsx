@@ -9,6 +9,7 @@ import { InvoiceRowActions } from './InvoiceRowActions';
 export const invoiceStatusMap: StatusMap<string> = {
   draft: { label: 'Draft', tone: 'neutral' },
   open: { label: 'Open', tone: 'info' },
+  partially_paid: { label: 'Partially Paid', tone: 'warning' },
   paid: { label: 'Paid', tone: 'success' },
   void: { label: 'Void', tone: 'danger' },
 };

@@ -44,7 +44,10 @@ export function ExportButton({
 
       const response = await fetch(url, {
         method: 'GET',
-        headers,
+        headers: {
+          ...Object.fromEntries(headers.entries()),
+          Accept: 'text/csv',
+        },
         credentials: 'include',
       });
 

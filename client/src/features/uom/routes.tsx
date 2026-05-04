@@ -15,7 +15,7 @@ export const uomRoutes: AppRoute[] = [
       title: 'Units of Measure',
       icon: Ruler,
       showInSidebar: true,
-      sidebarGroup: 'Inventory',
+      sidebarGroup: 'Setup',
       order: 20,
       crumb: 'Units of Measure',
     },

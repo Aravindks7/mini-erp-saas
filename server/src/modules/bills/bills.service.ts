@@ -107,6 +107,12 @@ export class BillsService extends BaseService<typeof bills> {
         );
       }
 
+      // If created as 'open', post to GL
+      if (bill.status === 'open') {
+        const { PostingService } = await import('../finance/posting.service.js');
+        await PostingService.postBill(bill.id, organizationId);
+      }
+
       return await this.getBillById(organizationId, bill.id, tx);
     };
 
@@ -176,17 +182,29 @@ export class BillsService extends BaseService<typeof bills> {
     id: string,
     data: UpdateBillStatusInput,
   ) {
-    const [updated] = await db
-      .update(bills)
-      .set(this.withAudit({ status: data.status }, userId, true))
-      .where(and(eq(bills.id, id), eq(bills.organizationId, organizationId)))
-      .returning();
+    return await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(bills)
+        .set(this.withAudit({ status: data.status }, userId, true))
+        .where(and(eq(bills.id, id), eq(bills.organizationId, organizationId)))
+        .returning();
 
-    return updated;
+      if (updated && data.status === 'open') {
+        const { PostingService } = await import('../finance/posting.service.js');
+        await PostingService.postBill(id, organizationId);
+      }
+
+      return updated;
+    });
   }
 
-  async deleteBill(organizationId: string, userId: string, id: string) {
-    return await db.transaction(async (tx) => {
+  async deleteBill(
+    organizationId: string,
+    userId: string,
+    id: string,
+    txIn?: Transaction | typeof db,
+  ) {
+    const operation = async (tx: Transaction | typeof db) => {
       const bill = await tx.query.bills.findFirst({
         where: and(eq(bills.id, id), eq(bills.organizationId, organizationId)),
       });
@@ -228,6 +246,14 @@ export class BillsService extends BaseService<typeof bills> {
           .returning();
         return updated;
       }
+    };
+
+    if (txIn) {
+      return await operation(txIn);
+    }
+
+    return await db.transaction(async (tx) => {
+      return await operation(tx);
     });
   }
 
@@ -235,7 +261,7 @@ export class BillsService extends BaseService<typeof bills> {
     return await db.transaction(async (tx) => {
       const results = [];
       for (const id of ids) {
-        results.push(await this.deleteBill(organizationId, userId, id));
+        results.push(await this.deleteBill(organizationId, userId, id, tx));
       }
       return results;
     });

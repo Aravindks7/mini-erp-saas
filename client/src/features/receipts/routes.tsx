@@ -14,7 +14,7 @@ export const receiptRoutes: AppRoute[] = [
       icon: PackageSearch,
       showInSidebar: true,
       sidebarGroup: 'Purchasing',
-      order: 30,
+      order: 20,
       crumb: 'Goods Receipts',
     },
     children: [

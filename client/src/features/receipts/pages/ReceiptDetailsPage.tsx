@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { Truck, Package, AlertCircle, FileText } from 'lucide-react';
+import { Truck, Package, AlertCircle, FileText, Ban, FileEdit, PackageSearch } from 'lucide-react';
+import * as React from 'react';
 
 import { useReceipt } from '../hooks/receipts.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -63,12 +64,42 @@ export default function ReceiptDetailsPage() {
     );
   }
 
+  const isDraft = receipt.status === 'draft';
+  const isReceived = receipt.status === 'received';
+
+  const actions = [];
+
+  if (isDraft) {
+    actions.push(
+      {
+        label: 'Mark as Received',
+        onClick: () => {}, // TODO
+        icon: <PackageSearch className="h-4 w-4" />,
+      },
+      {
+        label: 'Edit',
+        onClick: () => navigate(getPath(`/receipts/${receipt.id}/edit`)),
+        icon: <FileEdit className="h-4 w-4" />,
+      },
+    );
+  }
+
+  if (isReceived) {
+    actions.push({
+      label: 'Cancel Receipt',
+      onClick: () => {}, // TODO
+      icon: <Ban className="h-4 w-4" />,
+      variant: 'destructive' as const,
+    });
+  }
+
   return (
     <PageContainer>
       <PageHeader
         title={receipt.receiptNumber}
         description={`Inbound shipment received on ${formatDate(receipt.receivedDate)}.`}
         backButton={{ onClick: () => navigate(getPath('/receipts')), label: 'Back to Receipts' }}
+        actions={actions}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">
           <StatusBadge value={receipt.status} statusMap={receiptStatusMap} />

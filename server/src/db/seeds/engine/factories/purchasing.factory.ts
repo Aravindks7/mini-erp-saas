@@ -11,6 +11,7 @@ import {
 } from '../../../schema/index.js';
 import { generateDeterministicId } from '../utils.js';
 import { SEED_DATA } from '../../constants.js';
+import { PostingService } from '../../../../modules/finance/posting.service.js';
 import { sql } from 'drizzle-orm';
 
 export async function createPurchaseOrder(config: {
@@ -28,7 +29,7 @@ export async function createPurchaseOrder(config: {
   const docNum = `PO-2026-${String(config.index).padStart(4, '0')}`;
   const poId = generateDeterministicId(config.organizationId, docNum);
 
-  await db
+  const results = await db
     .insert(purchaseOrders)
     .values({
       id: poId,
@@ -49,13 +50,10 @@ export async function createPurchaseOrder(config: {
         totalAmount: (parseFloat(config.quantity) * parseFloat(config.unitPrice)).toFixed(2),
         updatedAt: config.createdAt,
       },
-    });
+    })
+    .returning({ id: purchaseOrders.id });
 
-  const existing = await db.query.purchaseOrders.findFirst({
-    where: (po, { and, eq }) =>
-      and(eq(po.organizationId, config.organizationId), eq(po.documentNumber, docNum)),
-  });
-  const finalPoId = existing!.id;
+  const finalPoId = results[0]!.id;
 
   const poLineId = generateDeterministicId(config.organizationId, `${docNum}-L1`);
   await db
@@ -86,6 +84,7 @@ export async function createReceipt(config: {
   userId: string;
   createdAt: Date;
   type: 'full' | 'partial';
+  status?: 'draft' | 'received' | 'cancelled';
   originalQuantity: string;
   /**
    * Target warehouse for goods receipt. Determines both the receipt_line location
@@ -109,7 +108,7 @@ export async function createReceipt(config: {
   const targetWarehouseId = config.warehouseId ?? SEED_DATA.WAREHOUSES.MAIN;
   const targetBinId = config.binId ?? SEED_DATA.BINS.MAIN_A1;
 
-  await db
+  const results = await db
     .insert(receipts)
     .values({
       id: rctId,
@@ -117,7 +116,7 @@ export async function createReceipt(config: {
       purchaseOrderId: config.poId,
       receiptNumber: docNum,
       reference: `SUP-REF-${config.scenarioId}-${config.index}`,
-      status: 'received',
+      status: config.status || 'received',
       receivedDate: config.createdAt,
       createdAt: config.createdAt,
       updatedAt: config.createdAt,
@@ -126,14 +125,11 @@ export async function createReceipt(config: {
     })
     .onConflictDoUpdate({
       target: [receipts.organizationId, receipts.receiptNumber],
-      set: { updatedAt: config.createdAt },
-    });
+      set: { status: config.status || 'received', updatedAt: config.createdAt },
+    })
+    .returning({ id: receipts.id });
 
-  const existing = await db.query.receipts.findFirst({
-    where: (rc, { and, eq }) =>
-      and(eq(rc.organizationId, config.organizationId), eq(rc.receiptNumber, docNum)),
-  });
-  const finalRctId = existing!.id;
+  const finalRctId = results[0]!.id;
 
   const rctLineId = generateDeterministicId(config.organizationId, `${docNum}-L1`);
   await db
@@ -150,6 +146,11 @@ export async function createReceipt(config: {
       updatedBy: config.userId,
     })
     .onConflictDoNothing();
+
+  // ONLY process inventory side-effects if the receipt is actually RECEIVED
+  if (config.status !== 'received' && config.status !== undefined) {
+    return finalRctId;
+  }
 
   /**
    * INVENTORY INBOUND: Every goods receipt increments on-hand stock.
@@ -222,7 +223,7 @@ export async function createBill(config: {
   const billId = generateDeterministicId(config.organizationId, docNum);
   const amount = (parseFloat(config.quantity) * parseFloat(config.unitPrice)).toFixed(2);
 
-  await db
+  const results = await db
     .insert(bills)
     .values({
       id: billId,
@@ -246,13 +247,10 @@ export async function createBill(config: {
     .onConflictDoUpdate({
       target: [bills.organizationId, bills.documentNumber],
       set: { status: config.status, updatedAt: config.createdAt },
-    });
+    })
+    .returning({ id: bills.id });
 
-  const existing = await db.query.bills.findFirst({
-    where: (bl, { and, eq }) =>
-      and(eq(bl.organizationId, config.organizationId), eq(bl.documentNumber, docNum)),
-  });
-  const finalBillId = existing!.id;
+  const finalBillId = results[0]!.id;
 
   const billLineId = generateDeterministicId(config.organizationId, `${docNum}-L1`);
   await db
@@ -271,6 +269,11 @@ export async function createBill(config: {
       updatedBy: config.userId,
     })
     .onConflictDoNothing();
+
+  // Post to General Ledger - ONLY if NOT draft
+  if (config.status !== 'draft') {
+    await PostingService.postBill(finalBillId, config.organizationId);
+  }
 
   return { billId: finalBillId, amount };
 }

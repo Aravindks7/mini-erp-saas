@@ -17,7 +17,7 @@ export const warehouseRoutes: AppRoute[] = [
       icon: Warehouse,
       showInSidebar: true,
       sidebarGroup: 'Inventory',
-      order: 30,
+      order: 50,
       crumb: 'Warehouses',
     },
     children: [

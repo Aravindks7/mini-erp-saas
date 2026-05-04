@@ -25,10 +25,12 @@ import invoicesRoutes from './modules/invoices/invoices.routes.js';
 import billsRoutes from './modules/bills/bills.routes.js';
 import paymentsRoutes from './modules/payments/payments.routes.js';
 import sequencesRoutes from './modules/sequences/sequences.routes.js';
+import financeRoutes from './modules/finance/finance.routes.js';
 
 const app = express();
 
 app.set('trust proxy', true);
+app.use(httpLogger);
 
 app.use(
   cors({
@@ -51,7 +53,6 @@ app.use((req, res, next) => {
 
 // Standard middleware (applied after the Better Auth catch-all)
 app.use(express.json());
-app.use(httpLogger);
 
 // Health check
 app.get('/health', (_req, res) => {
@@ -81,6 +82,7 @@ app.use('/invoices', invoicesRoutes);
 app.use('/bills', billsRoutes);
 app.use('/payments', paymentsRoutes);
 app.use('/sequences', sequencesRoutes);
+app.use('/finance', financeRoutes);
 app.use('/dashboard', dashboardRoutes);
 
 // Global error handler — must be last

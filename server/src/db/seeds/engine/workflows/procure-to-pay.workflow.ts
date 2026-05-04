@@ -20,6 +20,8 @@ export async function runP2PScenario(config: {
     | 'partial_receipt_full_pay'
     | 'full_receipt_partial_pay'
     | 'draft_only'
+    | 'draft_receipt'
+    | 'draft_bill'
     | 'overdue_bill'
     | 'cancelled_order'
     | 'cancelled_receipt'
@@ -51,17 +53,11 @@ export async function runP2PScenario(config: {
   // is incompatible with the factory's `warehouseId?: string` signature.
   const { warehouseId, binId, ...receiptBaseConfig } = config;
 
+  let rctStatus: 'draft' | 'received' | 'cancelled' = 'received';
   if (config.flow === 'cancelled_receipt') {
-    // Schema says receiptStatusEnum: ['draft', 'received', 'cancelled']
-    await createReceipt({
-      ...receiptBaseConfig,
-      poId,
-      type: 'full',
-      originalQuantity: config.quantity,
-      ...(warehouseId !== undefined && { warehouseId }),
-      ...(binId !== undefined && { binId }),
-    });
-    return;
+    rctStatus = 'cancelled';
+  } else if (config.flow === 'draft_receipt') {
+    rctStatus = 'draft';
   }
 
   const rctType = config.flow === 'partial_receipt_full_pay' ? 'partial' : 'full';
@@ -69,10 +65,13 @@ export async function runP2PScenario(config: {
     ...receiptBaseConfig,
     poId,
     type: rctType,
+    status: rctStatus,
     originalQuantity: config.quantity,
     ...(warehouseId !== undefined && { warehouseId }),
     ...(binId !== undefined && { binId }),
   });
+
+  if (config.flow === 'cancelled_receipt' || config.flow === 'draft_receipt') return;
 
   // 3. Bill
   let billStatus: 'draft' | 'open' | 'paid' | 'void' = 'open';
@@ -84,11 +83,13 @@ export async function runP2PScenario(config: {
     billStatus = 'paid';
   } else if (config.flow === 'void_bill') {
     billStatus = 'void';
+  } else if (config.flow === 'draft_bill') {
+    billStatus = 'draft';
   }
 
   const { billId, amount } = await createBill({ ...config, poId, rctId, status: billStatus });
 
-  if (config.flow === 'void_bill') return;
+  if (config.flow === 'void_bill' || config.flow === 'draft_bill') return;
 
   // 4. Payment
   if (config.flow === 'overdue_bill') return;

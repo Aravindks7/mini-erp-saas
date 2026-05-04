@@ -1,4 +1,4 @@
-import { Eye, DollarSign, Trash2 } from 'lucide-react';
+import { Eye, DollarSign, Trash2, Ban, FileEdit, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import {
@@ -23,6 +23,7 @@ export function InvoiceRowActions({ row, onAddPayment }: InvoiceRowActionsProps)
   const invoice = row.original;
 
   const isDraft = invoice.status === 'draft';
+  const isVoid = invoice.status === 'void';
   const actionLabel = isDraft ? 'Delete' : 'Void';
 
   const handleDelete = () => {
@@ -40,7 +41,24 @@ export function InvoiceRowActions({ row, onAddPayment }: InvoiceRowActionsProps)
     },
   ];
 
-  if (onAddPayment && invoice.status === 'open') {
+  if (isDraft) {
+    primaryActions.push(
+      {
+        label: 'Edit',
+        icon: <FileEdit className="h-4 w-4" />,
+        onClick: () => navigate(getPath(`/invoices/${invoice.id}/edit`)),
+        tooltip: 'Edit Invoice',
+      },
+      {
+        label: 'Post Invoice',
+        icon: <Send className="h-4 w-4" />,
+        onClick: () => {}, // TODO: Implement post logic or navigate to review
+        tooltip: 'Post to Ledger',
+      },
+    );
+  }
+
+  if (onAddPayment && (invoice.status === 'open' || invoice.status === 'partially_paid')) {
     primaryActions.push({
       label: 'Record Payment',
       icon: <DollarSign className="h-4 w-4 text-emerald-600" />,
@@ -49,10 +67,10 @@ export function InvoiceRowActions({ row, onAddPayment }: InvoiceRowActionsProps)
     });
   }
 
-  if (invoice.status !== 'void') {
+  if (invoice.status !== 'void' && invoice.status !== 'paid') {
     primaryActions.push({
       label: actionLabel,
-      icon: <Trash2 className="h-4 w-4" />,
+      icon: isDraft ? <Trash2 className="h-4 w-4" /> : <Ban className="h-4 w-4" />,
       onClick: () => setIsDeleteDialogOpen(true),
       variant: 'destructive',
       tooltip: `${actionLabel} Invoice`,
@@ -75,6 +93,7 @@ export function InvoiceRowActions({ row, onAddPayment }: InvoiceRowActionsProps)
         }
         isLoading={deleteStatus === 'pending'}
         confirmLabel={actionLabel}
+        variant={isDraft ? 'destructive' : 'default'}
       />
     </>
   );

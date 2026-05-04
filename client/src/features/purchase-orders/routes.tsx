@@ -17,7 +17,7 @@ export const purchaseOrdersRoutes: AppRoute[] = [
       icon: ShoppingCart,
       showInSidebar: true,
       sidebarGroup: 'Purchasing',
-      order: 20,
+      order: 10,
       crumb: 'Purchase Orders',
     },
     children: [
