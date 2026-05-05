@@ -19,6 +19,12 @@ router.post(
 );
 
 router.patch(
+  '/:id/status',
+  requirePermission(PERMISSIONS.SALES_ORDERS.UPDATE),
+  salesOrdersController.updateSOStatus,
+);
+
+router.patch(
   '/:id',
   requirePermission(PERMISSIONS.SALES_ORDERS.UPDATE),
   salesOrdersController.updateSO,

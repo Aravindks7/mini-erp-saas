@@ -107,7 +107,13 @@ describe('Sales Orders Module', () => {
       const response = await request(app).get('/sales-orders').set('x-organization-id', mockOrgId);
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual(mockSOs);
+      expect(response.body).toEqual([
+        {
+          id: 'so-1',
+          documentNumber: 'SO-001',
+          lines: [],
+        },
+      ]);
     });
   });
 

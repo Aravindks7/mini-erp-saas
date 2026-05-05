@@ -4,10 +4,9 @@ import {
   receiptLines,
   inventoryLevels,
   inventoryLedgers,
-  purchaseOrderLines,
 } from '../../db/schema/index.js';
 import { sequencesService } from '../sequences/sequences.service.js';
-import { purchaseOrdersService } from '../purchase-orders/purchase-orders.service.js';
+import { PurchaseOrderReconciler } from '../purchase-orders/purchase-orders.reconciler.js';
 import { sql, desc, and, eq } from 'drizzle-orm';
 import { CreateReceiptInput } from '#shared/contracts/receipts.contract.js';
 import { BaseService } from '../../lib/base.service.js';
@@ -130,7 +129,12 @@ export class ReceiptsService extends BaseService<typeof receipts> {
 
       // 4. Reconcile PO Status
       if (data.purchaseOrderId) {
-        await this.reconcilePOStatus(organizationId, userId, data.purchaseOrderId, tx);
+        await PurchaseOrderReconciler.reconcileReceiving(
+          organizationId,
+          userId,
+          data.purchaseOrderId,
+          tx as Transaction,
+        );
       }
 
       return receipt;
@@ -211,7 +215,12 @@ export class ReceiptsService extends BaseService<typeof receipts> {
           .where(and(eq(receipts.id, id), eq(receipts.organizationId, organizationId)));
 
         if (receipt.purchaseOrderId) {
-          await this.reconcilePOStatus(organizationId, userId, receipt.purchaseOrderId, tx);
+          await PurchaseOrderReconciler.reconcileReceiving(
+            organizationId,
+            userId,
+            receipt.purchaseOrderId,
+            tx as Transaction,
+          );
         }
 
         return { action: 'voided' };
@@ -240,70 +249,6 @@ export class ReceiptsService extends BaseService<typeof receipts> {
 
       return true;
     });
-  }
-
-  /**
-   * Calculates total received quantity vs ordered quantity and updates PO status.
-   */
-  private async reconcilePOStatus(
-    organizationId: string,
-    userId: string,
-    poId: string,
-    tx: Transaction | typeof db,
-  ) {
-    // 1. Get PO Lines (Expected)
-    const poLines = await tx.query.purchaseOrderLines.findMany({
-      where: and(
-        eq(purchaseOrderLines.purchaseOrderId, poId),
-        eq(purchaseOrderLines.organizationId, organizationId),
-      ),
-    });
-
-    // 2. Get All Receipts for this PO (Actual)
-    const allReceipts = await tx.query.receipts.findMany({
-      where: and(
-        eq(receipts.purchaseOrderId, poId),
-        eq(receipts.organizationId, organizationId),
-        sql`${receipts.deletedAt} IS NULL`,
-        sql`${receipts.status} != 'cancelled'`,
-      ),
-      with: {
-        lines: true,
-      },
-    });
-
-    // 3. Aggregate received quantities by PO Line ID
-    const receivedMap: Record<string, number> = {};
-    for (const receipt of allReceipts) {
-      for (const line of receipt.lines) {
-        if (line.purchaseOrderLineId) {
-          receivedMap[line.purchaseOrderLineId] =
-            (receivedMap[line.purchaseOrderLineId] || 0) + Number(line.quantityReceived);
-        }
-      }
-    }
-
-    // 4. Compare
-    let anyReceived = false;
-    let allReceived = true;
-
-    for (const poLine of poLines) {
-      const received = receivedMap[poLine.id] || 0;
-      const ordered = Number(poLine.quantity);
-
-      if (received > 0) anyReceived = true;
-      if (received < ordered) allReceived = false;
-    }
-
-    // 5. Update Status
-    let newStatus: 'sent' | 'partially_received' | 'received' = 'sent';
-    if (allReceived && poLines.length > 0) {
-      newStatus = 'received';
-    } else if (anyReceived) {
-      newStatus = 'partially_received';
-    }
-
-    await purchaseOrdersService.updatePOStatus(organizationId, userId, poId, newStatus, tx);
   }
 
   /**

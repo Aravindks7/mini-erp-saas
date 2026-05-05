@@ -90,7 +90,7 @@ export class InventoryService extends BaseService<typeof inventoryAdjustments> {
                 productId: line.productId,
                 warehouseId: line.warehouseId,
                 binId: line.binId,
-                quantityOnHand: line.quantityChange,
+                quantityOnHand: '0', // Start with 0 to pass CHECK constraint validation
               },
               userId,
             ),

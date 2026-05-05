@@ -7,11 +7,13 @@ import {
   User,
   ReceiptText,
   Package,
+  CheckCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { useSalesOrder } from '../hooks/sales-orders.hooks';
+import { useSalesOrder, useUpdateSalesOrderStatus } from '../hooks/sales-orders.hooks';
 import { useShipments } from '@/features/shipments/hooks/shipments.hooks';
+import { useEntityActivity } from '@/features/activity/hooks/activity.hooks';
 import { useCreateInvoiceFromSO } from '@/features/invoices/hooks/invoices.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -25,6 +27,7 @@ import { useTenantPath } from '@/hooks/useTenantPath';
 import { salesOrderStatusMap } from '../components/columns';
 import { FulfillSalesOrderSheet } from '../components/FulfillSalesOrderSheet';
 import { DetailView } from '@/components/shared/DetailView';
+import { ActivityTimeline } from '@/components/shared/ActivityTimeline';
 import {
   Table,
   TableBody,
@@ -40,9 +43,11 @@ export default function SalesOrderDetailsPage() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
   const { data: so, isLoading, isError } = useSalesOrder(id);
+  const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateSalesOrderStatus();
   const { mutate: generateInvoice, isPending: isGeneratingInvoice } = useCreateInvoiceFromSO();
 
   const [isFulfillSheetOpen, setIsFulfillSheetOpen] = React.useState(false);
+  const { data: activityData, isLoading: isLoadingActivity } = useEntityActivity('sales_order', id);
 
   const handleGenerateInvoice = () => {
     if (!so) return;
@@ -55,6 +60,21 @@ export default function SalesOrderDetailsPage() {
         toast.error(error.message || 'Failed to generate invoice');
       },
     });
+  };
+
+  const handleApprove = () => {
+    if (!so) return;
+    updateStatus(
+      { id: so.id, status: 'approved' },
+      {
+        onSuccess: () => {
+          toast.success('Sales order approved successfully');
+        },
+        onError: (error: Error) => {
+          toast.error(error.message || 'Failed to approve order');
+        },
+      },
+    );
   };
 
   if (isLoading) {
@@ -103,6 +123,14 @@ export default function SalesOrderDetailsPage() {
         backButton={{ onClick: () => navigate(getPath('/sales-orders')), label: 'Back to List' }}
         actions={[
           {
+            label: 'Approve Order',
+            onClick: handleApprove,
+            icon: <CheckCircle className="h-4 w-4" />,
+            variant: 'default',
+            isLoading: isUpdatingStatus,
+            hidden: so.status !== 'draft',
+          },
+          {
             label: 'Generate Invoice',
             onClick: handleGenerateInvoice,
             icon: <ReceiptText className="h-4 w-4" />,
@@ -121,7 +149,7 @@ export default function SalesOrderDetailsPage() {
             label: 'Edit Order',
             onClick: () => navigate(getPath(`/sales-orders/${so.id}/edit`)),
             icon: <FileEdit className="h-4 w-4" />,
-            variant: 'default',
+            variant: 'outline',
             hidden: !canEdit,
           },
         ]}
@@ -132,7 +160,7 @@ export default function SalesOrderDetailsPage() {
       </PageHeader>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 lg:w-[600px] h-11 bg-muted/50 p-1">
+        <TabsList className="grid w-full grid-cols-4 lg:w-[700px] h-11 bg-muted/50 p-1">
           <TabsTrigger value="overview" className="data-[state=active]:shadow-sm">
             Overview
           </TabsTrigger>
@@ -141,6 +169,9 @@ export default function SalesOrderDetailsPage() {
           </TabsTrigger>
           <TabsTrigger value="shipments" className="data-[state=active]:shadow-sm">
             Shipment History
+          </TabsTrigger>
+          <TabsTrigger value="activity" className="data-[state=active]:shadow-sm">
+            Activity
           </TabsTrigger>
         </TabsList>
 
@@ -219,9 +250,10 @@ export default function SalesOrderDetailsPage() {
                   <TableRow className="bg-muted/50">
                     <TableHead className="w-[100px] pl-6 font-semibold">SKU</TableHead>
                     <TableHead className="font-semibold">Product</TableHead>
-                    <TableHead className="text-right font-semibold">Quantity</TableHead>
+                    <TableHead className="text-right font-semibold">Ordered</TableHead>
+                    <TableHead className="text-right font-semibold">Shipped</TableHead>
+                    <TableHead className="text-right font-semibold">Remaining</TableHead>
                     <TableHead className="text-right font-semibold">Unit Price</TableHead>
-                    <TableHead className="text-right font-semibold">Tax</TableHead>
                     <TableHead className="text-right pr-6 font-semibold">Line Total</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -229,17 +261,32 @@ export default function SalesOrderDetailsPage() {
                   {so.lines.map((line) => {
                     const lineSubtotal = Number(line.quantity) * Number(line.unitPrice);
                     const lineTotal = lineSubtotal + Number(line.taxAmount);
+                    const shipped = Number(line.quantityShipped || 0);
+                    const remaining = Math.max(0, Number(line.quantity) - shipped);
+
                     return (
                       <TableRow key={line.id} className="hover:bg-muted/30 transition-colors">
                         <TableCell className="font-mono text-xs pl-6">{line.product.sku}</TableCell>
                         <TableCell className="font-medium">{line.product.name}</TableCell>
                         <TableCell className="text-right">{line.quantity}</TableCell>
+                        <TableCell className="text-right text-blue-600 font-medium">
+                          {shipped > 0 ? shipped : '-'}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {remaining > 0 ? (
+                            <span
+                              className={
+                                remaining === Number(line.quantity) ? '' : 'text-amber-600'
+                              }
+                            >
+                              {remaining}
+                            </span>
+                          ) : (
+                            <span className="text-green-600">Filled</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           {currencyFormatter.format(Number(line.unitPrice))}
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {currencyFormatter.format(Number(line.taxAmount))}
-                          <span className="text-[10px] ml-1">({line.taxRateAtOrder}%)</span>
                         </TableCell>
                         <TableCell className="text-right font-semibold pr-6 text-primary">
                           {currencyFormatter.format(lineTotal)}
@@ -285,6 +332,21 @@ export default function SalesOrderDetailsPage() {
           className="mt-6 space-y-6 animate-in slide-in-from-right-2 duration-300"
         >
           <ShipmentsHistory soId={so.id} />
+        </TabsContent>
+
+        <TabsContent value="activity" className="mt-6 animate-in fade-in-50 duration-500">
+          <Card className="border-muted-foreground/20 overflow-hidden shadow-sm">
+            <CardContent className="p-6">
+              <ActivityTimeline
+                items={
+                  (activityData ??
+                    []) as import('@/components/shared/ActivityTimeline').ActivityTimelineItem[]
+                }
+                isLoading={isLoadingActivity}
+                emptyMessage="No activity recorded for this order yet."
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

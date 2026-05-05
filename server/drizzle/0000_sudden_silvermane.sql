@@ -6,7 +6,7 @@ CREATE TYPE "public"."customer_status" AS ENUM('active', 'inactive');--> stateme
 CREATE TYPE "public"."product_status" AS ENUM('active', 'inactive');--> statement-breakpoint
 CREATE TYPE "public"."supplier_status" AS ENUM('active', 'inactive');--> statement-breakpoint
 CREATE TYPE "public"."inventory_reference_type" AS ENUM('po_receipt', 'so_shipment', 'adjustment', 'transfer', 'stock_count');--> statement-breakpoint
-CREATE TYPE "public"."sales_order_status" AS ENUM('draft', 'approved', 'partially_shipped', 'shipped', 'cancelled');--> statement-breakpoint
+CREATE TYPE "public"."sales_order_status" AS ENUM('draft', 'approved', 'partially_shipped', 'shipped', 'closed', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."shipment_status" AS ENUM('draft', 'shipped', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."purchase_order_status" AS ENUM('draft', 'sent', 'partially_received', 'received', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."receipt_status" AS ENUM('draft', 'received', 'cancelled');--> statement-breakpoint
@@ -32,6 +32,20 @@ CREATE TABLE "accounts" (
 	"created_by" uuid,
 	"updated_by" uuid,
 	"deleted_at" timestamp
+);
+--> statement-breakpoint
+CREATE TABLE "activity_logs" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"entity_type" text NOT NULL,
+	"entity_id" uuid NOT NULL,
+	"action" text NOT NULL,
+	"reason" text,
+	"snapshot" jsonb,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_by" uuid,
+	"updated_by" uuid
 );
 --> statement-breakpoint
 CREATE TABLE "addresses" (
@@ -218,6 +232,18 @@ CREATE TABLE "dashboard_metrics" (
 	"total_purchases" numeric NOT NULL,
 	"active_customers" bigint NOT NULL,
 	"total_products" bigint NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "report_finance_ledger" (
+	"organization_id" uuid NOT NULL,
+	"account_id" uuid NOT NULL,
+	"account_name" text NOT NULL,
+	"account_type" text NOT NULL,
+	"account_code" text,
+	"balance_date" timestamp NOT NULL,
+	"total_debit" numeric NOT NULL,
+	"total_credit" numeric NOT NULL,
+	"net_balance" numeric NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "organizations" (
@@ -763,6 +789,7 @@ CREATE TABLE "journal_entry_lines" (
 );
 --> statement-breakpoint
 ALTER TABLE "accounts" ADD CONSTRAINT "accounts_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "activity_logs" ADD CONSTRAINT "activity_logs_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "addresses" ADD CONSTRAINT "addresses_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -879,6 +906,9 @@ ALTER TABLE "journal_entries" ADD CONSTRAINT "journal_entries_organization_id_or
 ALTER TABLE "journal_entry_lines" ADD CONSTRAINT "journal_entry_lines_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "journal_entry_lines" ADD CONSTRAINT "journal_entry_lines_journal_entry_id_journal_entries_id_fk" FOREIGN KEY ("journal_entry_id") REFERENCES "public"."journal_entries"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "journal_entry_lines" ADD CONSTRAINT "journal_entry_lines_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "activity_logs_org_idx" ON "activity_logs" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "activity_logs_entity_idx" ON "activity_logs" USING btree ("entity_type","entity_id");--> statement-breakpoint
+CREATE INDEX "activity_logs_timeline_idx" ON "activity_logs" USING btree ("organization_id","entity_type","entity_id");--> statement-breakpoint
 CREATE INDEX "addresses_org_idx" ON "addresses" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "bill_lines_org_idx" ON "bill_lines" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "bill_lines_bill_idx" ON "bill_lines" USING btree ("bill_id");--> statement-breakpoint

@@ -5,6 +5,7 @@ export interface SalesOrderLineResponse {
   id: string;
   productId: string;
   quantity: string;
+  quantityShipped: string;
   unitPrice: string;
   taxRateAtOrder: string;
   taxAmount: string;
@@ -19,7 +20,7 @@ export interface SalesOrderResponse {
   id: string;
   customerId: string;
   documentNumber: string;
-  status: 'draft' | 'approved' | 'partially_shipped' | 'shipped' | 'cancelled';
+  status: 'draft' | 'approved' | 'partially_shipped' | 'shipped' | 'closed' | 'cancelled';
   totalAmount: string;
   createdAt: string;
   updatedAt: string;
@@ -42,6 +43,11 @@ export const salesOrdersApi = {
     apiFetch<SalesOrderResponse>(`/sales-orders/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
+    }),
+  updateSalesOrderStatus: (id: string, status: SalesOrderResponse['status']) =>
+    apiFetch<SalesOrderResponse>(`/sales-orders/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
     }),
   deleteSalesOrder: (id: string) =>
     apiFetch<void>(`/sales-orders/${id}`, {

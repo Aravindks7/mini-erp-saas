@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { z } from 'zod';
 import type { UseFormReturn, FieldArrayWithId } from 'react-hook-form';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -99,6 +100,10 @@ function ShipmentLineItem({
     name: `lines.${index}.warehouseId`,
   });
 
+  const ordered = Number(soLine?.quantity || 0);
+  const shipped = Number(soLine?.quantityShipped || 0);
+  const remaining = Math.max(0, ordered - shipped);
+
   return (
     <div key={field.id} className="p-4 border rounded-lg bg-muted/30 space-y-4">
       <div className="flex justify-between items-start">
@@ -106,7 +111,10 @@ function ShipmentLineItem({
           <p className="font-medium text-sm">{soLine?.product.name}</p>
           <p className="text-xs text-muted-foreground">{soLine?.product.sku}</p>
         </div>
-        <p className="text-xs font-semibold">Ordered: {soLine?.quantity}</p>
+        <div className="text-right">
+          <p className="text-xs font-semibold">Remaining: {remaining}</p>
+          <p className="text-[10px] text-muted-foreground">Ordered: {ordered}</p>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -132,12 +140,36 @@ export function FulfillSalesOrderSheet({ isOpen, onClose, so }: FulfillSalesOrde
   const { mutateAsync: createShipment, isPending: isLoading } = useCreateShipment();
   const { data: warehouses } = useWarehouses();
 
+  // Dynamically create schema with contextual validation against 'so'
+  const fulfillmentSchema = React.useMemo(() => {
+    return createShipmentSchema.superRefine((data, ctx) => {
+      data.lines.forEach((line, index) => {
+        const soLine = so?.lines.find((l) => l.id === line.salesOrderLineId);
+        if (soLine) {
+          const ordered = Number(soLine.quantity);
+          const shipped = Number(soLine.quantityShipped || 0);
+          const remaining = Math.max(0, ordered - shipped);
+          const requested = Number(line.quantityShipped);
+
+          if (requested > remaining) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `Maximum remaining: ${remaining}`,
+              path: ['lines', index, 'quantityShipped'],
+            });
+          }
+        }
+      });
+    });
+  }, [so]);
+
   const form = useForm<CreateShipmentInput>({
-    resolver: zodResolver(createShipmentSchema),
+    resolver: zodResolver(fulfillmentSchema),
     defaultValues: {
       salesOrderId: '',
       lines: [],
     },
+    mode: 'onChange',
   });
 
   const { fields } = useFieldArray({
@@ -145,29 +177,44 @@ export function FulfillSalesOrderSheet({ isOpen, onClose, so }: FulfillSalesOrde
     name: 'lines',
   });
 
+  // Effect to handle SO changes and form reset
   React.useEffect(() => {
     if (so && isOpen) {
+      const fulfillableLines = so.lines
+        .map((line) => {
+          const ordered = Number(line.quantity);
+          const shipped = Number(line.quantityShipped || 0);
+          const remaining = Math.max(0, ordered - shipped);
+
+          return {
+            salesOrderLineId: line.id,
+            productId: line.productId,
+            warehouseId: '',
+            binId: null,
+            quantityShipped: remaining > 0 ? remaining.toString() : '',
+            remaining,
+          };
+        })
+        .filter((l) => l.remaining > 0);
+
       form.reset({
         salesOrderId: so.id,
-        lines: so.lines.map((line) => ({
-          salesOrderLineId: line.id,
-          productId: line.productId,
-          warehouseId: '',
-          binId: null,
-          quantityShipped: line.quantity,
-        })),
+        lines: fulfillableLines.map(({ remaining, ...rest }) => rest),
       });
     }
-  }, [so, form, isOpen]);
+  }, [so?.id, so?.updatedAt, isOpen, form]);
 
   const onSubmit = async (data: CreateShipmentInput) => {
     if (!so) return;
+
     try {
       await createShipment(data);
       toast.success('Inventory allocated and shipment recorded.');
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to ship stock:', error);
+      // The backend error will be caught here if validation somehow bypasses the frontend
+      toast.error(error.message || 'Failed to create shipment');
     }
   };
 

@@ -75,3 +75,16 @@ export function useBulkDeleteSalesOrders() {
     },
   });
 }
+
+export function useUpdateSalesOrderStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: any }) =>
+      salesOrdersApi.updateSalesOrderStatus(id, status),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: salesOrderKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: salesOrderKeys.detail(data.id) });
+    },
+  });
+}

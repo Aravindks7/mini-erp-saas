@@ -143,7 +143,7 @@ describe('Payments Module', () => {
           })),
           select: vi.fn(() => ({
             from: vi.fn(() => ({
-              where: vi.fn().mockResolvedValue([{ total: '1000' }]),
+              where: vi.fn().mockResolvedValue([{ total: '0' }]),
             })),
           })),
         } as any;
@@ -158,6 +158,46 @@ describe('Payments Module', () => {
       expect(response.status).toBe(201);
       expect(response.body.id).toBe('new-payment-id');
       expect(db.transaction).toHaveBeenCalled();
+    });
+
+    it('should fail with 500 if amount exceeds remaining balance', async () => {
+      const invoiceId = '550e8400-e29b-41d4-a716-446655440002';
+      const payload = {
+        paymentType: 'inbound',
+        paymentMethod: 'bank_transfer',
+        amount: '1500', // Exceeds totalAmount of 1000
+        invoiceId,
+      };
+
+      const mockInvoice = {
+        id: invoiceId,
+        totalAmount: '1000',
+        status: 'open',
+      };
+
+      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
+        const tx = {
+          query: {
+            invoices: {
+              findFirst: vi.fn().mockResolvedValue(mockInvoice),
+            },
+          },
+          select: vi.fn(() => ({
+            from: vi.fn(() => ({
+              where: vi.fn().mockResolvedValue([{ total: '0' }]), // No previous payments
+            })),
+          })),
+        } as any;
+        return cb(tx);
+      });
+
+      const response = await request(app)
+        .post('/payments')
+        .set('x-organization-id', mockOrgId)
+        .send(payload);
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toContain('Over-payment violation');
     });
 
     it('should fail if amount is negative', async () => {

@@ -13,11 +13,13 @@ import {
 import * as React from 'react';
 
 import { useInvoice, useUpdateInvoiceStatus } from '../hooks/invoices.hooks';
+import { useEntityActivity } from '@/features/activity/hooks/activity.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { DocumentSummary } from '@/components/shared/domain/DocumentSummary';
 import { DetailView } from '@/components/shared/DetailView';
+import { ActivityTimeline } from '@/components/shared/ActivityTimeline';
 import { StatusText } from '@/components/shared/domain/StatusText';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
@@ -46,6 +48,7 @@ export default function InvoiceDetailsPage() {
   const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateInvoiceStatus();
 
   const [isPaymentSheetOpen, setIsPaymentSheetOpen] = React.useState(false);
+  const { data: activityData, isLoading: isLoadingActivity } = useEntityActivity('invoice', id);
 
   if (isLoading) {
     return (
@@ -147,7 +150,7 @@ export default function InvoiceDetailsPage() {
       </PageHeader>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 lg:w-[500px] h-11 bg-muted/50 p-1">
+        <TabsList className="grid w-full grid-cols-4 lg:w-[700px] h-11 bg-muted/50 p-1">
           <TabsTrigger value="overview" className="data-[state=active]:shadow-sm">
             Overview
           </TabsTrigger>
@@ -156,6 +159,9 @@ export default function InvoiceDetailsPage() {
           </TabsTrigger>
           <TabsTrigger value="payments" className="data-[state=active]:shadow-sm">
             Payments
+          </TabsTrigger>
+          <TabsTrigger value="activity" className="data-[state=active]:shadow-sm">
+            Activity
           </TabsTrigger>
         </TabsList>
 
@@ -306,6 +312,21 @@ export default function InvoiceDetailsPage() {
 
         <TabsContent value="payments" className="mt-6">
           <PaymentHistoryTab invoice={invoice} />
+        </TabsContent>
+
+        <TabsContent value="activity" className="mt-6 animate-in fade-in-50 duration-500">
+          <Card className="border-muted-foreground/20 overflow-hidden shadow-sm">
+            <CardContent className="p-6">
+              <ActivityTimeline
+                items={
+                  (activityData ??
+                    []) as import('@/components/shared/ActivityTimeline').ActivityTimelineItem[]
+                }
+                isLoading={isLoadingActivity}
+                emptyMessage="No activity recorded for this invoice yet."
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

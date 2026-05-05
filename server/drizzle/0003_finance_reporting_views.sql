@@ -9,6 +9,11 @@ BEGIN
         DROP VIEW report_finance_ledger CASCADE;
     END IF;
 
+    -- Drop table if it exists (placeholder created by Drizzle)
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'report_finance_ledger') THEN
+        DROP TABLE report_finance_ledger CASCADE;
+    END IF;
+
     -- Drop materialized views if they exist
     IF EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'mv_account_daily_balances') THEN
         DROP MATERIALIZED VIEW mv_account_daily_balances CASCADE;

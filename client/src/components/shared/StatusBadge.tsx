@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-export type StatusTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+export type StatusTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'secondary';
 
 export interface StatusConfig {
   label: string;
@@ -25,6 +25,8 @@ const toneMap: Record<StatusTone, string> = {
     'bg-destructive/10 text-destructive border-destructive/20 dark:bg-destructive/20 dark:text-destructive-foreground dark:border-destructive/40',
   info: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/40',
   neutral: 'bg-muted text-muted-foreground border-transparent',
+  secondary:
+    'bg-slate-500/10 text-slate-600 border-slate-500/20 dark:bg-slate-500/20 dark:text-slate-400 dark:border-slate-500/40',
 };
 
 /**

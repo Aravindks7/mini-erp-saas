@@ -7,13 +7,17 @@ import { sequencesService } from '../sequences/sequences.service.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
+import { SalesOrderReconciler, SOStatus } from './sales-orders.reconciler.js';
+
+export type { SOStatus };
+
 export class SalesOrdersService extends BaseService<typeof salesOrders> {
   constructor() {
     super(salesOrders);
   }
 
   async listSOs(organizationId: string) {
-    return await db.query.salesOrders.findMany({
+    const results = await db.query.salesOrders.findMany({
       where: this.getTenantWhere(organizationId),
       with: {
         customer: true,
@@ -22,13 +26,40 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
             product: true,
           },
         },
+        shipments: {
+          where: (shipments, { and, isNull, ne }) =>
+            and(isNull(shipments.deletedAt), ne(shipments.status, 'cancelled')),
+          with: {
+            lines: true,
+          },
+        },
       },
       orderBy: [desc(salesOrders.createdAt)],
+    });
+
+    return results.map((so) => {
+      const shippedMap: Record<string, number> = {};
+      for (const shipment of so.shipments || []) {
+        for (const line of shipment.lines || []) {
+          if (line.salesOrderLineId) {
+            shippedMap[line.salesOrderLineId] =
+              (shippedMap[line.salesOrderLineId] || 0) + Number(line.quantityShipped);
+          }
+        }
+      }
+
+      return {
+        ...so,
+        lines: (so.lines || []).map((line) => ({
+          ...line,
+          quantityShipped: (shippedMap[line.id] || 0).toString(),
+        })),
+      };
     });
   }
 
   async getSOById(organizationId: string, id: string, tx: Transaction | typeof db = db) {
-    return await tx.query.salesOrders.findFirst({
+    const so = await tx.query.salesOrders.findFirst({
       where: this.getTenantWhere(organizationId, id),
       with: {
         customer: true,
@@ -37,8 +68,36 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
             product: true,
           },
         },
+        shipments: {
+          where: (shipments, { and, isNull, ne }) =>
+            and(isNull(shipments.deletedAt), ne(shipments.status, 'cancelled')),
+          with: {
+            lines: true,
+          },
+        },
       },
     });
+
+    if (!so) return null;
+
+    // Calculate shipped quantity per line
+    const shippedMap: Record<string, number> = {};
+    for (const shipment of so.shipments || []) {
+      for (const line of shipment.lines || []) {
+        if (line.salesOrderLineId) {
+          shippedMap[line.salesOrderLineId] =
+            (shippedMap[line.salesOrderLineId] || 0) + Number(line.quantityShipped);
+        }
+      }
+    }
+
+    return {
+      ...so,
+      lines: (so.lines || []).map((line) => ({
+        ...line,
+        quantityShipped: (shippedMap[line.id] || 0).toString(),
+      })),
+    };
   }
 
   async createSO(organizationId: string, userId: string, data: CreateSalesOrderInput) {
@@ -157,30 +216,53 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
   }
 
   /**
-   * Updates the status of a Sales Order.
+   * Updates the status of a Sales Order with transition validation and activity logging.
    */
   async updateSOStatus(
     organizationId: string,
     userId: string,
     id: string,
-    status: 'draft' | 'approved' | 'partially_shipped' | 'shipped' | 'cancelled',
+    status: SOStatus,
     txIn?: Transaction | typeof db,
   ) {
     const operation = async (tx: Transaction | typeof db) => {
-      const [updated] = await tx
-        .update(salesOrders)
-        .set(this.withAudit({ status }, userId, true))
-        .where(and(eq(salesOrders.id, id), eq(salesOrders.organizationId, organizationId)))
-        .returning();
-
-      if (!updated) {
-        throw new Error('Sales order not found or update failed');
-      }
-      return updated;
+      // We pass the transaction cast to `Transaction` to satisfy Drizzle types.
+      return await SalesOrderReconciler.updateStatus(
+        organizationId,
+        userId,
+        id,
+        status,
+        'Manual status update',
+        tx as Transaction,
+      );
     };
 
     if (txIn) return await operation(txIn);
     return await db.transaction(operation);
+  }
+
+  /**
+   * Reconciles the fulfillment status of a Sales Order based on linked shipments.
+   */
+  async reconcileFulfillment(
+    organizationId: string,
+    userId: string,
+    id: string,
+    tx: Transaction | typeof db = db,
+  ) {
+    await SalesOrderReconciler.reconcileFulfillment(organizationId, userId, id, tx as Transaction);
+  }
+
+  /**
+   * Reconciles the billing status of a Sales Order based on linked invoices.
+   */
+  async reconcileBilling(
+    organizationId: string,
+    userId: string,
+    id: string,
+    tx: Transaction | typeof db = db,
+  ) {
+    await SalesOrderReconciler.reconcileBilling(organizationId, userId, id, tx as Transaction);
   }
 
   /**

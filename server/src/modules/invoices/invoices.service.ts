@@ -7,6 +7,7 @@ import {
 } from '#shared/contracts/invoices.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 import { sequencesService } from '../sequences/sequences.service.js';
+import { InvoiceReconciler, InvoiceStatus } from './invoices.reconciler.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -89,11 +90,15 @@ export class InvoicesService extends BaseService<typeof invoices> {
           );
         }
 
-        // Void invoice
-        await tx
-          .update(invoices)
-          .set(this.withAudit({ status: 'void', balanceDue: '0' }, userId, true))
-          .where(and(eq(invoices.id, id), eq(invoices.organizationId, organizationId)));
+        // Void invoice using reconciler
+        await InvoiceReconciler.updateStatus(
+          organizationId,
+          userId,
+          id,
+          'void',
+          'Invoice manually voided',
+          tx as Transaction,
+        );
       }
 
       return { id };
@@ -182,7 +187,7 @@ export class InvoicesService extends BaseService<typeof invoices> {
       // If created as 'open', post to GL
       if (invoice.status === 'open') {
         const { PostingService } = await import('../finance/posting.service.js');
-        await PostingService.postInvoice(invoice.id, organizationId);
+        await PostingService.postInvoice(invoice.id, organizationId, tx);
       }
 
       return await this.getInvoiceById(organizationId, invoice.id, tx);
@@ -249,18 +254,16 @@ export class InvoicesService extends BaseService<typeof invoices> {
     data: UpdateInvoiceStatusInput,
   ) {
     return await db.transaction(async (tx) => {
-      const [updated] = await tx
-        .update(invoices)
-        .set(this.withAudit({ status: data.status }, userId, true))
-        .where(and(eq(invoices.id, id), eq(invoices.organizationId, organizationId)))
-        .returning();
+      await InvoiceReconciler.updateStatus(
+        organizationId,
+        userId,
+        id,
+        data.status as InvoiceStatus,
+        'Manual status update',
+        tx as Transaction,
+      );
 
-      if (updated && data.status === 'open') {
-        const { PostingService } = await import('../finance/posting.service.js');
-        await PostingService.postInvoice(id, organizationId);
-      }
-
-      return updated;
+      return await this.getInvoiceById(organizationId, id, tx);
     });
   }
 }

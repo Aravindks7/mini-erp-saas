@@ -66,6 +66,37 @@ export class ShipmentsService extends BaseService<typeof shipments> {
 
       // 3. Process each line atomically
       for (const line of data.lines) {
+        // Validate against Sales Order Line if applicable
+        if (line.salesOrderLineId) {
+          const soLine = await tx.query.salesOrderLines.findFirst({
+            where: and(
+              eq(salesOrderLines.id, line.salesOrderLineId),
+              eq(salesOrderLines.organizationId, organizationId),
+            ),
+            with: {
+              shipmentLines: {
+                where: (sl, { isNull }) => isNull(sl.deletedAt),
+                with: {
+                  shipment: true,
+                },
+              },
+            },
+          });
+
+          if (soLine) {
+            const alreadyShipped = (soLine.shipmentLines || [])
+              .filter((sl) => sl.shipment.status !== 'cancelled')
+              .reduce((acc, sl) => acc + Number(sl.quantityShipped), 0);
+            const remaining = Number(soLine.quantity) - alreadyShipped;
+
+            if (Number(line.quantityShipped) > remaining) {
+              throw new Error(
+                `Over-shipment violation: Line for product ${line.productId} has only ${remaining} remaining, but ${line.quantityShipped} was requested.`,
+              );
+            }
+          }
+        }
+
         // A. Insert Shipment Line
         await tx.insert(shipmentLines).values(
           this.withAudit(
@@ -95,7 +126,7 @@ export class ShipmentsService extends BaseService<typeof shipments> {
                 productId: line.productId,
                 warehouseId: line.warehouseId,
                 binId: line.binId,
-                quantityOnHand: quantityChange,
+                quantityOnHand: '0', // Start with 0 to pass CHECK constraint validation
               },
               userId,
             ),
@@ -243,59 +274,7 @@ export class ShipmentsService extends BaseService<typeof shipments> {
     soId: string,
     tx: Transaction | typeof db,
   ) {
-    // 1. Get SO Lines (Expected)
-    const soLines = await tx.query.salesOrderLines.findMany({
-      where: and(
-        eq(salesOrderLines.salesOrderId, soId),
-        eq(salesOrderLines.organizationId, organizationId),
-      ),
-    });
-
-    // 2. Get All Shipments for this SO (Actual)
-    const allShipments = await tx.query.shipments.findMany({
-      where: and(
-        eq(shipments.salesOrderId, soId),
-        eq(shipments.organizationId, organizationId),
-        sql`${shipments.deletedAt} IS NULL`,
-        sql`${shipments.status} != 'cancelled'`,
-      ),
-      with: {
-        lines: true,
-      },
-    });
-
-    // 3. Aggregate shipped quantities by SO Line ID
-    const shippedMap: Record<string, number> = {};
-    for (const shipment of allShipments) {
-      for (const line of shipment.lines) {
-        if (line.salesOrderLineId) {
-          shippedMap[line.salesOrderLineId] =
-            (shippedMap[line.salesOrderLineId] || 0) + Number(line.quantityShipped);
-        }
-      }
-    }
-
-    // 4. Compare
-    let anyShipped = false;
-    let allShipped = true;
-
-    for (const soLine of soLines) {
-      const shipped = shippedMap[soLine.id] || 0;
-      const ordered = Number(soLine.quantity);
-
-      if (shipped > 0) anyShipped = true;
-      if (shipped < ordered) allShipped = false;
-    }
-
-    // 5. Update Status
-    let newStatus: 'approved' | 'partially_shipped' | 'shipped' = 'approved';
-    if (allShipped && soLines.length > 0) {
-      newStatus = 'shipped';
-    } else if (anyShipped) {
-      newStatus = 'partially_shipped';
-    }
-
-    await salesOrdersService.updateSOStatus(organizationId, userId, soId, newStatus, tx);
+    await salesOrdersService.reconcileFulfillment(organizationId, userId, soId, tx);
   }
 
   /**

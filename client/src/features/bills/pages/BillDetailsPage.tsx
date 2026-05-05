@@ -14,11 +14,13 @@ import * as React from 'react';
 import { toast } from 'sonner';
 
 import { useBill, useUpdateBillStatus } from '../hooks/bills.hooks';
+import { useEntityActivity } from '@/features/activity/hooks/activity.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
 import { DocumentSummary } from '@/components/shared/domain/DocumentSummary';
 import { DetailView } from '@/components/shared/DetailView';
+import { ActivityTimeline } from '@/components/shared/ActivityTimeline';
 import { StatusText } from '@/components/shared/domain/StatusText';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
@@ -48,6 +50,7 @@ export default function BillDetailsPage() {
   const { getPath } = useTenantPath();
   const { data: bill, isLoading, isError } = useBill(id);
   const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateBillStatus();
+  const { data: activityData, isLoading: isLoadingActivity } = useEntityActivity('bill', id);
 
   if (isLoading) {
     return (
@@ -144,12 +147,15 @@ export default function BillDetailsPage() {
       </PageHeader>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 lg:w-[400px] h-11 bg-muted/50 p-1">
+        <TabsList className="grid w-full grid-cols-3 lg:w-[600px] h-11 bg-muted/50 p-1">
           <TabsTrigger value="overview" className="data-[state=active]:shadow-sm">
             Overview
           </TabsTrigger>
           <TabsTrigger value="items" className="data-[state=active]:shadow-sm">
             Line Items ({bill.lines?.length || 0})
+          </TabsTrigger>
+          <TabsTrigger value="activity" className="data-[state=active]:shadow-sm">
+            Activity
           </TabsTrigger>
         </TabsList>
 
@@ -277,6 +283,21 @@ export default function BillDetailsPage() {
                   ))}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="activity" className="mt-6 animate-in fade-in-50 duration-500">
+          <Card className="border-muted-foreground/20 overflow-hidden shadow-sm">
+            <CardContent className="p-6">
+              <ActivityTimeline
+                items={
+                  (activityData ??
+                    []) as import('@/components/shared/ActivityTimeline').ActivityTimelineItem[]
+                }
+                isLoading={isLoadingActivity}
+                emptyMessage="No activity recorded for this bill yet."
+              />
             </CardContent>
           </Card>
         </TabsContent>

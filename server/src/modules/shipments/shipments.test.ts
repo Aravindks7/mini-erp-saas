@@ -29,6 +29,14 @@ vi.mock('../sequences/sequences.service.js', () => ({
   },
 }));
 
+vi.mock('../finance/posting.service.js', () => ({
+  PostingService: {
+    postInvoice: vi.fn().mockResolvedValue({ id: 'je-1' }),
+    postPayment: vi.fn().mockResolvedValue({ id: 'je-2' }),
+    postBill: vi.fn().mockResolvedValue({ id: 'je-3' }),
+  },
+}));
+
 vi.mock('../../db/index.js', () => {
   const mockTx = {
     insert: vi.fn(() => ({
@@ -46,6 +54,18 @@ vi.mock('../../db/index.js', () => {
       },
       salesOrderLines: {
         findMany: vi.fn().mockResolvedValue([]),
+        findFirst: vi.fn().mockResolvedValue({ id: '1', quantity: '100', shipmentLines: [] }),
+      },
+      salesOrders: {
+        findFirst: vi
+          .fn()
+          .mockResolvedValue({
+            id: '1',
+            status: 'approved',
+            lines: [],
+            invoices: [],
+            shipments: [],
+          }),
       },
     },
     update: vi.fn(() => ({

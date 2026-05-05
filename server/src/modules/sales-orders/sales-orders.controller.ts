@@ -112,3 +112,35 @@ export async function bulkDeleteSOs(req: Request, res: Response) {
     });
   }
 }
+
+export async function updateSOStatus(req: Request, res: Response) {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!status) {
+    return res.status(400).json({ error: 'Status is required' });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    const updatedSO = await salesOrdersService.updateSOStatus(
+      organizationId,
+      userId,
+      id as string,
+      status,
+    );
+    res.json(updatedSO);
+  } catch (error: unknown) {
+    logger.error(
+      { error, organizationId, userId, id, status },
+      'Failed to update sales order status',
+    );
+    res
+      .status(400)
+      .json({
+        error: error instanceof Error ? error.message : 'Failed to update sales order status',
+      });
+  }
+}

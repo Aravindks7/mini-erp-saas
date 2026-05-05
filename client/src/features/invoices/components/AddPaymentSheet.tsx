@@ -1,3 +1,5 @@
+import * as React from 'react';
+import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CreditCard, Banknote, Link as LinkIcon, Loader2, CheckCircle2 } from 'lucide-react';
@@ -16,7 +18,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form } from '@/components/shared/form/Form';
 import { FormField } from '@/components/shared/form/FormField';
 import { AmountInput } from '@/components/shared/form/AmountInput';
-import { DatePicker } from '@/components/shared/form/DatePicker';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -36,8 +37,24 @@ export function AddPaymentSheet({ invoice, isOpen, onClose }: AddPaymentSheetPro
 
   const balanceDue = Number(invoice.balanceDue ?? invoice.totalAmount);
 
+  const paymentSchema = React.useMemo(() => {
+    return createPaymentSchema.superRefine((data, ctx) => {
+      const amount = Number(data.amount);
+      if (amount > balanceDue) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Amount cannot exceed the balance due (${new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+          }).format(balanceDue)})`,
+          path: ['amount'],
+        });
+      }
+    });
+  }, [balanceDue]);
+
   const form = useForm<CreatePaymentInput>({
-    resolver: zodResolver(createPaymentSchema),
+    resolver: zodResolver(paymentSchema) as any,
     defaultValues: {
       paymentType: 'inbound',
       paymentMethod: 'bank_transfer',
@@ -45,7 +62,6 @@ export function AddPaymentSheet({ invoice, isOpen, onClose }: AddPaymentSheetPro
       paymentDate: new Date(),
       invoiceId: invoice.id,
       customerId: invoice.customerId,
-      status: 'completed',
     },
   });
 
@@ -120,19 +136,16 @@ export function AddPaymentSheet({ invoice, isOpen, onClose }: AddPaymentSheetPro
             </TabsList>
 
             <TabsContent value="manual" className="space-y-6">
-              <Form form={form} onSubmit={onManualSubmit} className="space-y-6">
+              <Form<CreatePaymentInput, any>
+                form={form}
+                onSubmit={onManualSubmit}
+                className="space-y-6"
+              >
                 {() => (
                   <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField name="amount" label="Payment Amount">
-                        {({ field }) => <AmountInput {...field} currency="USD" />}
-                      </FormField>
-                      <FormField name="paymentDate" label="Date Received">
-                        {({ field }) => (
-                          <DatePicker value={field.value} onChange={field.onChange} />
-                        )}
-                      </FormField>
-                    </div>
+                    <FormField name="amount" label="Payment Amount">
+                      {({ field }) => <AmountInput {...field} currency="USD" />}
+                    </FormField>
 
                     <FormField name="paymentMethod" label="Payment Method">
                       {({ field }) => (
@@ -170,7 +183,7 @@ export function AddPaymentSheet({ invoice, isOpen, onClose }: AddPaymentSheetPro
                       <Button type="button" variant="ghost" onClick={onClose}>
                         Cancel
                       </Button>
-                      <Button type="submit" isLoading={createPaymentMutation.isPending}>
+                      <Button type="submit" loading={createPaymentMutation.isPending}>
                         Record Payment
                       </Button>
                     </ResponsiveDrawerFooter>

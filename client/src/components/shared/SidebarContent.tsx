@@ -9,7 +9,7 @@ import { useTenant } from '@/contexts/TenantContext';
 import { buildSidebarTree, type SidebarItem } from '@/lib/navigation-utils';
 import { SidebarGroup } from './SidebarGroup';
 import { SidebarHoverGroup } from './SidebarHoverGroup';
-import { Search } from 'lucide-react';
+import { SearchInput } from './SearchInput';
 import { useSignOutMutation } from '@/features/auth/hooks/auth.hooks';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { useState } from 'react';
@@ -109,14 +109,13 @@ export function SidebarContent({ onItemClick, isCollapsed, toggle }: SidebarCont
       </div>
 
       {!isCollapsed && (
-        <div className="px-4 mb-4 relative">
-          <Search className="absolute left-7 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 shrink-0" />
-          <input
-            type="text"
+        <div className="px-4 mb-4">
+          <SearchInput
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-9 pl-9 pr-3 rounded-lg bg-muted/40 border border-border/50 text-sm font-normal text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all"
+            onClear={() => setSearchQuery('')}
+            className="bg-muted/40 text-foreground placeholder:text-muted-foreground/60"
           />
         </div>
       )}

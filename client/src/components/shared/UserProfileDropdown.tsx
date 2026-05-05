@@ -1,5 +1,7 @@
 import { User, UserPlus, Bell, MessageSquare, Activity, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { useTenantPath } from '@/hooks/useTenantPath';
 import { useSignOutMutation } from '@/features/auth/hooks/auth.hooks';
 import {
   DropdownMenu,
@@ -10,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatar } from './UserAvatar';
 import { ThemeToggle } from './ThemeToggle';
 import { cn } from '@/lib/utils';
 
@@ -21,28 +23,17 @@ interface UserProfileDropdownProps {
 export function UserProfileDropdown({ className }: UserProfileDropdownProps) {
   const { data: session } = useAuth();
   const { mutate: handleSignOut } = useSignOutMutation();
+  const navigate = useNavigate();
+  const { getPath } = useTenantPath();
 
   const user = session?.user;
-  const initials = user?.name
-    ? user.name
-        .split(' ')
-        .map((n) => n[0])
-        .slice(0, 2)
-        .join('')
-        .toUpperCase()
-    : 'U';
 
   return (
     <div className={cn('flex items-center', className)}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="flex items-center justify-center rounded-full hover:ring-2 hover:ring-primary/20 transition-all duration-200 outline-none">
-            <Avatar className="size-9 border-2 border-background shadow-sm transition-colors">
-              <AvatarImage src={user?.image || undefined} alt={user?.name || 'User'} />
-              <AvatarFallback className="bg-primary/5 text-primary text-xs font-semibold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+            <UserAvatar user={user} size="md" />
           </button>
         </DropdownMenuTrigger>
 
@@ -55,12 +46,7 @@ export function UserProfileDropdown({ className }: UserProfileDropdownProps) {
           <DropdownMenuLabel className="p-3 font-normal">
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3">
-                <Avatar size="lg" className="size-12 border-2 border-background shadow-md">
-                  <AvatarImage src={user?.image || undefined} alt={user?.name || 'User'} />
-                  <AvatarFallback className="bg-primary/5 text-primary text-sm font-bold">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
+                <UserAvatar user={user} size="lg" className="size-12 shadow-md" />
                 <div className="flex flex-col min-w-0">
                   <span className="text-base font-bold truncate tracking-tight text-foreground">
                     {user?.name || 'User Name'}
@@ -102,7 +88,10 @@ export function UserProfileDropdown({ className }: UserProfileDropdownProps) {
               <MessageSquare size={18} className="mr-2 text-muted-foreground/80" />
               <span className="font-medium">Help Center</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="py-2.5 px-3 rounded-xl cursor-pointer">
+            <DropdownMenuItem
+              className="py-2.5 px-3 rounded-xl cursor-pointer"
+              onClick={() => navigate(getPath('/activity'))}
+            >
               <Activity size={18} className="mr-2 text-muted-foreground/80" />
               <span className="font-medium">Activity</span>
             </DropdownMenuItem>

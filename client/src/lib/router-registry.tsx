@@ -22,6 +22,7 @@ import { accountRoutes } from '@/features/accounts/routes';
 import { journalEntryRoutes } from '@/features/journal-entries/routes';
 import { financeReportsRoutes } from '@/features/finance-reports/routes';
 import { settingsRoutes } from '@/features/settings/routes';
+import { activityRoutes } from '@/features/activity/routes';
 
 /**
  * Registry of all dashboard-internal routes.
@@ -49,6 +50,7 @@ export const dashboardRoutes: AppRoute[] = [
   ...journalEntryRoutes,
   ...financeReportsRoutes,
   ...settingsRoutes,
+  ...activityRoutes,
 ];
 
 /**

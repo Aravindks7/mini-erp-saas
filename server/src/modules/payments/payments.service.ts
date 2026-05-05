@@ -4,6 +4,8 @@ import { and, eq, sql, desc } from 'drizzle-orm';
 import { CreatePaymentInput } from '#shared/contracts/payments.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 import { stripe } from '../../lib/stripe.js';
+import { InvoiceReconciler } from '../invoices/invoices.reconciler.js';
+import { BillReconciler } from '../bills/bills.reconciler.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -142,11 +144,11 @@ export class PaymentsService extends BaseService<typeof payments> {
 
       // 4. Reconcile Invoice (or Bill)
       if (intent.invoiceId) {
-        await this.reconcileInvoiceStatus(
+        await InvoiceReconciler.reconcilePayment(
           intent.organizationId,
           intent.createdBy || 'system',
           intent.invoiceId,
-          tx,
+          tx as Transaction,
         );
       }
 
@@ -186,6 +188,62 @@ export class PaymentsService extends BaseService<typeof payments> {
     txIn?: Transaction | typeof db,
   ) {
     const operation = async (tx: Transaction | typeof db) => {
+      // 0. Pre-flight Balance Validation
+      if (data.invoiceId) {
+        const invoice = await tx.query.invoices.findFirst({
+          where: and(eq(invoices.id, data.invoiceId), eq(invoices.organizationId, organizationId)),
+        });
+
+        if (invoice) {
+          const totalPaidResult = await tx
+            .select({ total: sql<string>`sum(amount)` })
+            .from(payments)
+            .where(
+              and(
+                eq(payments.invoiceId, data.invoiceId),
+                eq(payments.organizationId, organizationId),
+                eq(payments.status, 'completed'),
+              ),
+            );
+
+          const totalPaid = Number(totalPaidResult[0]?.total || 0);
+          const remaining = Number(invoice.totalAmount) - totalPaid;
+
+          if (Number(data.amount) > remaining + 0.01) {
+            // Small buffer for floating point
+            throw new Error(
+              `Over-payment violation: Invoice has only ${remaining.toFixed(2)} remaining, but ${Number(data.amount).toFixed(2)} was requested.`,
+            );
+          }
+        }
+      } else if (data.billId) {
+        const bill = await tx.query.bills.findFirst({
+          where: and(eq(bills.id, data.billId), eq(bills.organizationId, organizationId)),
+        });
+
+        if (bill) {
+          const totalPaidResult = await tx
+            .select({ total: sql<string>`sum(amount)` })
+            .from(payments)
+            .where(
+              and(
+                eq(payments.billId, data.billId),
+                eq(payments.organizationId, organizationId),
+                eq(payments.status, 'completed'),
+              ),
+            );
+
+          const totalPaid = Number(totalPaidResult[0]?.total || 0);
+          const remaining = Number(bill.totalAmount) - totalPaid;
+
+          if (Number(data.amount) > remaining + 0.01) {
+            throw new Error(
+              `Over-payment violation: Bill has only ${remaining.toFixed(2)} remaining, but ${Number(data.amount).toFixed(2)} was requested.`,
+            );
+          }
+        }
+      }
+
       // 1. Insert Payment record
       const [payment] = await tx
         .insert(payments)
@@ -207,13 +265,23 @@ export class PaymentsService extends BaseService<typeof payments> {
 
       // 1a. Post to GL
       const { PostingService } = await import('../finance/posting.service.js');
-      await PostingService.postPayment(payment.id, organizationId);
+      await PostingService.postPayment(payment.id, organizationId, tx);
 
       // 2. Handle status updates for linked documents
       if (data.invoiceId) {
-        await this.reconcileInvoiceStatus(organizationId, userId, data.invoiceId, tx);
+        await InvoiceReconciler.reconcilePayment(
+          organizationId,
+          userId,
+          data.invoiceId,
+          tx as Transaction,
+        );
       } else if (data.billId) {
-        await this.reconcileBillStatus(organizationId, userId, data.billId, tx);
+        await BillReconciler.reconcilePayment(
+          organizationId,
+          userId,
+          data.billId,
+          tx as Transaction,
+        );
       }
 
       return await this.getPaymentById(organizationId, payment.id, tx);
@@ -243,9 +311,19 @@ export class PaymentsService extends BaseService<typeof payments> {
         .where(and(eq(payments.id, id), eq(payments.organizationId, organizationId)));
 
       if (payment.invoiceId) {
-        await this.reconcileInvoiceStatus(organizationId, userId, payment.invoiceId, tx);
+        await InvoiceReconciler.reconcilePayment(
+          organizationId,
+          userId,
+          payment.invoiceId,
+          tx as Transaction,
+        );
       } else if (payment.billId) {
-        await this.reconcileBillStatus(organizationId, userId, payment.billId, tx);
+        await BillReconciler.reconcilePayment(
+          organizationId,
+          userId,
+          payment.billId,
+          tx as Transaction,
+        );
       }
 
       return true;
@@ -274,100 +352,14 @@ export class PaymentsService extends BaseService<typeof payments> {
       }
 
       for (const invId of invoiceIds) {
-        await this.reconcileInvoiceStatus(organizationId, userId, invId, tx);
+        await InvoiceReconciler.reconcilePayment(organizationId, userId, invId, tx as Transaction);
       }
       for (const bId of billIds) {
-        await this.reconcileBillStatus(organizationId, userId, bId, tx);
+        await BillReconciler.reconcilePayment(organizationId, userId, bId, tx as Transaction);
       }
 
       return true;
     });
-  }
-
-  private async reconcileInvoiceStatus(
-    organizationId: string,
-    userId: string,
-    invoiceId: string,
-    tx: Transaction | typeof db,
-  ) {
-    const invoice = await tx.query.invoices.findFirst({
-      where: and(eq(invoices.id, invoiceId), eq(invoices.organizationId, organizationId)),
-    });
-
-    if (!invoice) return;
-
-    const totalPaidResult = await tx
-      .select({ total: sql<string>`sum(amount)` })
-      .from(payments)
-      .where(
-        and(
-          eq(payments.invoiceId, invoiceId),
-          eq(payments.organizationId, organizationId),
-          eq(payments.status, 'completed'),
-        ),
-      );
-
-    const totalPaid = Number(totalPaidResult[0]?.total || 0);
-    const totalAmount = Number(invoice.totalAmount);
-    const balanceDue = Math.max(0, totalAmount - totalPaid);
-
-    let newStatus: 'open' | 'partially_paid' | 'paid' = 'open';
-    if (totalPaid >= totalAmount) {
-      newStatus = 'paid';
-    } else if (totalPaid > 0) {
-      newStatus = 'partially_paid';
-    }
-
-    await tx
-      .update(invoices)
-      .set(
-        this.withAudit(
-          {
-            status: newStatus,
-            balanceDue: balanceDue.toString(),
-          },
-          userId,
-          true,
-        ),
-      )
-      .where(eq(invoices.id, invoiceId));
-  }
-
-  private async reconcileBillStatus(
-    organizationId: string,
-    userId: string,
-    billId: string,
-    tx: Transaction | typeof db,
-  ) {
-    const bill = await tx.query.bills.findFirst({
-      where: and(eq(bills.id, billId), eq(bills.organizationId, organizationId)),
-    });
-
-    if (!bill) return;
-
-    const totalPaidResult = await tx
-      .select({ total: sql<string>`sum(amount)` })
-      .from(payments)
-      .where(
-        and(
-          eq(payments.billId, billId),
-          eq(payments.organizationId, organizationId),
-          eq(payments.status, 'completed'),
-        ),
-      );
-
-    const totalPaid = Number(totalPaidResult[0]?.total || 0);
-    const totalAmount = Number(bill.totalAmount);
-
-    let newStatus: 'open' | 'paid' = 'open';
-    if (totalPaid >= totalAmount) {
-      newStatus = 'paid';
-    }
-
-    await tx
-      .update(bills)
-      .set(this.withAudit({ status: newStatus }, userId, true))
-      .where(eq(bills.id, billId));
   }
 }
 

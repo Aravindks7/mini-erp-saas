@@ -11,7 +11,7 @@ export const createShipmentSchema = z.object({
       z.object({
         salesOrderLineId: z.string().uuid('Invalid Sales Order Line ID'),
         productId: z.string().uuid('Invalid Product ID'),
-        warehouseId: z.string().uuid('Invalid Warehouse ID'),
+        warehouseId: z.string().uuid('Please select a source warehouse'),
         binId: z.string().uuid('Invalid Bin ID').optional().nullable(),
         quantityShipped: z
           .string()

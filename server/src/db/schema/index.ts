@@ -62,3 +62,4 @@ export * from './accounts.schema.js';
 export * from './journal-entries.schema.js';
 export * from './journal-entry-lines.schema.js';
 export * from './finance-reports.schema.js';
+export * from './activity-logs.schema.js';

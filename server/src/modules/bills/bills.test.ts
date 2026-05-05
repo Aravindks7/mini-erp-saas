@@ -29,11 +29,22 @@ vi.mock('../sequences/sequences.service.js', () => ({
   },
 }));
 
+vi.mock('../finance/posting.service.js', () => ({
+  PostingService: {
+    postInvoice: vi.fn().mockResolvedValue({ id: 'je-1' }),
+    postPayment: vi.fn().mockResolvedValue({ id: 'je-2' }),
+    postBill: vi.fn().mockResolvedValue({ id: 'je-3' }),
+  },
+}));
+
 vi.mock('../../db/index.js', () => {
   const mockTx = {
     query: {
       bills: {
-        findFirst: vi.fn(),
+        findFirst: vi
+          .fn()
+          .mockResolvedValueOnce({ id: 'bill-123', status: 'draft', documentNumber: 'BIL-001' })
+          .mockResolvedValue({ id: 'bill-123', status: 'open', documentNumber: 'BIL-001' }),
       },
       receipts: {
         findFirst: vi.fn(),

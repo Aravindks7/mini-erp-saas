@@ -4,6 +4,7 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import { CreateBillInput, UpdateBillStatusInput } from '#shared/contracts/bills.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 import { sequencesService } from '../sequences/sequences.service.js';
+import { BillReconciler, BillStatus } from './bills.reconciler.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -110,7 +111,7 @@ export class BillsService extends BaseService<typeof bills> {
       // If created as 'open', post to GL
       if (bill.status === 'open') {
         const { PostingService } = await import('../finance/posting.service.js');
-        await PostingService.postBill(bill.id, organizationId);
+        await PostingService.postBill(bill.id, organizationId, tx);
       }
 
       return await this.getBillById(organizationId, bill.id, tx);
@@ -183,18 +184,16 @@ export class BillsService extends BaseService<typeof bills> {
     data: UpdateBillStatusInput,
   ) {
     return await db.transaction(async (tx) => {
-      const [updated] = await tx
-        .update(bills)
-        .set(this.withAudit({ status: data.status }, userId, true))
-        .where(and(eq(bills.id, id), eq(bills.organizationId, organizationId)))
-        .returning();
+      await BillReconciler.updateStatus(
+        organizationId,
+        userId,
+        id,
+        data.status as BillStatus,
+        'Manual status update',
+        tx as Transaction,
+      );
 
-      if (updated && data.status === 'open') {
-        const { PostingService } = await import('../finance/posting.service.js');
-        await PostingService.postBill(id, organizationId);
-      }
-
-      return updated;
+      return await this.getBillById(organizationId, id, tx);
     });
   }
 
@@ -238,13 +237,16 @@ export class BillsService extends BaseService<typeof bills> {
           );
         }
 
-        // Transition status to void (Do NOT soft-delete)
-        const [updated] = await tx
-          .update(bills)
-          .set(this.withAudit({ status: 'void' }, userId, true))
-          .where(and(eq(bills.id, id), eq(bills.organizationId, organizationId)))
-          .returning();
-        return updated;
+        // Transition status to void using reconciler
+        await BillReconciler.updateStatus(
+          organizationId,
+          userId,
+          id,
+          'void',
+          'Bill manually voided',
+          tx as Transaction,
+        );
+        return await this.getBillById(organizationId, id, tx);
       }
     };
 

@@ -4,6 +4,7 @@ import * as React from 'react';
 
 import { usePurchaseOrder } from '../hooks/purchase-orders.hooks';
 import { useReceipts } from '@/features/receipts/hooks/receipts.hooks';
+import { useEntityActivity } from '@/features/activity/hooks/activity.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -24,6 +25,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { DetailView } from '@/components/shared/DetailView';
+import { ActivityTimeline } from '@/components/shared/ActivityTimeline';
 
 export default function PurchaseOrderDetailsPage() {
   const { id } = useParams();
@@ -32,6 +34,10 @@ export default function PurchaseOrderDetailsPage() {
   const { data: po, isLoading, isError } = usePurchaseOrder(id);
 
   const [isReceiveSheetOpen, setIsReceiveSheetOpen] = React.useState(false);
+  const { data: activityData, isLoading: isLoadingActivity } = useEntityActivity(
+    'purchase_order',
+    id,
+  );
 
   if (isLoading) {
     return (
@@ -101,7 +107,7 @@ export default function PurchaseOrderDetailsPage() {
       </PageHeader>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 lg:w-[600px] h-11 bg-muted/50 p-1">
+        <TabsList className="grid w-full grid-cols-4 lg:w-[700px] h-11 bg-muted/50 p-1">
           <TabsTrigger value="overview" className="data-[state=active]:shadow-sm">
             Overview
           </TabsTrigger>
@@ -110,6 +116,9 @@ export default function PurchaseOrderDetailsPage() {
           </TabsTrigger>
           <TabsTrigger value="receipts" className="data-[state=active]:shadow-sm">
             Receipts History
+          </TabsTrigger>
+          <TabsTrigger value="activity" className="data-[state=active]:shadow-sm">
+            Activity
           </TabsTrigger>
         </TabsList>
 
@@ -254,6 +263,21 @@ export default function PurchaseOrderDetailsPage() {
           className="mt-6 space-y-6 animate-in slide-in-from-right-2 duration-300"
         >
           <ReceiptsHistory poId={po.id} />
+        </TabsContent>
+
+        <TabsContent value="activity" className="mt-6 animate-in fade-in-50 duration-500">
+          <Card className="border-muted-foreground/20 overflow-hidden shadow-sm">
+            <CardContent className="p-6">
+              <ActivityTimeline
+                items={
+                  (activityData ??
+                    []) as import('@/components/shared/ActivityTimeline').ActivityTimelineItem[]
+                }
+                isLoading={isLoadingActivity}
+                emptyMessage="No activity recorded for this purchase order yet."
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

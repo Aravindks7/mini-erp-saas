@@ -5,6 +5,7 @@ export const salesOrderStatusEnumSchema = z.enum([
   'approved',
   'partially_shipped',
   'shipped',
+  'closed',
   'cancelled',
 ]);
 

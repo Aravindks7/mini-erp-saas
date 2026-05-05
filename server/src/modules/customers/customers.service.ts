@@ -11,6 +11,7 @@ import {
   UpdateCustomerInput,
 } from '#shared/contracts/customers.contract.js';
 
+import { ActivityLogger } from '../../lib/activity-logger.js';
 import { BaseService } from '../../lib/base.service.js';
 import { parseCsv } from '../../utils/csv.js';
 
@@ -86,6 +87,16 @@ export class CustomersService extends BaseService<typeof customers> {
       if (!newCustomer) {
         throw new Error('Failed to create customer record');
       }
+
+      // 2. Log Activity
+      await ActivityLogger.record(tx, {
+        organizationId,
+        userId,
+        entityType: 'customer',
+        entityId: newCustomer.id,
+        action: 'CREATED',
+        reason: `${newCustomer.companyName} created.`,
+      });
 
       // 2. Handle Addresses
       if (addressData && addressData.length > 0) {

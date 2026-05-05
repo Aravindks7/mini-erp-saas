@@ -7,6 +7,10 @@ import { sequencesService } from '../sequences/sequences.service.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
+import { PurchaseOrderReconciler, POStatus } from './purchase-orders.reconciler.js';
+
+export type { POStatus };
+
 /**
  * PurchaseOrdersService: Orchestrates supplier procurement workflows.
  * Axiom: A PO tracks commitment, and "Receiving" it triggers physical stock intake.
@@ -187,26 +191,24 @@ export class PurchaseOrdersService extends BaseService<typeof purchaseOrders> {
   }
 
   /**
-   * Updates the status of a Purchase Order.
+   * Updates the status of a Purchase Order with transition validation and activity logging.
    */
   async updatePOStatus(
     organizationId: string,
     userId: string,
     id: string,
-    status: 'draft' | 'sent' | 'partially_received' | 'received' | 'cancelled',
+    status: POStatus,
     txIn?: Transaction | typeof db,
   ) {
     const operation = async (tx: Transaction | typeof db) => {
-      const [updated] = await tx
-        .update(purchaseOrders)
-        .set(this.withAudit({ status }, userId, true))
-        .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.organizationId, organizationId)))
-        .returning();
-
-      if (!updated) {
-        throw new Error('Purchase order not found or update failed');
-      }
-      return updated;
+      return await PurchaseOrderReconciler.updateStatus(
+        organizationId,
+        userId,
+        id,
+        status,
+        'Manual status update',
+        tx as Transaction,
+      );
     };
 
     if (txIn) return await operation(txIn);
