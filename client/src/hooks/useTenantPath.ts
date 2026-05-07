@@ -1,5 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useCallback } from 'react';
+import { getTenantPath } from '@/lib/path-utils';
 
 /**
  * Hook to handle tenant-aware navigation and path generation.
@@ -14,15 +15,7 @@ export function useTenantPath() {
    */
   const getPath = useCallback(
     (path: string) => {
-      if (!slug) return path;
-      const cleanPath = path.startsWith('/') ? path : `/${path}`;
-
-      // IDEMPOTENCY CHECK: If the path already starts with /slug/ or is exactly /slug, return it as is.
-      if (cleanPath === `/${slug}` || cleanPath.startsWith(`/${slug}/`)) {
-        return cleanPath;
-      }
-
-      return `/${slug}${cleanPath}`;
+      return getTenantPath(path, slug);
     },
     [slug],
   );

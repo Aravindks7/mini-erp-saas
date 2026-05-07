@@ -20,6 +20,7 @@ import { columns, receiptStatusOptions } from './columns';
 import { useReceipts, useBulkDeleteReceipts } from '../hooks/receipts.hooks';
 import { PageHeader } from '@/components/shared/PageHeader';
 import type { ReceiptResponse } from '../api/receipts.api';
+import { APP_PATHS } from '@/lib/paths';
 
 const searchSchema = z.object({
   receiptNumber: z.string().optional(),
@@ -75,7 +76,7 @@ export function ReceiptList() {
         >
           <div className="flex items-center justify-center gap-4">
             <AddButton
-              to="/receipts/new"
+              to={APP_PATHS.purchasing.receipts.new()}
               permission={PERMISSIONS.INVENTORY.RECEIVE}
               label="Create Receipt"
               className="shadow-lg shadow-primary/20"
@@ -99,7 +100,7 @@ export function ReceiptList() {
     }
   };
 
-  const handleAddClick = () => navigate(getPath('/receipts/new'));
+  const handleAddClick = () => navigate(getPath(APP_PATHS.purchasing.receipts.new()));
 
   return (
     <>
@@ -119,7 +120,7 @@ export function ReceiptList() {
         onReset={resetAll}
         headerActions={
           <AddButton
-            to="/receipts/new"
+            to={APP_PATHS.purchasing.receipts.new()}
             permission={PERMISSIONS.INVENTORY.RECEIVE}
             label="Create Receipt"
           />

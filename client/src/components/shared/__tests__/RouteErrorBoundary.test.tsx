@@ -2,6 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { RouteErrorBoundary } from '../RouteErrorBoundary';
 import { useRouteError, isRouteErrorResponse, useNavigate } from 'react-router-dom';
+import { APP_PATHS } from '@/lib/paths';
 
 // Mock react-router-dom
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -54,7 +55,7 @@ describe('RouteErrorBoundary Component', () => {
     expect(screen.getByText(/401 - Unauthorized/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Try Again/i }));
-    expect(mockNavigate).toHaveBeenCalledWith('/login');
+    expect(mockNavigate).toHaveBeenCalledWith(APP_PATHS.auth.login());
   });
 
   it('should render generic unexpected error state', () => {

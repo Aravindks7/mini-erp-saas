@@ -9,6 +9,7 @@ import { useTenantPath } from '@/hooks/useTenantPath';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 import type { InvoiceResponse } from '../api/invoices.api';
 import { useDeleteInvoice } from '../hooks/invoices.hooks';
+import { APP_PATHS } from '@/lib/paths';
 
 interface InvoiceRowActionsProps {
   row: { original: InvoiceResponse };
@@ -23,7 +24,6 @@ export function InvoiceRowActions({ row, onAddPayment }: InvoiceRowActionsProps)
   const invoice = row.original;
 
   const isDraft = invoice.status === 'draft';
-  const isVoid = invoice.status === 'void';
   const actionLabel = isDraft ? 'Delete' : 'Void';
 
   const handleDelete = () => {
@@ -36,7 +36,7 @@ export function InvoiceRowActions({ row, onAddPayment }: InvoiceRowActionsProps)
     {
       label: 'View',
       icon: <Eye className="h-4 w-4" />,
-      onClick: () => navigate(getPath(`/invoices/${invoice.id}`)),
+      onClick: () => navigate(getPath(APP_PATHS.sales.invoices.detail(invoice.id))),
       tooltip: 'View Details',
     },
   ];
@@ -46,7 +46,7 @@ export function InvoiceRowActions({ row, onAddPayment }: InvoiceRowActionsProps)
       {
         label: 'Edit',
         icon: <FileEdit className="h-4 w-4" />,
-        onClick: () => navigate(getPath(`/invoices/${invoice.id}/edit`)),
+        onClick: () => navigate(getPath(APP_PATHS.sales.invoices.edit(invoice.id))),
         tooltip: 'Edit Invoice',
       },
       {
@@ -93,7 +93,6 @@ export function InvoiceRowActions({ row, onAddPayment }: InvoiceRowActionsProps)
         }
         isLoading={deleteStatus === 'pending'}
         confirmLabel={actionLabel}
-        variant={isDraft ? 'destructive' : 'default'}
       />
     </>
   );

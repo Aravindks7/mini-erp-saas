@@ -1,6 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { CreditCard, Building, FileText, Info } from 'lucide-react';
-import * as React from 'react';
 
 import { formatDate } from '@shared/utils/date';
 import { PageContainer } from '@/components/shared/PageContainer';
@@ -14,11 +13,12 @@ import { DetailView } from '@/components/shared/DetailView';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePayment } from '../hooks/payments.hooks';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 const paymentStatusMap: StatusMap<string> = {
   pending: { label: 'Pending', tone: 'warning' },
   completed: { label: 'Completed', tone: 'success' },
-  failed: { label: 'Failed', tone: 'destructive' },
+  failed: { label: 'Failed', tone: 'danger' },
   refunded: { label: 'Refunded', tone: 'neutral' },
 };
 
@@ -36,7 +36,7 @@ export default function PaymentDetailsPage() {
   if (isLoading) {
     return (
       <PageContainer>
-        <SkeletonLoader variant="details" rows={4} />
+        <SkeletonLoader variant="form" rows={4} />
       </PageContainer>
     );
   }
@@ -63,7 +63,10 @@ export default function PaymentDetailsPage() {
       <PageHeader
         title={`Payment: ${payment.referenceNumber || 'Details'}`}
         description={`Transaction recorded on ${formatDate(payment.createdAt)}`}
-        backButton={{ onClick: () => navigate(getPath('/payments')), label: 'Back to List' }}
+        backButton={{
+          onClick: () => navigate(getPath(APP_PATHS.finance.payments.list())),
+          label: 'Back to List',
+        }}
       >
         <div className="hidden sm:block ml-4 border-l pl-4 flex gap-2">
           <StatusBadge value={payment.status} statusMap={paymentStatusMap} />

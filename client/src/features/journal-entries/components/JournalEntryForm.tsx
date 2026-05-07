@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Calendar } from 'lucide-react';
 
@@ -22,7 +22,7 @@ interface JournalEntryFormProps {
 
 export function JournalEntryForm({ onSubmit, formId }: JournalEntryFormProps) {
   const form = useForm<CreateJournalEntryInput>({
-    resolver: zodResolver(createJournalEntrySchema),
+    resolver: zodResolver(createJournalEntrySchema) as Resolver<CreateJournalEntryInput>,
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       reference: '',
@@ -36,8 +36,7 @@ export function JournalEntryForm({ onSubmit, formId }: JournalEntryFormProps) {
 
   return (
     <Form<CreateJournalEntryInput, typeof createJournalEntrySchema>
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      form={form as any}
+      form={form}
       onSubmit={onSubmit}
       id={formId}
       schema={createJournalEntrySchema}

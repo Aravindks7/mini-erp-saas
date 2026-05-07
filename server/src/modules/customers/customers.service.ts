@@ -94,6 +94,8 @@ export class CustomersService extends BaseService<typeof customers> {
         userId,
         entityType: 'customer',
         entityId: newCustomer.id,
+        entityDisplayId: newCustomer.companyName,
+        entityLabel: 'Customer',
         action: 'CREATED',
         reason: `${newCustomer.companyName} created.`,
       });

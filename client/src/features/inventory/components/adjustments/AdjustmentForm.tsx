@@ -9,16 +9,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Form } from '@/components/shared/form/Form';
 import { FormField } from '@/components/shared/form/FormField';
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect';
+import { DatePicker } from '@/components/shared/form/DatePicker';
 import { Separator } from '@/components/ui/separator';
 
-import type { CreateAdjustmentInput } from '@mini-erp/shared';
-import { createAdjustmentSchema } from '@mini-erp/shared';
+import type { CreateInventoryAdjustmentInput } from '@shared/contracts/inventory-adjustments.contract';
+import { createInventoryAdjustmentSchema } from '@shared/contracts/inventory-adjustments.contract';
 import { useProducts } from '@/features/products/hooks/products.hooks';
 import { useWarehouses } from '@/features/warehouses/hooks/warehouses.hooks';
 
 interface AdjustmentFormProps {
-  form: UseFormReturn<CreateAdjustmentInput, unknown>;
-  onSubmit: (data: CreateAdjustmentInput) => Promise<void>;
+  form: UseFormReturn<CreateInventoryAdjustmentInput>;
+  onSubmit: (data: CreateInventoryAdjustmentInput) => Promise<void>;
   formId?: string;
 }
 
@@ -54,13 +55,13 @@ export function AdjustmentForm({ form, onSubmit, formId }: AdjustmentFormProps) 
     append({
       productId: '',
       warehouseId: firstWh?.id || '',
-      binId: firstWh?.bins?.[0]?.id || '',
-      quantityChange: '1',
+      binId: (firstWh?.bins?.[0]?.id as string) || '',
+      quantityVariance: 1, // Using number as expected by schema
     });
   };
 
   return (
-    <Form<CreateAdjustmentInput, typeof createAdjustmentSchema>
+    <Form<CreateInventoryAdjustmentInput, typeof createInventoryAdjustmentSchema>
       form={form}
       onSubmit={onSubmit}
       id={formId}
@@ -79,7 +80,17 @@ export function AdjustmentForm({ form, onSubmit, formId }: AdjustmentFormProps) 
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
-              <div className="grid gap-6 sm:grid-cols-2">
+              <div className="grid gap-6 sm:grid-cols-3">
+                <FormField name="adjustmentDate" label="Adjustment Date">
+                  {({ field }) => (
+                    <DatePicker
+                      date={field.value ? new Date(field.value) : undefined}
+                      onChange={(date) => field.onChange(date?.toISOString())}
+                      className="w-full justify-start"
+                    />
+                  )}
+                </FormField>
+
                 <FormField name="reason" label="Reason">
                   {({ field }) => (
                     <Input {...field} placeholder="e.g. Annual Cycle Count, Damage, etc." />
@@ -144,7 +155,7 @@ interface LocalWarehouse {
 
 interface AdjustmentLineProps {
   index: number;
-  form: UseFormReturn<CreateAdjustmentInput, unknown>;
+  form: UseFormReturn<CreateInventoryAdjustmentInput, unknown>;
   productOptions: { label: string; value: string }[];
   warehouseOptions: { label: string; value: string }[];
   warehouses: LocalWarehouse[];
@@ -234,10 +245,18 @@ function AdjustmentLine({
 
         <div className="sm:col-span-2">
           <FormField
-            name={`lines.${index}.quantityChange`}
+            name={`lines.${index}.quantityVariance`}
             label={index === 0 ? 'Qty Change' : undefined}
           >
-            {({ field }) => <Input {...field} type="number" step="0.00000001" />}
+            {({ field }) => (
+              <Input
+                {...field}
+                type="number"
+                step="0.00000001"
+                onChange={(e) => field.onChange(e.target.value)}
+                value={field.value?.toString() ?? ''}
+              />
+            )}
           </FormField>
         </div>
 

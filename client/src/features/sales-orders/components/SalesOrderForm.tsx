@@ -1,5 +1,5 @@
 import { useWatch, type UseFormReturn } from 'react-hook-form';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Form } from '@/components/shared/form/Form';
 import { FormField } from '@/components/shared/form/FormField';
@@ -12,6 +12,7 @@ import {
   type CreateSalesOrderInput,
 } from '@shared/contracts/sales-orders.contract';
 import { useCustomers } from '@/features/customers/hooks/customers.hooks';
+import { CustomerFormSheet } from '@/features/customers/components/CustomerFormSheet';
 
 interface SalesOrderFormProps {
   form: UseFormReturn<CreateSalesOrderInput, undefined, CreateSalesOrderInput>;
@@ -20,6 +21,7 @@ interface SalesOrderFormProps {
 }
 
 export function SalesOrderForm({ form, onSubmit, formId }: SalesOrderFormProps) {
+  const [isCustomerSheetOpen, setIsCustomerSheetOpen] = useState(false);
   const { data: customers } = useCustomers();
 
   const lines = useWatch({
@@ -46,43 +48,57 @@ export function SalesOrderForm({ form, onSubmit, formId }: SalesOrderFormProps) 
   });
 
   return (
-    <Form<CreateSalesOrderInput, typeof createSalesOrderSchema>
-      form={form}
-      schema={createSalesOrderSchema}
-      onSubmit={onSubmit}
-      id={formId}
-    >
-      {() => (
-        <div className="space-y-8 pb-20">
-          <FormSection
-            title="Customer Information"
-            description="Select the customer placing this order."
-          >
-            <FormField name="customerId" label="Customer">
-              {({ field }) => (
-                <SearchableSelect
-                  {...field}
-                  options={customerOptions}
-                  placeholder="Select a Customer"
-                />
-              )}
-            </FormField>
-          </FormSection>
+    <>
+      <Form<CreateSalesOrderInput, typeof createSalesOrderSchema>
+        form={form}
+        schema={createSalesOrderSchema}
+        onSubmit={onSubmit}
+        id={formId}
+      >
+        {() => (
+          <div className="space-y-8 pb-20">
+            <FormSection
+              title="Customer Information"
+              description="Select the customer placing this order."
+            >
+              <FormField name="customerId" label="Customer">
+                {({ field }) => (
+                  <SearchableSelect
+                    {...field}
+                    options={customerOptions}
+                    placeholder="Select a Customer"
+                    action={{
+                      label: 'Add New Customer',
+                      onClick: () => setIsCustomerSheetOpen(true),
+                    }}
+                  />
+                )}
+              </FormField>
+            </FormSection>
 
-          <LineItemsSection control={form.control} name="lines" />
+            <LineItemsSection control={form.control} name="lines" />
 
-          <div className="flex justify-end pt-6 border-t">
-            <div className="text-right space-y-1">
-              <p className="text-sm text-muted-foreground font-medium uppercase tracking-wider">
-                Order Total
-              </p>
-              <p className="text-3xl font-bold tracking-tight text-primary">
-                {currencyFormatter.format(orderTotal)}
-              </p>
+            <div className="flex justify-end pt-6 border-t">
+              <div className="text-right space-y-1">
+                <p className="text-sm text-muted-foreground font-medium uppercase tracking-wider">
+                  Order Total
+                </p>
+                <p className="text-3xl font-bold tracking-tight text-primary">
+                  {currencyFormatter.format(orderTotal)}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </Form>
+        )}
+      </Form>
+
+      <CustomerFormSheet
+        isOpen={isCustomerSheetOpen}
+        onClose={() => setIsCustomerSheetOpen(false)}
+        onSuccess={(customerId) => {
+          form.setValue('customerId', customerId);
+        }}
+      />
+    </>
   );
 }

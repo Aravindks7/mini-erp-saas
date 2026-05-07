@@ -116,6 +116,11 @@ const ENTITY_CONFIG: Record<string, { color: string; icon: LucideIcon }> = {
       'text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/20 hover:bg-red-100 dark:hover:bg-red-500/20',
     icon: RefreshCcw,
   },
+  inventory_transfer: {
+    color:
+      'text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-500/10 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20',
+    icon: RefreshCcw,
+  },
   receipt: {
     color:
       'text-yellow-600 bg-yellow-50 border-yellow-200 dark:text-yellow-400 dark:bg-yellow-500/10 dark:border-yellow-500/20 hover:bg-yellow-100 dark:hover:bg-yellow-500/20',
@@ -143,14 +148,17 @@ function getEntityConfig(entityType: string) {
 }
 import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from './UserAvatar';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { Link } from 'react-router-dom';
+import { useTenantPath } from '@/hooks/useTenantPath';
 
 // Import feature status maps for rich status badge rendering
 import { invoiceStatusMap } from '@/features/invoices/components/columns';
 import { salesOrderStatusMap } from '@/features/sales-orders/components/columns';
 import { purchaseOrderStatusMap } from '@/features/purchase-orders/components/columns';
 import { billStatusMap } from '@/features/bills/components/columns';
+import { transferStatusMap, adjustmentStatusMap } from '@/features/inventory/config';
 
 /**
  * Resolves the appropriate status map for a given entity type.
@@ -165,6 +173,10 @@ function getStatusMap(entityType: string): StatusMap<string> | undefined {
       return purchaseOrderStatusMap;
     case 'bill':
       return billStatusMap;
+    case 'inventory_transfer':
+      return transferStatusMap;
+    case 'inventory_adjustment':
+      return adjustmentStatusMap;
     default:
       return undefined;
   }
@@ -174,6 +186,8 @@ export interface ActivityTimelineItem {
   id: string;
   entityType: string;
   entityId: string;
+  entityDisplayId: string;
+  entityLabel: string;
   action: string;
   reason: string | null;
   snapshot: Record<string, unknown> | null;
@@ -241,6 +255,28 @@ const ACTION_CONFIG: Record<string, { label: string; color: string; icon: Lucide
   },
 };
 
+const ENTITY_PATH_MAP: Record<string, string> = {
+  sales_order: 'sales-orders',
+  purchase_order: 'purchase-orders',
+  invoice: 'invoices',
+  bill: 'bills',
+  customer: 'customers',
+  supplier: 'suppliers',
+  product: 'products',
+  product_category: 'product-categories',
+  payment: 'payments',
+  payment_intent: 'payments',
+  user: 'settings/users',
+  role: 'settings/roles',
+  tax: 'taxes',
+  uom: 'uom',
+  warehouse: 'warehouses',
+  inventory_adjustment: 'inventory/adjustments',
+  inventory_transfer: 'inventory/transfers',
+  receipt: 'receipts',
+  journal_entry: 'journal-entries',
+};
+
 function getActionConfig(action: string) {
   return (
     ACTION_CONFIG[action] || {
@@ -287,6 +323,7 @@ export function ActivityTimeline({
   emptyMessage = 'No activity recorded yet.',
   className,
 }: ActivityTimelineProps) {
+  const { getPath } = useTenantPath();
   const groupedItems = useMemo(() => {
     const groups: { date: string; items: ActivityTimelineItem[] }[] = [];
     items.forEach((item) => {
@@ -354,50 +391,103 @@ export function ActivityTimeline({
 
                 const isLastGlobal = item.id === items[items.length - 1]?.id;
 
+                const hasStatus = Boolean(snapshot?.previousStatus && snapshot?.newStatus);
+                const otherDiffs = snapshot
+                  ? Object.entries(snapshot).filter(
+                      ([key, value]) =>
+                        key !== 'previousStatus' &&
+                        key !== 'newStatus' &&
+                        key !== 'documentNumber' &&
+                        typeof value === 'object' &&
+                        value !== null &&
+                        'old' in value &&
+                        'new' in value,
+                    )
+                  : [];
+                const hasVisibleSnapshot = hasStatus || otherDiffs.length > 0;
+
+                const entityBasePath = ENTITY_PATH_MAP[item.entityType];
+                const linkPath = entityBasePath
+                  ? getPath(`${entityBasePath}/${item.entityId}`)
+                  : null;
+
                 return (
                   <div key={item.id} className="group/item">
                     {/* Header Row: Naturally aligned by flex-center */}
                     <div className="flex items-center gap-4">
                       {/* Time */}
-                      <div className="w-16 shrink-0 text-right">
-                        <span className="text-[11px] font-medium text-muted-foreground tabular-nums leading-none">
-                          {new Date(item.createdAt).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: true,
-                          })}
-                        </span>
-                      </div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="w-16 shrink-0 text-right cursor-default">
+                            <span className="text-[11px] font-medium text-muted-foreground tabular-nums leading-none">
+                              {new Date(item.createdAt).toLocaleTimeString('en-US', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true,
+                              })}
+                            </span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          {format(new Date(item.createdAt), 'PPpp')}
+                        </TooltipContent>
+                      </Tooltip>
 
                       {/* Icon */}
-                      <div
-                        className={cn(
-                          'z-10 size-6 rounded-full border-2 border-background flex items-center justify-center shadow-sm shrink-0',
-                          config.color,
-                        )}
-                      >
-                        <Icon className="size-3" />
-                      </div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            className={cn(
+                              'z-10 size-6 rounded-full border-2 border-background flex items-center justify-center shadow-sm shrink-0 cursor-default',
+                              config.color,
+                            )}
+                          >
+                            <Icon className="size-3" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>{config.label}</TooltipContent>
+                      </Tooltip>
 
                       {/* Content Header */}
                       <div className="flex-1 flex items-center flex-wrap gap-1 min-w-0">
                         <Badge
                           variant="outline"
                           className={cn(
-                            'font-semibold transition-colors flex items-center gap-1 px-1.5 h-6 text-[10px]',
+                            'font-semibold transition-colors flex items-center gap-1 px-2 h-6 text-[10px] uppercase',
                             entityConfig.color,
                           )}
                         >
-                          <EntityIcon className="size-3" />
-                          {toTitleCase(item.entityType)}
+                          <EntityIcon />
+                          {item.entityLabel || toTitleCase(item.entityType)}
                         </Badge>
-                        <span className="text-sm text-muted-foreground leading-none">
-                          {config.label.toLowerCase()} by
-                        </span>
-                        <UserAvatar user={item.user} size="sm" />
-                        <span className="text-xs font-semibold text-foreground leading-none">
-                          {item.user?.name || 'Unknown User'}
-                        </span>
+
+                        {linkPath ? (
+                          <Link
+                            to={linkPath}
+                            className="font-mono text-sm font-bold text-foreground hover:text-primary hover:underline transition-colors"
+                          >
+                            {item.entityDisplayId}
+                          </Link>
+                        ) : (
+                          <span className="font-mono text-sm font-bold text-foreground">
+                            {item.entityDisplayId}
+                          </span>
+                        )}
+
+                        <span className="text-xs text-muted-foreground">{config.label}</span>
+                        <span className="text-xs text-muted-foreground">by</span>
+
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center gap-1 cursor-default">
+                              <UserAvatar user={item.user} size="sm" />
+                              <span className="text-xs font-semibold text-foreground">
+                                {item.user?.name || 'Unknown User'}
+                              </span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>{item.user?.name || 'Unknown User'}</TooltipContent>
+                        </Tooltip>
                       </div>
                     </div>
 
@@ -417,79 +507,67 @@ export function ActivityTimeline({
                       <div className="flex-1 pt-1.5 pb-3 space-y-3 min-w-0">
                         {item.reason && (
                           <div className="bg-muted/20 border border-border/40 rounded-lg p-3 max-w-2xl">
-                            <p className="text-[13px] text-muted-foreground leading-relaxed">
+                            <p className="text-xs text-muted-foreground leading-relaxed">
                               {item.reason}
                             </p>
                           </div>
                         )}
 
-                        {snapshot && Object.keys(snapshot).length > 0 && (
-                          <div className="flex flex-col gap-1.5">
-                            {Object.entries(snapshot).map(([key, value]) => {
-                              if (key === 'previousStatus' && snapshot.newStatus) {
-                                const statusMap = getStatusMap(item.entityType);
-                                return (
-                                  <div
-                                    key="status-transition"
-                                    className="flex items-center gap-2 text-[12px]"
-                                  >
-                                    <span className="text-muted-foreground font-medium">
-                                      Status:
-                                    </span>
-                                    {statusMap ? (
-                                      <>
-                                        <StatusBadge value={String(value)} statusMap={statusMap} />
-                                        <ArrowRight className="size-3 text-muted-foreground/40" />
-                                        <StatusBadge
-                                          value={String(snapshot.newStatus)}
-                                          statusMap={statusMap}
-                                        />
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Badge
-                                          variant="outline"
-                                          className="h-5 text-[10px] uppercase font-bold text-muted-foreground bg-muted/30"
-                                        >
-                                          {String(value)}
-                                        </Badge>
-                                        <ArrowRight className="size-3 text-muted-foreground/40" />
-                                        <Badge
-                                          variant="outline"
-                                          className="h-5 text-[10px] uppercase font-bold text-primary bg-primary/5 border-primary/20"
-                                        >
-                                          {String(snapshot.newStatus)}
-                                        </Badge>
-                                      </>
-                                    )}
-                                  </div>
-                                );
-                              }
-                              if (key === 'newStatus') return null;
-
-                              if (
-                                typeof value === 'object' &&
-                                value !== null &&
-                                'old' in value &&
-                                'new' in value
-                              ) {
-                                const diff = value as { old: unknown; new: unknown };
-                                return (
-                                  <div key={key} className="flex items-center gap-2 text-[12px]">
-                                    <span className="text-muted-foreground font-medium capitalize">
-                                      {key.replace(/([A-Z])/g, ' $1').toLowerCase()}:
-                                    </span>
-                                    <span className="text-muted-foreground line-through opacity-60">
-                                      {String(diff.old)}
-                                    </span>
+                        {/* Bottom Row: Status */}
+                        {hasVisibleSnapshot && (
+                          <div className="flex flex-col">
+                            {hasStatus ? (
+                              <div className="flex items-center gap-2 text-[12px]">
+                                <span className="text-muted-foreground font-medium">Status:</span>
+                                {getStatusMap(item.entityType) ? (
+                                  <>
+                                    <StatusBadge
+                                      value={String(snapshot!.previousStatus)}
+                                      statusMap={getStatusMap(item.entityType)!}
+                                    />
                                     <ArrowRight className="size-3 text-muted-foreground/40" />
-                                    <span className="text-foreground font-semibold">
-                                      {String(diff.new)}
-                                    </span>
-                                  </div>
-                                );
-                              }
-                              return null;
+                                    <StatusBadge
+                                      value={String(snapshot!.newStatus)}
+                                      statusMap={getStatusMap(item.entityType)!}
+                                    />
+                                  </>
+                                ) : (
+                                  <>
+                                    <Badge
+                                      variant="outline"
+                                      className="h-5 text-[10px] uppercase font-bold text-muted-foreground bg-muted/30"
+                                    >
+                                      {String(snapshot!.previousStatus)}
+                                    </Badge>
+                                    <ArrowRight className="size-3 text-muted-foreground/40" />
+                                    <Badge
+                                      variant="outline"
+                                      className="h-5 text-[10px] uppercase font-bold text-primary bg-primary/5 border-primary/20"
+                                    >
+                                      {String(snapshot!.newStatus)}
+                                    </Badge>
+                                  </>
+                                )}
+                              </div>
+                            ) : null}
+
+                            {/* Other snapshot diffs */}
+                            {otherDiffs.map(([key, value]) => {
+                              const diff = value as { old: unknown; new: unknown };
+                              return (
+                                <div key={key} className="flex items-center gap-2 text-[12px]">
+                                  <span className="text-muted-foreground font-medium capitalize">
+                                    {key.replace(/([A-Z])/g, ' $1').toLowerCase()}:
+                                  </span>
+                                  <span className="text-muted-foreground line-through opacity-60">
+                                    {String(diff.old)}
+                                  </span>
+                                  <ArrowRight className="size-3 text-muted-foreground/40" />
+                                  <span className="text-foreground font-semibold">
+                                    {String(diff.new)}
+                                  </span>
+                                </div>
+                              );
                             })}
                           </div>
                         )}

@@ -11,6 +11,7 @@ import {
 import type { WarehouseResponse } from '../api/warehouses.api';
 import { useDeleteWarehouse } from '../hooks/warehouses.hooks';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 interface WarehouseRowActionsProps {
   row: { original: WarehouseResponse };
@@ -33,13 +34,13 @@ export function WarehouseRowActions({ row }: WarehouseRowActionsProps) {
     {
       label: 'View',
       icon: <Eye className="h-4 w-4" />,
-      onClick: () => navigate(getPath(`/warehouses/${warehouse.id}`)),
+      onClick: () => navigate(getPath(APP_PATHS.setup.warehouses.detail(warehouse.id))),
       tooltip: 'View Details',
     },
     {
       label: 'Edit',
       icon: <FileEdit className="h-4 w-4" />,
-      onClick: () => navigate(getPath(`/warehouses/${warehouse.id}/edit`)),
+      onClick: () => navigate(getPath(APP_PATHS.setup.warehouses.edit(warehouse.id))),
       tooltip: 'Edit Warehouse',
     },
     {

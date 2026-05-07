@@ -12,6 +12,7 @@ import { DetailView } from '@/components/shared/DetailView';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { TaxFormSheet } from '../components/TaxFormSheet';
+import { APP_PATHS } from '@/lib/paths';
 
 export default function TaxDetailsPage() {
   const { id } = useParams();
@@ -41,7 +42,7 @@ export default function TaxDetailsPage() {
             The tax record you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate(getPath('/taxes'))}
+            onClick={() => navigate(getPath(APP_PATHS.setup.taxes.list()))}
             className="text-primary font-semibold hover:underline"
           >
             Return to Taxes
@@ -56,7 +57,7 @@ export default function TaxDetailsPage() {
       <PageHeader
         title={tax.name}
         description={`Detailed view of tax configuration for ${tax.name}.`}
-        backButton={{ href: getPath('/taxes'), label: 'Back to Taxes' }}
+        backButton={{ href: APP_PATHS.setup.taxes.list(), label: 'Back to Taxes' }}
         actions={[
           {
             label: 'Edit Tax',

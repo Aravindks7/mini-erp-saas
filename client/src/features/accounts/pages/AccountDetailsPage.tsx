@@ -12,6 +12,7 @@ import { DetailView } from '@/components/shared/DetailView';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { AccountForm } from '../components/AccountForm';
+import { APP_PATHS } from '@/lib/paths';
 
 const accountStatusMap: StatusMap<string> = {
   active: { label: 'Active', tone: 'success' },
@@ -44,7 +45,7 @@ export default function AccountDetailsPage() {
             The account record you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate(getPath('/finance/accounts'))}
+            onClick={() => navigate(getPath(APP_PATHS.finance.accounts.list()))}
             className="text-primary font-semibold hover:underline"
           >
             Return to Chart of Accounts
@@ -59,7 +60,7 @@ export default function AccountDetailsPage() {
       <PageHeader
         title={`${account.code} - ${account.name}`}
         description="Detailed view of the account classification and settings."
-        backButton={{ href: getPath('/finance/accounts'), label: 'Back to CoA' }}
+        backButton={{ href: APP_PATHS.finance.accounts.list(), label: 'Back to CoA' }}
         actions={[
           {
             label: 'Edit Account',

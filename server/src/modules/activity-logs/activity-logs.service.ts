@@ -1,6 +1,7 @@
 import { db } from '../../db/index.js';
 import { activityLogs, user } from '../../db/schema/index.js';
 import { and, eq, desc, lt, ilike, gte, lte, or, inArray } from 'drizzle-orm';
+import type { EntityType } from '#shared/config/activity-actions.config.js';
 
 /**
  * ActivityLogsService: Read-path for the activity_logs audit trail.
@@ -15,7 +16,7 @@ export class ActivityLogsService {
     return await db.query.activityLogs.findMany({
       where: and(
         eq(activityLogs.organizationId, organizationId),
-        eq(activityLogs.entityType, entityType),
+        eq(activityLogs.entityType, entityType as EntityType),
         eq(activityLogs.entityId, entityId),
       ),
       with: {
@@ -54,11 +55,11 @@ export class ActivityLogsService {
     const conditions = [eq(activityLogs.organizationId, organizationId)];
 
     if (options?.entityType) {
-      const types = options.entityType.split(',');
+      const types = options.entityType.split(',') as EntityType[];
       if (types.length > 1) {
         conditions.push(inArray(activityLogs.entityType, types));
-      } else {
-        conditions.push(eq(activityLogs.entityType, types[0]!));
+      } else if (types[0]) {
+        conditions.push(eq(activityLogs.entityType, types[0]));
       }
     }
 
@@ -87,6 +88,8 @@ export class ActivityLogsService {
         organizationId: activityLogs.organizationId,
         entityType: activityLogs.entityType,
         entityId: activityLogs.entityId,
+        entityDisplayId: activityLogs.entityDisplayId,
+        entityLabel: activityLogs.entityLabel,
         action: activityLogs.action,
         reason: activityLogs.reason,
         snapshot: activityLogs.snapshot,

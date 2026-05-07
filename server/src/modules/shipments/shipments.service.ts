@@ -5,12 +5,14 @@ import {
   inventoryLevels,
   inventoryLedgers,
   salesOrderLines,
+  salesOrders,
 } from '../../db/schema/index.js';
 import { sequencesService } from '../sequences/sequences.service.js';
 import { salesOrdersService } from '../sales-orders/sales-orders.service.js';
 import { sql, desc, and, eq } from 'drizzle-orm';
 import { CreateShipmentInput } from '#shared/contracts/shipments.contract.js';
 import { BaseService } from '../../lib/base.service.js';
+import { ActivityLogger } from '../../lib/activity-logger.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -140,6 +142,7 @@ export class ShipmentsService extends BaseService<typeof shipments> {
             ],
             set: {
               quantityOnHand: sql`${inventoryLevels.quantityOnHand} + ${quantityChange}::numeric`,
+              quantityAllocated: sql`GREATEST(0, ${inventoryLevels.quantityAllocated} + ${quantityChange}::numeric)`,
               updatedAt: new Date(),
               updatedBy: userId,
             },
@@ -164,7 +167,33 @@ export class ShipmentsService extends BaseService<typeof shipments> {
 
       // 4. Reconcile SO Status
       if (data.salesOrderId) {
-        await this.reconcileSOStatus(organizationId, userId, data.salesOrderId, tx);
+        await this.reconcileSOStatus(
+          organizationId,
+          userId,
+          data.salesOrderId,
+          tx,
+          data.action,
+          data.reason,
+        );
+
+        // Find the SO for the log
+        const salesOrder = await tx.query.salesOrders.findFirst({
+          where: eq(salesOrders.id, data.salesOrderId),
+        });
+
+        if (salesOrder) {
+          await ActivityLogger.record(tx as Transaction, {
+            organizationId,
+            entityType: 'sales_order',
+            entityId: salesOrder.id,
+            entityDisplayId: salesOrder.documentNumber,
+            entityLabel: 'Sales Order',
+            action: 'ORDER_SHIPPED',
+            reason: data.reason || `Items shipped via ${shipmentNumber}`,
+            snapshot: { shipmentId: shipment.id, shipmentNumber },
+            userId,
+          });
+        }
       }
 
       return shipment;
@@ -273,8 +302,10 @@ export class ShipmentsService extends BaseService<typeof shipments> {
     userId: string,
     soId: string,
     tx: Transaction | typeof db,
+    action?: string,
+    reason?: string,
   ) {
-    await salesOrdersService.reconcileFulfillment(organizationId, userId, soId, tx);
+    await salesOrdersService.reconcileFulfillment(organizationId, userId, soId, tx, action, reason);
   }
 
   /**

@@ -22,6 +22,7 @@ import { columns } from './columns';
 import { useWarehouses, useBulkDeleteWarehouses } from '../hooks/warehouses.hooks';
 import type { WarehouseResponse } from '../api/warehouses.api';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { APP_PATHS } from '@/lib/paths';
 
 const searchSchema = z.object({
   name: z.string().optional(),
@@ -104,7 +105,7 @@ export function WarehouseList() {
               }
             />
             <AddButton
-              to="/warehouses/new"
+              to={APP_PATHS.setup.warehouses.new()}
               permission={PERMISSIONS.WAREHOUSES.CREATE}
               label="Add Warehouse"
               className="shadow-lg shadow-primary/20"
@@ -115,7 +116,7 @@ export function WarehouseList() {
     );
   }
 
-  const handleAddClick = () => navigate(getPath('/warehouses/new'));
+  const handleAddClick = () => navigate(getPath(APP_PATHS.setup.warehouses.new()));
 
   return (
     <>
@@ -142,7 +143,7 @@ export function WarehouseList() {
               onSuccess={handleImportSuccess}
             />
             <AddButton
-              to="/warehouses/new"
+              to={APP_PATHS.setup.warehouses.new()}
               permission={PERMISSIONS.WAREHOUSES.CREATE}
               label="Add Warehouse"
             />

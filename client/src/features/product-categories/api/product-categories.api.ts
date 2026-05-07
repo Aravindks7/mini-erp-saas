@@ -3,6 +3,7 @@ import type {
   CreateProductCategoryInput,
   UpdateProductCategoryInput,
 } from '@shared/contracts/product-categories.contract';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export interface ProductCategoryResponse {
   id: string;
@@ -21,20 +22,22 @@ export interface ProductCategoryResponse {
 }
 
 export const productCategoriesApi = {
-  listCategories: () => apiFetch<ProductCategoryResponse[]>('/product-categories'),
-  getCategory: (id: string) => apiFetch<ProductCategoryResponse>(`/product-categories/${id}`),
+  listCategories: () =>
+    apiFetch<ProductCategoryResponse[]>(API_ENDPOINTS.setup.productCategories.base),
+  getCategory: (id: string) =>
+    apiFetch<ProductCategoryResponse>(API_ENDPOINTS.setup.productCategories.detail(id)),
   createCategory: (data: CreateProductCategoryInput) =>
-    apiFetch<ProductCategoryResponse>('/product-categories', {
+    apiFetch<ProductCategoryResponse>(API_ENDPOINTS.setup.productCategories.base, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   updateCategory: (id: string, data: UpdateProductCategoryInput) =>
-    apiFetch<ProductCategoryResponse>(`/product-categories/${id}`, {
+    apiFetch<ProductCategoryResponse>(API_ENDPOINTS.setup.productCategories.detail(id), {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
   deleteCategory: (id: string) =>
-    apiFetch<{ message: string }>(`/product-categories/${id}`, {
+    apiFetch<{ message: string }>(API_ENDPOINTS.setup.productCategories.detail(id), {
       method: 'DELETE',
     }),
 };

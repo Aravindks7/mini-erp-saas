@@ -1,5 +1,6 @@
 import { apiFetch } from '@/lib/api';
 import type { ActivityLogResponse } from '@shared/contracts/activity-logs.contract';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export interface PaginatedActivityResponse {
   items: ActivityLogResponse[];
@@ -13,7 +14,7 @@ export const activityApi = {
    */
   fetchEntityActivity: (entityType: string, entityId: string) =>
     apiFetch<ActivityLogResponse[]>(
-      `/activity-logs?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}`,
+      `${API_ENDPOINTS.activityLogs.base}?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}`,
     ),
 
   /**
@@ -36,6 +37,8 @@ export const activityApi = {
     if (params?.endDate) searchParams.set('endDate', params.endDate);
 
     const query = searchParams.toString();
-    return apiFetch<PaginatedActivityResponse>(`/activity-logs${query ? `?${query}` : ''}`);
+    return apiFetch<PaginatedActivityResponse>(
+      `${API_ENDPOINTS.activityLogs.base}${query ? `?${query}` : ''}`,
+    );
   },
 };

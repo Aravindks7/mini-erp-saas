@@ -10,6 +10,13 @@ export * from './contracts/suppliers.contract.js';
 export * from './contracts/products.contract.js';
 export * from './contracts/warehouses.contract.js';
 export * from './contracts/inventory.contract.js';
+export {
+  createInventoryAdjustmentSchema,
+  updateAdjustmentStatusSchema,
+  type CreateInventoryAdjustmentInput,
+  type UpdateAdjustmentStatusInput,
+} from './contracts/inventory-adjustments.contract.js';
+export * from './contracts/inventory-transfers.contract.js';
 export * from './utils/date.js';
 export * from './contracts/sales-orders.contract.js';
 export * from './contracts/purchase-orders.contract.js';

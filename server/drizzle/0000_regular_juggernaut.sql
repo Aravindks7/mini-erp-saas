@@ -39,6 +39,8 @@ CREATE TABLE "activity_logs" (
 	"organization_id" uuid NOT NULL,
 	"entity_type" text NOT NULL,
 	"entity_id" uuid NOT NULL,
+	"entity_display_id" text NOT NULL,
+	"entity_label" text NOT NULL,
 	"action" text NOT NULL,
 	"reason" text,
 	"snapshot" jsonb,
@@ -451,6 +453,7 @@ CREATE TABLE "warehouses" (
 	"version" integer DEFAULT 1 NOT NULL,
 	"code" text NOT NULL,
 	"name" text NOT NULL,
+	"is_system_transit" boolean DEFAULT false NOT NULL,
 	"deleted_at" timestamp
 );
 --> statement-breakpoint
@@ -531,6 +534,35 @@ CREATE TABLE "inventory_adjustment_lines" (
 	"warehouse_id" uuid NOT NULL,
 	"bin_id" uuid,
 	"quantity_change" numeric(18, 8) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "inventory_transfers" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_by" uuid,
+	"updated_by" uuid,
+	"version" integer DEFAULT 1 NOT NULL,
+	"deleted_at" timestamp,
+	"transfer_date" timestamp DEFAULT now() NOT NULL,
+	"from_warehouse_id" uuid NOT NULL,
+	"to_warehouse_id" uuid NOT NULL,
+	"reference" text,
+	"status" text DEFAULT 'draft' NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "inventory_transfer_lines" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_by" uuid,
+	"updated_by" uuid,
+	"version" integer DEFAULT 1 NOT NULL,
+	"transfer_id" uuid NOT NULL,
+	"product_id" uuid NOT NULL,
+	"quantity" numeric(18, 8) NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "sales_orders" (
@@ -860,6 +892,12 @@ ALTER TABLE "inventory_adjustment_lines" ADD CONSTRAINT "inventory_adjustment_li
 ALTER TABLE "inventory_adjustment_lines" ADD CONSTRAINT "inventory_adjustment_lines_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inventory_adjustment_lines" ADD CONSTRAINT "inventory_adjustment_lines_warehouse_id_warehouses_id_fk" FOREIGN KEY ("warehouse_id") REFERENCES "public"."warehouses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inventory_adjustment_lines" ADD CONSTRAINT "inventory_adjustment_lines_bin_id_bins_id_fk" FOREIGN KEY ("bin_id") REFERENCES "public"."bins"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "inventory_transfers" ADD CONSTRAINT "inventory_transfers_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "inventory_transfers" ADD CONSTRAINT "inventory_transfers_from_warehouse_id_warehouses_id_fk" FOREIGN KEY ("from_warehouse_id") REFERENCES "public"."warehouses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "inventory_transfers" ADD CONSTRAINT "inventory_transfers_to_warehouse_id_warehouses_id_fk" FOREIGN KEY ("to_warehouse_id") REFERENCES "public"."warehouses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "inventory_transfer_lines" ADD CONSTRAINT "inventory_transfer_lines_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "inventory_transfer_lines" ADD CONSTRAINT "inventory_transfer_lines_transfer_id_inventory_transfers_id_fk" FOREIGN KEY ("transfer_id") REFERENCES "public"."inventory_transfers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "inventory_transfer_lines" ADD CONSTRAINT "inventory_transfer_lines_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sales_orders" ADD CONSTRAINT "sales_orders_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sales_orders" ADD CONSTRAINT "sales_orders_customer_id_customers_id_fk" FOREIGN KEY ("customer_id") REFERENCES "public"."customers"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sales_order_lines" ADD CONSTRAINT "sales_order_lines_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -906,9 +944,11 @@ ALTER TABLE "journal_entries" ADD CONSTRAINT "journal_entries_organization_id_or
 ALTER TABLE "journal_entry_lines" ADD CONSTRAINT "journal_entry_lines_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "journal_entry_lines" ADD CONSTRAINT "journal_entry_lines_journal_entry_id_journal_entries_id_fk" FOREIGN KEY ("journal_entry_id") REFERENCES "public"."journal_entries"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "journal_entry_lines" ADD CONSTRAINT "journal_entry_lines_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "activity_logs_org_idx" ON "activity_logs" USING btree ("organization_id");--> statement-breakpoint
-CREATE INDEX "activity_logs_entity_idx" ON "activity_logs" USING btree ("entity_type","entity_id");--> statement-breakpoint
-CREATE INDEX "activity_logs_timeline_idx" ON "activity_logs" USING btree ("organization_id","entity_type","entity_id");--> statement-breakpoint
+CREATE INDEX "activity_logs_timeline_idx" ON "activity_logs" USING btree ("organization_id","created_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "activity_logs_entity_history_idx" ON "activity_logs" USING btree ("entity_type","entity_id","created_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "activity_logs_display_id_idx" ON "activity_logs" USING btree ("entity_display_id");--> statement-breakpoint
+CREATE INDEX "activity_logs_org_entity_idx" ON "activity_logs" USING btree ("organization_id","entity_type","entity_id");--> statement-breakpoint
+CREATE INDEX "activity_logs_org_type_created_idx" ON "activity_logs" USING btree ("organization_id","entity_type","created_at" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "addresses_org_idx" ON "addresses" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "bill_lines_org_idx" ON "bill_lines" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "bill_lines_bill_idx" ON "bill_lines" USING btree ("bill_id");--> statement-breakpoint
@@ -974,6 +1014,9 @@ CREATE INDEX "inv_ledger_ref_idx" ON "inventory_ledgers" USING btree ("reference
 CREATE INDEX "inv_adj_org_idx" ON "inventory_adjustments" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "inv_adj_line_org_idx" ON "inventory_adjustment_lines" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "inv_adj_line_adj_idx" ON "inventory_adjustment_lines" USING btree ("adjustment_id");--> statement-breakpoint
+CREATE INDEX "inv_transfer_org_idx" ON "inventory_transfers" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "inv_transfer_lines_org_idx" ON "inventory_transfer_lines" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "inv_transfer_lines_transfer_idx" ON "inventory_transfer_lines" USING btree ("transfer_id");--> statement-breakpoint
 CREATE INDEX "so_org_idx" ON "sales_orders" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "so_customer_idx" ON "sales_orders" USING btree ("customer_id");--> statement-breakpoint
 CREATE INDEX "so_status_idx" ON "sales_orders" USING btree ("status");--> statement-breakpoint

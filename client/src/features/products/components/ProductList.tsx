@@ -23,6 +23,8 @@ import { columns, productStatusOptions } from './columns';
 import { useProducts, useBulkDeleteProducts } from '../hooks/products.hooks';
 import type { ProductResponse } from '../api/products.api';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { APP_PATHS } from '@/lib/paths';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 const searchSchema = z.object({
   name: z.string().optional(),
@@ -102,8 +104,8 @@ export function ProductList() {
         >
           <div className="flex items-center justify-center gap-4">
             <ImportModal
-              endpoint="/products/import"
-              templateEndpoint="/products/import/template"
+              endpoint={API_ENDPOINTS.products.import}
+              templateEndpoint={API_ENDPOINTS.products.importTemplate}
               onSuccess={handleImportSuccess}
               columns={importColumns}
               trigger={
@@ -114,7 +116,7 @@ export function ProductList() {
               }
             />
             <AddButton
-              to="/products/new"
+              to={APP_PATHS.inventory.products.new()}
               permission={PERMISSIONS.PRODUCTS.CREATE}
               label="Add Product"
               className="shadow-lg shadow-primary/20"
@@ -125,7 +127,7 @@ export function ProductList() {
     );
   }
 
-  const handleAddClick = () => navigate(getPath('/products/new'));
+  const handleAddClick = () => navigate(getPath(APP_PATHS.inventory.products.new()));
 
   return (
     <>
@@ -145,15 +147,15 @@ export function ProductList() {
         onReset={resetAll}
         headerActions={
           <div className="flex items-center gap-2">
-            <ExportButton endpoint="/products/export" filename="products-export.csv" />
+            <ExportButton endpoint={API_ENDPOINTS.products.export} filename="products-export.csv" />
             <ImportModal
-              endpoint="/products/import"
-              templateEndpoint="/products/import/template"
+              endpoint={API_ENDPOINTS.products.import}
+              templateEndpoint={API_ENDPOINTS.products.importTemplate}
               onSuccess={handleImportSuccess}
               columns={importColumns}
             />
             <AddButton
-              to="/products/new"
+              to={APP_PATHS.inventory.products.new()}
               permission={PERMISSIONS.PRODUCTS.CREATE}
               label="Add Product"
             />

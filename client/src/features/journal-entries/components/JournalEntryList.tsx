@@ -16,6 +16,7 @@ import { Can } from '@/components/shared/Can';
 import { columns } from './columns';
 import { useJournalEntries } from '../hooks/journal-entries.hooks';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 const searchSchema = z.object({
   reference: z.string().optional(),
@@ -29,7 +30,7 @@ export function JournalEntryList() {
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
   const handleAdd = () => {
-    navigate(getPath('/finance/journal-entries/new'));
+    navigate(getPath(APP_PATHS.finance.journalEntries.new()));
   };
 
   if (isError) {

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Form } from '@/components/shared/form/Form';
 import { FormField } from '@/components/shared/form/FormField';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AmountInput } from '@/components/shared/form/AmountInput';
 
 import type { CreateProductInput } from '@shared/contracts/products.contract';
 import { createProductSchema } from '@shared/contracts/products.contract';
@@ -83,7 +84,7 @@ export function ProductForm({ form, onSubmit, formId, isEdit = false }: ProductF
 
               <div className="grid gap-6 sm:grid-cols-2">
                 <FormField name="basePrice" label="Base Price">
-                  {({ field }) => <Input {...field} type="number" step="0.01" placeholder="0.00" />}
+                  {({ field }) => <AmountInput {...field} currency="USD" placeholder="0.00" />}
                 </FormField>
 
                 <FormField name="categoryId" label="Category (Optional)">

@@ -142,7 +142,7 @@ describe('Inventory Module', () => {
           {
             productId: '550e8400-e29b-41d4-a716-446655440001',
             warehouseId: '550e8400-e29b-41d4-a716-446655440002',
-            quantityChange: '5',
+            quantityVariance: 5,
           },
         ],
       };
@@ -169,7 +169,7 @@ describe('Inventory Module', () => {
           {
             productId: '550e8400-e29b-41d4-a716-446655440001',
             warehouseId: '550e8400-e29b-41d4-a716-446655440002',
-            quantityChange: '-100',
+            quantityVariance: -100,
           },
         ],
       };
@@ -190,7 +190,7 @@ describe('Inventory Module', () => {
           {
             productId: 'invalid-uuid',
             warehouseId: '00000000-0000-0000-0000-000000000002',
-            quantityChange: '5',
+            quantityVariance: 5,
           },
         ],
       };

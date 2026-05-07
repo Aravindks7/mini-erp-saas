@@ -4,10 +4,12 @@ import { and, desc, eq, inArray } from 'drizzle-orm';
 import { CreateSalesOrderInput } from '#shared/contracts/sales-orders.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 import { sequencesService } from '../sequences/sequences.service.js';
+import { ActivityLogger } from '../../lib/activity-logger.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 import { SalesOrderReconciler, SOStatus } from './sales-orders.reconciler.js';
+import type { ActivityAction } from '#shared/config/activity-actions.config.js';
 
 export type { SOStatus };
 
@@ -151,6 +153,17 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
         );
       }
 
+      await ActivityLogger.record(tx, {
+        organizationId,
+        entityType: 'sales_order',
+        entityId: so.id,
+        entityDisplayId: so.documentNumber,
+        entityLabel: 'Sales Order',
+        action: 'ORDER_CREATED',
+        reason: 'Initial order creation',
+        userId,
+      });
+
       return so;
     });
   }
@@ -211,6 +224,17 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
         );
       }
 
+      await ActivityLogger.record(tx, {
+        organizationId,
+        entityType: 'sales_order',
+        entityId: id,
+        entityDisplayId: existingSO.documentNumber,
+        entityLabel: 'Sales Order',
+        action: 'UPDATED',
+        reason: 'Manual order details update',
+        userId,
+      });
+
       return { id, status: 'draft' };
     });
   }
@@ -223,6 +247,8 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
     userId: string,
     id: string,
     status: SOStatus,
+    action: ActivityAction,
+    reason: string,
     txIn?: Transaction | typeof db,
   ) {
     const operation = async (tx: Transaction | typeof db) => {
@@ -232,7 +258,8 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
         userId,
         id,
         status,
-        'Manual status update',
+        action,
+        reason,
         tx as Transaction,
       );
     };
@@ -249,8 +276,17 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
     userId: string,
     id: string,
     tx: Transaction | typeof db = db,
+    action?: string,
+    reason?: string,
   ) {
-    await SalesOrderReconciler.reconcileFulfillment(organizationId, userId, id, tx as Transaction);
+    await SalesOrderReconciler.reconcileFulfillment(
+      organizationId,
+      userId,
+      id,
+      tx as Transaction,
+      action,
+      reason,
+    );
   }
 
   /**
@@ -285,6 +321,19 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
         .where(and(eq(salesOrders.id, id), eq(salesOrders.organizationId, organizationId)))
         .returning();
 
+      if (deleted) {
+        await ActivityLogger.record(tx, {
+          organizationId,
+          entityType: 'sales_order',
+          entityId: id,
+          entityDisplayId: so.documentNumber,
+          entityLabel: 'Sales Order',
+          action: 'DELETED',
+          reason: 'Order manually deleted',
+          userId,
+        });
+      }
+
       return deleted;
     });
   }
@@ -312,6 +361,19 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
         .set(this.withAudit({ deletedAt: new Date() }, userId, true))
         .where(and(eq(salesOrders.organizationId, organizationId), inArray(salesOrders.id, ids)))
         .returning();
+
+      for (const deleted of deletedSOs) {
+        await ActivityLogger.record(tx, {
+          organizationId,
+          entityType: 'sales_order',
+          entityId: deleted.id,
+          entityDisplayId: deleted.documentNumber,
+          entityLabel: 'Sales Order',
+          action: 'DELETED',
+          reason: 'Order deleted via bulk action',
+          userId,
+        });
+      }
 
       return deletedSOs;
     });

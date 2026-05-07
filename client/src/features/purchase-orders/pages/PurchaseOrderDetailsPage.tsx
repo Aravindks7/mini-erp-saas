@@ -15,6 +15,7 @@ import { AuditInfo } from '@/components/shared/AuditInfo';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { purchaseOrderStatusMap } from '../components/columns';
+import { APP_PATHS } from '@/lib/paths';
 import { ReceivePurchaseOrderSheet } from '../components/ReceivePurchaseOrderSheet';
 import {
   Table,
@@ -59,7 +60,7 @@ export default function PurchaseOrderDetailsPage() {
             The purchase order you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate(getPath('/purchase-orders'))}
+            onClick={() => navigate(getPath(APP_PATHS.purchasing.orders.list()))}
             className="text-primary font-semibold hover:underline"
           >
             Return to Procurement List
@@ -83,7 +84,10 @@ export default function PurchaseOrderDetailsPage() {
       <PageHeader
         title={po.documentNumber}
         description={`Procurement document for ${po.supplier.name}.`}
-        backButton={{ onClick: () => navigate(getPath('/purchase-orders')), label: 'Back to List' }}
+        backButton={{
+          onClick: () => navigate(getPath(APP_PATHS.purchasing.orders.list())),
+          label: 'Back to List',
+        }}
         actions={[
           {
             label: 'Receive Order',
@@ -94,7 +98,7 @@ export default function PurchaseOrderDetailsPage() {
           },
           {
             label: 'Edit Order',
-            onClick: () => navigate(getPath(`/purchase-orders/${po.id}/edit`)),
+            onClick: () => navigate(getPath(APP_PATHS.purchasing.orders.edit(po.id))),
             icon: <FileEdit className="h-4 w-4" />,
             variant: 'default',
             hidden: !canEdit,

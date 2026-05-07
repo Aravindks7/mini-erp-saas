@@ -53,11 +53,11 @@ vi.mock('../../db/index.js', () => ({
       },
       accounts: {
         findMany: vi.fn().mockResolvedValue([]),
-        findFirst: vi.fn().mockResolvedValue(null),
+        findFirst: vi.fn().mockResolvedValue(null as any),
       },
       journalEntries: {
         findMany: vi.fn().mockResolvedValue([]),
-        findFirst: vi.fn().mockResolvedValue(null),
+        findFirst: vi.fn().mockResolvedValue(null as any),
       },
     },
     insert: vi.fn(() => ({
@@ -123,6 +123,29 @@ describe('Finance Module Integration', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveLength(1);
+    });
+
+    it('should get a single account', async () => {
+      const mockAccount = { id: 'acc-1', code: '1000', name: 'Cash' };
+      vi.mocked(db.query.accounts.findFirst).mockResolvedValue(mockAccount as any);
+
+      const response = await request(app)
+        .get('/finance/accounts/acc-1')
+        .set('x-organization-id', mockOrgId);
+
+      expect(response.status).toBe(200);
+      expect(response.body.id).toBe('acc-1');
+      expect(response.body.name).toBe('Cash');
+    });
+
+    it('should return 404 if account not found', async () => {
+      vi.mocked(db.query.accounts.findFirst).mockResolvedValue(null as any);
+
+      const response = await request(app)
+        .get('/finance/accounts/non-existent')
+        .set('x-organization-id', mockOrgId);
+
+      expect(response.status).toBe(404);
     });
   });
 

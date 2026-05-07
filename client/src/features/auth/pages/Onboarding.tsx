@@ -8,6 +8,7 @@ import {
   type CreateOrganizationInput,
 } from '@shared/contracts/organizations.contract';
 import { useTenant } from '@/contexts/TenantContext';
+import { APP_PATHS } from '@/lib/paths';
 import { Button } from '@/components/ui/button';
 import { CardContent, CardFooter } from '@/components/ui/card';
 import { FieldGroup } from '@/components/ui/field';
@@ -79,7 +80,7 @@ export default function OnboardingPage() {
       setActiveOrganizationId(newOrg.id);
 
       // Redirect to dashboard now that cache is primed and synced
-      navigate('/', { replace: true });
+      navigate(APP_PATHS.dashboard(), { replace: true });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create organization';
       form.setError('root', { message: errorMessage });

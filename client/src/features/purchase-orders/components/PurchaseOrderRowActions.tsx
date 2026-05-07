@@ -9,6 +9,7 @@ import { useTenantPath } from '@/hooks/useTenantPath';
 import type { PurchaseOrderResponse } from '../api/purchase-orders.api';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 import { useDeletePurchaseOrder } from '../hooks/purchase-orders.hooks';
+import { APP_PATHS } from '@/lib/paths';
 
 interface PurchaseOrderRowActionsProps {
   row: { original: PurchaseOrderResponse };
@@ -32,7 +33,7 @@ export function PurchaseOrderRowActions({ row, onReceive }: PurchaseOrderRowActi
     {
       label: 'View',
       icon: <Eye className="h-4 w-4" />,
-      onClick: () => navigate(getPath(`/purchase-orders/${po.id}`)),
+      onClick: () => navigate(getPath(APP_PATHS.purchasing.orders.detail(po.id))),
       tooltip: 'View Details',
     },
   ];
@@ -50,7 +51,7 @@ export function PurchaseOrderRowActions({ row, onReceive }: PurchaseOrderRowActi
     primaryActions.push({
       label: 'Edit',
       icon: <FileEdit className="h-4 w-4" />,
-      onClick: () => navigate(getPath(`/purchase-orders/${po.id}/edit`)),
+      onClick: () => navigate(getPath(APP_PATHS.purchasing.orders.edit(po.id))),
       tooltip: 'Edit Purchase Order',
     });
 

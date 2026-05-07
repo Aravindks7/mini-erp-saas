@@ -1,7 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { Truck, Package, AlertCircle, FileText, Ban, FileEdit, PackageCheck } from 'lucide-react';
-import * as React from 'react';
-
 import { useShipment } from '../hooks/shipments.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -10,6 +8,7 @@ import { AuditInfo } from '@/components/shared/AuditInfo';
 import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 import { formatDate } from '@shared/utils/date';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DetailView } from '@/components/shared/DetailView';
@@ -37,7 +36,7 @@ export default function ShipmentDetailsPage() {
   if (isLoading) {
     return (
       <PageContainer>
-        <SkeletonLoader variant="details" rows={3} />
+        <SkeletonLoader variant="form" rows={3} />
       </PageContainer>
     );
   }
@@ -54,7 +53,7 @@ export default function ShipmentDetailsPage() {
             The shipment record you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate(getPath('/shipments'))}
+            onClick={() => navigate(getPath(APP_PATHS.sales.shipments.list()))}
             className="text-primary font-semibold hover:underline"
           >
             Return to Shipment List
@@ -78,7 +77,7 @@ export default function ShipmentDetailsPage() {
       },
       {
         label: 'Edit',
-        onClick: () => navigate(getPath(`/shipments/${shipment.id}/edit`)),
+        onClick: () => navigate(getPath(APP_PATHS.sales.shipments.edit(shipment.id))),
         icon: <FileEdit className="h-4 w-4" />,
       },
     );
@@ -98,7 +97,10 @@ export default function ShipmentDetailsPage() {
       <PageHeader
         title={shipment.shipmentNumber}
         description={`Outbound shipment recorded on ${formatDate(shipment.shipmentDate)}.`}
-        backButton={{ onClick: () => navigate(getPath('/shipments')), label: 'Back to Shipments' }}
+        backButton={{
+          onClick: () => navigate(getPath(APP_PATHS.sales.shipments.list())),
+          label: 'Back to Shipments',
+        }}
         actions={actions}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">

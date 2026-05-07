@@ -1,6 +1,6 @@
 import * as React from 'react';
 import type { UseFormReturn } from 'react-hook-form';
-import { CreditCard, Receipt, Building, User, FileText } from 'lucide-react';
+import { CreditCard, Receipt, User } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -47,7 +47,7 @@ export function PaymentForm({ form, onSubmit, formId }: PaymentFormProps) {
   }));
 
   const supplierOptions = (suppliers || []).map((s) => ({
-    label: s.companyName,
+    label: s.name,
     value: s.id,
   }));
 
@@ -64,7 +64,7 @@ export function PaymentForm({ form, onSubmit, formId }: PaymentFormProps) {
   const billOptions = (bills || [])
     .filter((b) => b.status !== 'paid')
     .map((b) => ({
-      label: `${b.documentNumber} (${new Intl.NumberFormat('en-US', {
+      label: `${b.referenceNumber} (${new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'USD',
       }).format(Number(b.totalAmount))})`,
@@ -121,7 +121,7 @@ export function PaymentForm({ form, onSubmit, formId }: PaymentFormProps) {
                 </FormField>
 
                 <FormField name="paymentDate" label="Payment Date">
-                  {({ field }) => <DatePicker value={field.value} onChange={field.onChange} />}
+                  {({ field }) => <DatePicker date={field.value} onChange={field.onChange} />}
                 </FormField>
               </div>
 
@@ -158,7 +158,6 @@ export function PaymentForm({ form, onSubmit, formId }: PaymentFormProps) {
                           value={field.value ?? ''}
                           onChange={field.onChange}
                           placeholder="Select a customer..."
-                          icon={Building}
                         />
                       )}
                     </FormField>
@@ -170,7 +169,6 @@ export function PaymentForm({ form, onSubmit, formId }: PaymentFormProps) {
                           value={field.value ?? ''}
                           onChange={field.onChange}
                           placeholder="Select an open invoice..."
-                          icon={FileText}
                         />
                       )}
                     </FormField>
@@ -184,7 +182,6 @@ export function PaymentForm({ form, onSubmit, formId }: PaymentFormProps) {
                           value={field.value ?? ''}
                           onChange={field.onChange}
                           placeholder="Select a supplier..."
-                          icon={Building}
                         />
                       )}
                     </FormField>
@@ -196,7 +193,6 @@ export function PaymentForm({ form, onSubmit, formId }: PaymentFormProps) {
                           value={field.value ?? ''}
                           onChange={field.onChange}
                           placeholder="Select an open bill..."
-                          icon={FileText}
                         />
                       )}
                     </FormField>

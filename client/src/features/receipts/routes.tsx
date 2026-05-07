@@ -10,7 +10,7 @@ export const receiptRoutes: AppRoute[] = [
   {
     path: 'receipts',
     handle: {
-      title: 'Goods Receipts',
+      title: 'Receipts',
       icon: PackageSearch,
       showInSidebar: true,
       sidebarGroup: 'Purchasing',

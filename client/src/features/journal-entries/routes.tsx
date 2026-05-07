@@ -11,7 +11,7 @@ const JournalEntryDetailsPage = lazy(() => import('./pages/JournalEntryDetailsPa
 
 export const journalEntryRoutes: AppRoute[] = [
   {
-    path: 'finance/journal-entries',
+    path: 'journal-entries',
     handle: {
       title: 'General Ledger',
       icon: BookOpen,

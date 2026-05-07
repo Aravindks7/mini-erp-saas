@@ -9,6 +9,7 @@ import type { ReceiptResponse } from '../api/receipts.api';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 import { useDeleteReceipt } from '../hooks/receipts.hooks';
+import { APP_PATHS } from '@/lib/paths';
 
 interface ReceiptRowActionsProps {
   row: { original: ReceiptResponse };
@@ -37,7 +38,7 @@ export function ReceiptRowActions({ row }: ReceiptRowActionsProps) {
     {
       label: 'View',
       icon: <Eye className="h-4 w-4" />,
-      onClick: () => navigate(getPath(`/receipts/${receipt.id}`)),
+      onClick: () => navigate(getPath(APP_PATHS.purchasing.receipts.detail(receipt.id))),
       tooltip: 'View Details',
     },
   ];
@@ -47,7 +48,7 @@ export function ReceiptRowActions({ row }: ReceiptRowActionsProps) {
       {
         label: 'Edit',
         icon: <FileEdit className="h-4 w-4" />,
-        onClick: () => navigate(getPath(`/receipts/${receipt.id}/edit`)),
+        onClick: () => navigate(getPath(APP_PATHS.purchasing.receipts.edit(receipt.id))),
         tooltip: 'Edit Receipt',
       },
       {
@@ -81,7 +82,6 @@ export function ReceiptRowActions({ row }: ReceiptRowActionsProps) {
         description={dialogDescription}
         confirmLabel={actionLabel}
         isLoading={isDeleting}
-        variant={isDraft ? 'destructive' : 'default'}
       />
     </>
   );

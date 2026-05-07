@@ -11,6 +11,7 @@ import { DataTableFilter } from '@/components/shared/data-table/DataTableFilter'
 import { useDataTableState } from '@/hooks/useDataTableState';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { PERMISSIONS } from '@shared/index';
+import { APP_PATHS } from '@/lib/paths';
 
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -88,7 +89,7 @@ export function ShipmentList() {
         >
           <div className="flex items-center justify-center gap-4">
             <AddButton
-              to="/shipments/new"
+              to={APP_PATHS.sales.shipments.new()}
               permission={PERMISSIONS.SHIPMENTS.CREATE}
               label="Create Shipment"
               className="shadow-lg shadow-primary/20"
@@ -99,7 +100,7 @@ export function ShipmentList() {
     );
   }
 
-  const handleAddClick = () => navigate(getPath('/shipments/new'));
+  const handleAddClick = () => navigate(getPath(APP_PATHS.sales.shipments.new()));
 
   return (
     <>
@@ -119,7 +120,7 @@ export function ShipmentList() {
         onReset={resetAll}
         headerActions={
           <AddButton
-            to="/shipments/new"
+            to={APP_PATHS.sales.shipments.new()}
             permission={PERMISSIONS.SHIPMENTS.CREATE}
             label="Create Shipment"
           />

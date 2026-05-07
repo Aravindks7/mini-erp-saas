@@ -1,7 +1,7 @@
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AdjustmentsList } from '../components/adjustments/AdjustmentsList';
 
-export function AdjustmentsListPage() {
+export default function AdjustmentsListPage() {
   return (
     <PageContainer>
       <AdjustmentsList />

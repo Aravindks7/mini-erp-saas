@@ -35,6 +35,8 @@ export * from './inventory-levels.schema.js';
 export * from './inventory-ledgers.schema.js';
 export * from './inventory-adjustments.schema.js';
 export * from './inventory-adjustment-lines.schema.js';
+export * from './inventory-transfers.schema.js';
+export * from './inventory-transfer-lines.schema.js';
 
 export * from './sales-orders.schema.js';
 export * from './sales-order-lines.schema.js';

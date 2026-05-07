@@ -1,18 +1,12 @@
 import 'dotenv/config';
 import { db } from '../src/db/index.js';
 import { sql } from 'drizzle-orm';
-import { seedRBAC } from '../src/db/seed.js';
-import { seedAuth } from '../src/db/seeds/auth.seed.js';
-import { seedSequences } from '../src/db/seeds/sequences.seed.js';
-import { seedTaxes } from '../src/db/seeds/taxes.seed.js';
-import { seedUoms } from '../src/db/seeds/uom.seed.js';
-import { seedSuppliers } from '../src/db/seeds/suppliers.seed.js';
-import { seedCustomers } from '../src/db/seeds/customers.seed.js';
-import { seedProductCategories } from '../src/db/seeds/product-categories.seed.js';
-import { seedProducts } from '../src/db/seeds/products.seed.js';
-import { seedWarehouses } from '../src/db/seeds/warehouses.seed.js';
-import { seedInventory } from '../src/db/seeds/inventory.seed.js';
-import { seedScenarios } from '../src/db/seeds/scenarios.seed.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function reset() {
   if (process.env.NODE_ENV === 'production') {
@@ -20,43 +14,31 @@ async function reset() {
     process.exit(1);
   }
 
-  console.log('🗑️  Wiping database...');
+  console.log('🗑️  Wiping database dynamically...');
 
   try {
-    // 1. Fetch all tables in the public schema (excluding migrations)
-    const tablesResult = await db.execute(sql`
-      SELECT tablename FROM pg_tables 
-      WHERE schemaname = 'public' 
-      AND tablename != '__drizzle_migrations';
+    // 1. Clear existing data for a clean reset state
+    await db.execute(sql`
+      DO $$ 
+      DECLARE 
+          r RECORD;
+      BEGIN
+          FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename NOT LIKE '__drizzle_migrations%') LOOP
+              EXECUTE 'TRUNCATE TABLE ' || quote_ident(r.tablename) || ' RESTART IDENTITY CASCADE';
+          END LOOP;
+      END $$;
     `);
+    console.log('✅ All tables wiped successfully.');
 
-    const tableNames = (tablesResult.rows as { tablename: string }[]).map((r) => r.tablename);
-
-    if (tableNames.length > 0) {
-      const truncateQuery = `TRUNCATE TABLE ${tableNames.map((name) => `"${name}"`).join(', ')} RESTART IDENTITY CASCADE;`;
-      await db.execute(sql.raw(truncateQuery));
-      console.log(`✅ ${tableNames.length} tables wiped successfully.`);
-    } else {
-      console.log('ℹ️  No tables found to wipe.');
+    // 2. Trigger server restart (signals tsx watch to reboot)
+    const serverPath = path.resolve(__dirname, '../src/server.ts');
+    if (fs.existsSync(serverPath)) {
+      const now = new Date();
+      fs.utimesSync(serverPath, now, now);
+      console.log('🔄 Server restart triggered.');
     }
 
-    // 2. Re-seed the system
-    console.log('🚀 Starting fresh seeding...');
-
-    await seedRBAC();
-    await seedAuth();
-    await seedSequences();
-    await seedTaxes();
-    await seedUoms();
-    await seedSuppliers();
-    await seedCustomers();
-    await seedProductCategories();
-    await seedProducts();
-    await seedWarehouses();
-    await seedInventory();
-    await seedScenarios();
-
-    console.log('✅ Database reset and re-seeded successfully.');
+    console.log('✅ Database reset complete.');
     process.exit(0);
   } catch (err) {
     console.error('❌ Reset failed:', err);

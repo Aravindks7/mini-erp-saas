@@ -2,6 +2,7 @@ import { db } from '../../db/index.js';
 import { bills, payments } from '../../db/schema/index.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { ActivityLogger } from '../../lib/activity-logger.js';
+import type { ActivityAction } from '#shared/config/activity-actions.config.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -25,6 +26,7 @@ export class BillReconciler {
     userId: string,
     id: string,
     newStatus: BillStatus,
+    action: ActivityAction,
     reason: string,
     tx: Transaction,
   ) {
@@ -73,7 +75,9 @@ export class BillReconciler {
       organizationId,
       entityType: 'bill',
       entityId: id,
-      action: 'STATUS_CHANGED',
+      entityDisplayId: existing.documentNumber,
+      entityLabel: 'Bill',
+      action,
       reason: reason || `Status changed from ${existing.status} to ${newStatus}`,
       snapshot: { previousStatus: existing.status, newStatus },
       userId,
@@ -133,6 +137,7 @@ export class BillReconciler {
         userId,
         id,
         newStatus,
+        'SYSTEM_RECONCILIATION',
         'System reconciliation of payments',
         tx,
       );

@@ -23,6 +23,8 @@ import { columns, supplierStatusOptions } from './columns';
 import { useSuppliers, useBulkDeleteSuppliers } from '../hooks/suppliers.hooks';
 import type { SupplierResponse } from '../api/suppliers.api';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { APP_PATHS } from '@/lib/paths';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 const searchSchema = z.object({
   name: z.string().optional(),
@@ -94,8 +96,8 @@ export function SupplierList() {
         >
           <div className="flex items-center justify-center gap-4">
             <ImportModal
-              endpoint="/suppliers/import"
-              templateEndpoint="/suppliers/import/template"
+              endpoint={API_ENDPOINTS.suppliers.import}
+              templateEndpoint={API_ENDPOINTS.suppliers.importTemplate}
               onSuccess={handleImportSuccess}
               trigger={
                 <Button variant="outline" className="px-6">
@@ -105,7 +107,7 @@ export function SupplierList() {
               }
             />
             <AddButton
-              to="/suppliers/new"
+              to={APP_PATHS.purchasing.suppliers.new()}
               permission={PERMISSIONS.SUPPLIERS.CREATE}
               label="Add Supplier"
               className="shadow-lg shadow-primary/20"
@@ -116,7 +118,7 @@ export function SupplierList() {
     );
   }
 
-  const handleAddClick = () => navigate(getPath('/suppliers/new'));
+  const handleAddClick = () => navigate(getPath(APP_PATHS.purchasing.suppliers.new()));
 
   return (
     <>
@@ -136,14 +138,17 @@ export function SupplierList() {
         onReset={resetAll}
         headerActions={
           <div className="flex items-center gap-2">
-            <ExportButton endpoint="/suppliers/export" filename="suppliers-export.csv" />
+            <ExportButton
+              endpoint={API_ENDPOINTS.suppliers.export}
+              filename="suppliers-export.csv"
+            />
             <ImportModal
-              endpoint="/suppliers/import"
-              templateEndpoint="/suppliers/import/template"
+              endpoint={API_ENDPOINTS.suppliers.import}
+              templateEndpoint={API_ENDPOINTS.suppliers.importTemplate}
               onSuccess={handleImportSuccess}
             />
             <AddButton
-              to="/suppliers/new"
+              to={APP_PATHS.purchasing.suppliers.new()}
               permission={PERMISSIONS.SUPPLIERS.CREATE}
               label="Add Supplier"
             />

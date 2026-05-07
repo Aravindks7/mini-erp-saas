@@ -24,6 +24,7 @@ import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 import { salesOrderStatusMap } from '../components/columns';
 import { FulfillSalesOrderSheet } from '../components/FulfillSalesOrderSheet';
 import { DetailView } from '@/components/shared/DetailView';
@@ -54,7 +55,7 @@ export default function SalesOrderDetailsPage() {
     generateInvoice(so.id, {
       onSuccess: (invoice) => {
         toast.success(`Invoice ${invoice.documentNumber} generated successfully`);
-        navigate(getPath(`/invoices/${invoice.id}`));
+        navigate(getPath(APP_PATHS.sales.invoices.detail(invoice.id)));
       },
       onError: (error: Error) => {
         toast.error(error.message || 'Failed to generate invoice');
@@ -65,7 +66,7 @@ export default function SalesOrderDetailsPage() {
   const handleApprove = () => {
     if (!so) return;
     updateStatus(
-      { id: so.id, status: 'approved' },
+      { id: so.id, status: 'approved', action: 'STATUS_CHANGED', reason: 'Order approved' },
       {
         onSuccess: () => {
           toast.success('Sales order approved successfully');
@@ -97,7 +98,7 @@ export default function SalesOrderDetailsPage() {
             The sales order you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate(getPath('/sales-orders'))}
+            onClick={() => navigate(getPath(APP_PATHS.sales.orders.list()))}
             className="text-primary font-semibold hover:underline"
           >
             Return to Sales List
@@ -120,7 +121,10 @@ export default function SalesOrderDetailsPage() {
       <PageHeader
         title={so.documentNumber}
         description={`Sales document for ${so.customer.companyName}.`}
-        backButton={{ onClick: () => navigate(getPath('/sales-orders')), label: 'Back to List' }}
+        backButton={{
+          onClick: () => navigate(getPath(APP_PATHS.sales.orders.list())),
+          label: 'Back to List',
+        }}
         actions={[
           {
             label: 'Approve Order',
@@ -147,7 +151,7 @@ export default function SalesOrderDetailsPage() {
           },
           {
             label: 'Edit Order',
-            onClick: () => navigate(getPath(`/sales-orders/${so.id}/edit`)),
+            onClick: () => navigate(getPath(APP_PATHS.sales.orders.edit(so.id))),
             icon: <FileEdit className="h-4 w-4" />,
             variant: 'outline',
             hidden: !canEdit,

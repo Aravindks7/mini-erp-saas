@@ -107,10 +107,11 @@ export async function deleteBill(req: Request, res: Response) {
   try {
     const deleted = await billsService.deleteBill(organizationId, userId, id as string);
     res.json(deleted);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (
+      error instanceof Error &&
       error.message ===
-      'Cannot void bill with existing completed payments. Void the payments first.'
+        'Cannot void bill with existing completed payments. Void the payments first.'
     ) {
       return res.status(400).json({ error: error.message });
     }
@@ -131,10 +132,11 @@ export async function bulkDeleteBills(req: Request, res: Response) {
   try {
     const results = await billsService.bulkDeleteBills(organizationId, userId, ids);
     res.json(results);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (
+      error instanceof Error &&
       error.message ===
-      'Cannot void bill with existing completed payments. Void the payments first.'
+        'Cannot void bill with existing completed payments. Void the payments first.'
     ) {
       return res.status(400).json({ error: error.message });
     }

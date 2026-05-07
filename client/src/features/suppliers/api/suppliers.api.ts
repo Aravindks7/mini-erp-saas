@@ -5,6 +5,7 @@ import type {
   UpdateSupplierInput,
 } from '@shared/contracts/suppliers.contract';
 import { addressSchema, contactSchema } from '@shared/contracts/common.contract';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export interface RawAddressResponse {
   id: string;
@@ -76,34 +77,37 @@ function mapSupplier(raw: RawSupplierResponse): SupplierResponse {
 
 export const suppliersApi = {
   fetchSuppliers: async () => {
-    const raw = await apiFetch<RawSupplierResponse[]>('/suppliers');
+    const raw = await apiFetch<RawSupplierResponse[]>(API_ENDPOINTS.suppliers.base);
     return raw.map(mapSupplier);
   },
   fetchSupplier: async (id: string) => {
-    const raw = await apiFetch<RawSupplierResponse>(`/suppliers/${id}`);
+    const raw = await apiFetch<RawSupplierResponse>(API_ENDPOINTS.suppliers.detail(id));
     return mapSupplier(raw);
   },
   createSupplier: async (data: CreateSupplierInput) => {
-    const raw = await apiFetch<RawSupplierResponse>('/suppliers', {
+    const raw = await apiFetch<RawSupplierResponse>(API_ENDPOINTS.suppliers.base, {
       method: 'POST',
       body: JSON.stringify(data),
     });
     return mapSupplier(raw);
   },
   updateSupplier: async (id: string, data: UpdateSupplierInput) => {
-    const raw = await apiFetch<RawSupplierResponse>(`/suppliers/${id}`, {
+    const raw = await apiFetch<RawSupplierResponse>(API_ENDPOINTS.suppliers.detail(id), {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
     return mapSupplier(raw);
   },
   deleteSupplier: (id: string) =>
-    apiFetch<{ message: string }>(`/suppliers/${id}`, {
+    apiFetch<{ message: string }>(API_ENDPOINTS.suppliers.detail(id), {
       method: 'DELETE',
     }),
   bulkDeleteSuppliers: (ids: string[]) =>
-    apiFetch<{ message: string; deletedCount: number; deletedIds: string[] }>('/suppliers', {
-      method: 'DELETE',
-      body: JSON.stringify({ ids }),
-    }),
+    apiFetch<{ message: string; deletedCount: number; deletedIds: string[] }>(
+      API_ENDPOINTS.suppliers.bulkDelete,
+      {
+        method: 'DELETE',
+        body: JSON.stringify({ ids }),
+      },
+    ),
 };

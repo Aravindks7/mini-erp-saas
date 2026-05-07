@@ -22,6 +22,22 @@ export async function listAccounts(req: Request, res: Response) {
   }
 }
 
+export async function getAccount(req: Request, res: Response) {
+  const { id } = req.params;
+  const organizationId = req.organizationId;
+
+  try {
+    const account = await accountsService.getAccountById(organizationId, id as string);
+    if (!account) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+    res.json(account);
+  } catch (error) {
+    logger.error({ error, organizationId, id }, 'Failed to get account');
+    throw error;
+  }
+}
+
 export async function createAccount(req: Request, res: Response) {
   const parseResult = createAccountSchema.safeParse(req.body);
   if (!parseResult.success) {

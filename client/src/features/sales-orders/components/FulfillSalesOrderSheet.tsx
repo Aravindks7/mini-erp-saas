@@ -23,6 +23,21 @@ import {
   createShipmentSchema,
   type CreateShipmentInput,
 } from '@shared/contracts/shipments.contract';
+import { ACTION_REASONS } from '@shared/config/activity-actions.config';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+
+const extendedShipmentSchema = createShipmentSchema.extend({
+  reasonId: z.string().min(1, 'Please select a reason'),
+  customReason: z.string().optional(),
+});
+type ExtendedShipmentInput = z.infer<typeof extendedShipmentSchema>;
 import type { SalesOrderResponse } from '../api/sales-orders.api';
 import { useCreateShipment } from '@/features/shipments/hooks/shipments.hooks';
 import { useWarehouses } from '@/features/warehouses/hooks/warehouses.hooks';
@@ -41,7 +56,7 @@ function BinSelector({
   warehouses,
 }: {
   index: number;
-  form: UseFormReturn<CreateShipmentInput, unknown>;
+  form: UseFormReturn<ExtendedShipmentInput>;
   warehouseId: string;
   warehouses: WarehouseResponse[];
 }) {
@@ -88,13 +103,15 @@ function ShipmentLineItem({
   warehouses,
 }: {
   index: number;
-  field: FieldArrayWithId<CreateShipmentInput, 'lines'>;
-  form: UseFormReturn<CreateShipmentInput>;
+  field: FieldArrayWithId<ExtendedShipmentInput, 'lines'>;
+  form: UseFormReturn<ExtendedShipmentInput>;
   so?: SalesOrderResponse;
   warehouseOptions: { label: string; value: string }[];
   warehouses: WarehouseResponse[];
 }) {
-  const soLine = so?.lines.find((l) => l.id === field.salesOrderLineId);
+  const soLine = so?.lines.find(
+    (l) => l.id === (field as { salesOrderLineId: string }).salesOrderLineId,
+  );
   const warehouseId = useWatch({
     control: form.control,
     name: `lines.${index}.warehouseId`,
@@ -142,7 +159,7 @@ export function FulfillSalesOrderSheet({ isOpen, onClose, so }: FulfillSalesOrde
 
   // Dynamically create schema with contextual validation against 'so'
   const fulfillmentSchema = React.useMemo(() => {
-    return createShipmentSchema.superRefine((data, ctx) => {
+    return extendedShipmentSchema.superRefine((data, ctx) => {
       data.lines.forEach((line, index) => {
         const soLine = so?.lines.find((l) => l.id === line.salesOrderLineId);
         if (soLine) {
@@ -163,11 +180,13 @@ export function FulfillSalesOrderSheet({ isOpen, onClose, so }: FulfillSalesOrde
     });
   }, [so]);
 
-  const form = useForm<CreateShipmentInput>({
+  const form = useForm<ExtendedShipmentInput>({
     resolver: zodResolver(fulfillmentSchema),
     defaultValues: {
       salesOrderId: '',
       lines: [],
+      reasonId: 'standard_fulfillment',
+      customReason: '',
     },
     mode: 'onChange',
   });
@@ -175,6 +194,11 @@ export function FulfillSalesOrderSheet({ isOpen, onClose, so }: FulfillSalesOrde
   const { fields } = useFieldArray({
     control: form.control,
     name: 'lines',
+  });
+
+  const reasonId = useWatch({
+    control: form.control,
+    name: 'reasonId',
   });
 
   // Effect to handle SO changes and form reset
@@ -199,22 +223,81 @@ export function FulfillSalesOrderSheet({ isOpen, onClose, so }: FulfillSalesOrde
 
       form.reset({
         salesOrderId: so.id,
-        lines: fulfillableLines.map(({ remaining, ...rest }) => rest),
+        lines: fulfillableLines.map((line) => ({
+          salesOrderLineId: line.salesOrderLineId,
+          productId: line.productId,
+          warehouseId: line.warehouseId,
+          binId: line.binId,
+          quantityShipped: line.quantityShipped,
+        })),
       });
     }
-  }, [so?.id, so?.updatedAt, isOpen, form]);
+  }, [so, isOpen, form]);
 
-  const onSubmit = async (data: CreateShipmentInput) => {
+  // Auto-select fulfillment reason based on quantities
+  const watchedLines = useWatch({
+    control: form.control,
+    name: 'lines',
+  });
+
+  const watchedLinesString = JSON.stringify(watchedLines);
+
+  React.useEffect(() => {
+    if (!so || !watchedLines) return;
+
+    let isPartial = false;
+    watchedLines.forEach((line: ExtendedShipmentInput['lines'][number]) => {
+      const soLine = so.lines.find((l) => l.id === line.salesOrderLineId);
+      if (soLine) {
+        const ordered = Number(soLine.quantity);
+        const shippedAlready = Number(soLine.quantityShipped || 0);
+        const remaining = Math.max(0, ordered - shippedAlready);
+        const requested = Number(line.quantityShipped);
+
+        if (requested < remaining) {
+          isPartial = true;
+        }
+      }
+    });
+
+    const currentReasonId = form.getValues('reasonId');
+    const newReasonId = isPartial ? 'partial_fulfillment' : 'standard_fulfillment';
+    const isAutoReason =
+      !currentReasonId ||
+      currentReasonId === 'standard_fulfillment' ||
+      currentReasonId === 'partial_fulfillment';
+
+    if (currentReasonId !== newReasonId && isAutoReason) {
+      form.setValue('reasonId', newReasonId, { shouldDirty: true, shouldValidate: true });
+    }
+  }, [watchedLines, watchedLinesString, so, form]);
+
+  const onSubmit = async (data: ExtendedShipmentInput) => {
     if (!so) return;
 
     try {
-      await createShipment(data);
+      const reasons = ACTION_REASONS.ORDER_SHIPPED || [];
+      const selectedReason = reasons.find((r) => r.value === data.reasonId);
+      let finalReasonText = selectedReason?.label || data.reasonId;
+
+      if (data.reasonId === 'other' && data.customReason) {
+        finalReasonText = data.customReason;
+      }
+
+      const payload: CreateShipmentInput = {
+        ...data,
+        action: 'ORDER_SHIPPED',
+        reason: finalReasonText,
+      };
+
+      await createShipment(payload);
       toast.success('Inventory allocated and shipment recorded.');
       onClose();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to ship stock:', error);
       // The backend error will be caught here if validation somehow bypasses the frontend
-      toast.error(error.message || 'Failed to create shipment');
+      const msg = error instanceof Error ? error.message : 'Failed to create shipment';
+      toast.error(msg);
     }
   };
 
@@ -234,13 +317,13 @@ export function FulfillSalesOrderSheet({ isOpen, onClose, so }: FulfillSalesOrde
           </ResponsiveDrawerDescription>
         </ResponsiveDrawerHeader>
 
-        <Form<CreateShipmentInput, typeof createShipmentSchema>
+        <Form<ExtendedShipmentInput, typeof extendedShipmentSchema>
           form={form}
-          schema={createShipmentSchema}
+          schema={extendedShipmentSchema}
           onSubmit={onSubmit}
           className="flex flex-col flex-1 overflow-hidden"
         >
-          {() => (
+          {(form) => (
             <>
               <div className="space-y-6 px-4 py-4 flex-1 overflow-y-auto">
                 {fields.map((field, index) => (
@@ -254,6 +337,40 @@ export function FulfillSalesOrderSheet({ isOpen, onClose, so }: FulfillSalesOrde
                     warehouses={warehouses || []}
                   />
                 ))}
+
+                <div className="pt-6 border-t mt-6 space-y-4">
+                  <FormField name="reasonId" label="Fulfillment Reason">
+                    {({ field }) => (
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        value={field.value}
+                      >
+                        <SelectTrigger id={field.id} className="w-full">
+                          <SelectValue placeholder="Select a reason" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(ACTION_REASONS.ORDER_SHIPPED || []).map((reason) => (
+                            <SelectItem key={reason.value} value={reason.value}>
+                              {reason.label}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="other">Other (Please specify)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </FormField>
+
+                  {reasonId === 'other' && (
+                    <div className="animate-in fade-in slide-in-from-top-1">
+                      <FormField name="customReason" label="Custom Reason">
+                        {({ field }) => (
+                          <Textarea placeholder="Enter your reason here..." {...field} />
+                        )}
+                      </FormField>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <ResponsiveDrawerFooter>

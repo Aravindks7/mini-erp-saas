@@ -15,6 +15,12 @@ router.get(
   financeController.listAccounts,
 );
 
+router.get(
+  '/accounts/:id',
+  requirePermission(PERMISSIONS.FINANCE.READ),
+  financeController.getAccount,
+);
+
 router.post(
   '/accounts',
   requirePermission(PERMISSIONS.FINANCE.CREATE),

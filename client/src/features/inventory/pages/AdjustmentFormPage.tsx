@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,36 +7,43 @@ import { PageContainer } from '@/components/shared/PageContainer';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { useTenantPath } from '@/hooks/useTenantPath';
-import { createAdjustmentSchema, type CreateAdjustmentInput } from '@mini-erp/shared';
+import {
+  createInventoryAdjustmentSchema,
+  type CreateInventoryAdjustmentInput,
+} from '@mini-erp/shared';
+import { APP_PATHS } from '@/lib/paths';
 
 import { AdjustmentForm } from '../components/adjustments/AdjustmentForm';
 import { useCreateAdjustment } from '../hooks/inventory.hooks';
 
-export function AdjustmentFormPage() {
+export default function AdjustmentFormPage() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
   const createMutation = useCreateAdjustment();
 
-  const form = useForm<CreateAdjustmentInput>({
-    resolver: zodResolver(createAdjustmentSchema),
+  const form = useForm<CreateInventoryAdjustmentInput>({
+    resolver: zodResolver(
+      createInventoryAdjustmentSchema,
+    ) as Resolver<CreateInventoryAdjustmentInput>,
     defaultValues: {
       reason: '',
       reference: '',
+      adjustmentDate: new Date().toISOString(),
       lines: [
         {
           productId: '',
           warehouseId: '',
-          quantityChange: '1',
+          quantityVariance: 1,
         },
       ],
     },
   });
 
-  const onSubmit = async (data: CreateAdjustmentInput) => {
+  const onSubmit = async (data: CreateInventoryAdjustmentInput) => {
     try {
       await createMutation.mutateAsync(data);
       toast.success('Inventory adjustment recorded successfully');
-      navigate(getPath('/adjustments'));
+      navigate(getPath(APP_PATHS.inventory.adjustments.list()));
     } catch (error) {
       toast.error('Failed to record adjustment. Please check your data.');
       console.error('Adjustment error:', error);
@@ -48,7 +55,7 @@ export function AdjustmentFormPage() {
       <PageHeader
         title="New Inventory Adjustment"
         description="Record a manual stock correction or cycle count."
-        backButton={{ href: '/inventory', label: 'Back to Levels' }}
+        backButton={{ href: APP_PATHS.inventory.index(), label: 'Back to Levels' }}
         actions={[
           {
             label: createMutation.isPending ? 'Processing...' : 'Post Adjustment',
@@ -58,7 +65,7 @@ export function AdjustmentFormPage() {
           },
         ]}
       >
-        <Button variant="outline" onClick={() => navigate(getPath('/inventory'))}>
+        <Button variant="outline" onClick={() => navigate(getPath(APP_PATHS.inventory.index()))}>
           Cancel
         </Button>
       </PageHeader>

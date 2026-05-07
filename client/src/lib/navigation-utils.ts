@@ -7,6 +7,7 @@ import {
   Settings2,
 } from 'lucide-react';
 import type { AppRoute } from './types/navigation';
+import { getTenantPath } from './path-utils';
 
 export interface SidebarItem {
   route: AppRoute;
@@ -21,6 +22,7 @@ export interface SidebarGroupData {
   order: number;
   items: SidebarItem[];
   isActive: boolean;
+  indexPath?: string;
 }
 
 export interface SidebarTree {
@@ -52,52 +54,73 @@ export function buildSidebarTree(
 
   const groupMap = new Map<string, SidebarGroupData>();
 
-  for (const route of routes) {
-    if (!route.handle?.showInSidebar || route.handle?.hidden) {
-      continue;
-    }
+  // Helper to process routes and their children
+  const processRoute = (route: AppRoute, parentPath = '') => {
+    // Determine the full path for this route (relative to parent)
+    const routePath = route.index ? '' : route.path ? `/${route.path}` : '';
+    const absolutePath = `${parentPath}${routePath}`.replace(/\/+/g, '/');
+    const tenantPath = getTenantPath(absolutePath, tenantSlug);
 
-    const routePath = route.index ? '' : `/${route.path}`;
-    const fullPath = tenantSlug ? `/${tenantSlug}${routePath}` : routePath || '/';
-
-    // For index routes (like dashboard), we want exact match.
-    // For others, any sub-path makes it active.
-    const isActive = route.index ? currentPath === fullPath : currentPath.startsWith(fullPath);
-
-    const sidebarItem: SidebarItem = { route, path: fullPath, isActive };
-    const groupName = route.handle.sidebarGroup;
-
-    if (!groupName) {
-      const order = route.handle.order ?? 0;
-      if (order >= 90) {
-        tree.ungroupedBottom.push(sidebarItem);
-      } else {
-        tree.ungroupedTop.push(sidebarItem);
+    // If this route is a module root, assign its path to the group
+    const groupName = route.handle?.sidebarGroup;
+    if (groupName) {
+      if (!groupMap.has(groupName)) {
+        const config = SIDEBAR_GROUP_CONFIG[groupName];
+        groupMap.set(groupName, {
+          id: groupName,
+          name: groupName,
+          icon: config?.icon,
+          order: config?.order ?? 99,
+          items: [],
+          isActive: false,
+        });
       }
-      continue;
+
+      const group = groupMap.get(groupName)!;
+      if (route.handle?.isModuleRoot) {
+        group.indexPath = tenantPath;
+      }
     }
 
-    if (!groupMap.has(groupName)) {
-      const config = SIDEBAR_GROUP_CONFIG[groupName];
-      groupMap.set(groupName, {
-        id: groupName,
-        name: groupName,
-        icon: config?.icon,
-        order: config?.order ?? 99,
-        items: [],
-        isActive: false,
-      });
+    // Check if this specific route entry should be in the sidebar items
+    if (route.handle?.showInSidebar && !route.handle?.hidden) {
+      const isActive = route.index
+        ? currentPath === tenantPath
+        : currentPath.startsWith(tenantPath);
+      const sidebarItem: SidebarItem = { route, path: tenantPath, isActive };
+
+      if (!groupName) {
+        const order = route.handle.order ?? 0;
+        if (order >= 90) {
+          tree.ungroupedBottom.push(sidebarItem);
+        } else {
+          tree.ungroupedTop.push(sidebarItem);
+        }
+      } else {
+        const group = groupMap.get(groupName)!;
+        group.items.push(sidebarItem);
+
+        if (isActive) {
+          group.isActive = true;
+          tree.activeGroupId = group.id;
+        }
+      }
     }
 
-    const group = groupMap.get(groupName)!;
-    group.items.push(sidebarItem);
-
-    if (isActive) {
-      group.isActive = true;
-      tree.activeGroupId = group.id;
+    // Recursively process children
+    if (route.children) {
+      for (const child of route.children) {
+        processRoute(child, absolutePath);
+      }
     }
+  };
+
+  // Start processing all top-level routes
+  for (const route of routes) {
+    processRoute(route);
   }
 
+  // Sort groups and items
   for (const group of groupMap.values()) {
     group.items.sort((a, b) => (a.route.handle?.order ?? 99) - (b.route.handle?.order ?? 99));
   }

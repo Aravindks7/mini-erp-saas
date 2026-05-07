@@ -1,7 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { Truck, Package, AlertCircle, FileText, Ban, FileEdit, PackageSearch } from 'lucide-react';
-import * as React from 'react';
-
 import { useReceipt } from '../hooks/receipts.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -11,6 +9,7 @@ import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
 import { DetailView } from '@/components/shared/DetailView';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 import { formatDate } from '@shared/utils/date';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -37,7 +36,7 @@ export default function ReceiptDetailsPage() {
   if (isLoading) {
     return (
       <PageContainer>
-        <SkeletonLoader variant="details" rows={3} />
+        <SkeletonLoader variant="form" rows={3} />
       </PageContainer>
     );
   }
@@ -54,7 +53,7 @@ export default function ReceiptDetailsPage() {
             The receipt record you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate(getPath('/receipts'))}
+            onClick={() => navigate(getPath(APP_PATHS.purchasing.receipts.list()))}
             className="text-primary font-semibold hover:underline"
           >
             Return to Receipts List
@@ -78,7 +77,7 @@ export default function ReceiptDetailsPage() {
       },
       {
         label: 'Edit',
-        onClick: () => navigate(getPath(`/receipts/${receipt.id}/edit`)),
+        onClick: () => navigate(getPath(APP_PATHS.purchasing.receipts.edit(receipt.id))),
         icon: <FileEdit className="h-4 w-4" />,
       },
     );
@@ -98,7 +97,10 @@ export default function ReceiptDetailsPage() {
       <PageHeader
         title={receipt.receiptNumber}
         description={`Inbound shipment received on ${formatDate(receipt.receivedDate)}.`}
-        backButton={{ onClick: () => navigate(getPath('/receipts')), label: 'Back to Receipts' }}
+        backButton={{
+          onClick: () => navigate(getPath(APP_PATHS.purchasing.receipts.list())),
+          label: 'Back to Receipts',
+        }}
         actions={actions}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">

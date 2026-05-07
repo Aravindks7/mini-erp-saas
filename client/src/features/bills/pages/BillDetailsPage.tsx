@@ -10,7 +10,6 @@ import {
   Send,
   DollarSign,
 } from 'lucide-react';
-import * as React from 'react';
 import { toast } from 'sonner';
 
 import { useBill, useUpdateBillStatus } from '../hooks/bills.hooks';
@@ -27,6 +26,7 @@ import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 import { formatDate } from '@shared/utils/date';
 import {
   Table,
@@ -72,7 +72,7 @@ export default function BillDetailsPage() {
             The bill you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate(getPath('/bills'))}
+            onClick={() => navigate(getPath(APP_PATHS.purchasing.bills.list()))}
             className="text-primary font-semibold hover:underline"
           >
             Return to Bills List
@@ -106,7 +106,7 @@ export default function BillDetailsPage() {
       <PageHeader
         title={`Bill: ${bill.referenceNumber}`}
         description={`Procurement bill from ${bill.supplier?.name || 'Supplier'}.`}
-        backButton={{ href: getPath('/bills'), label: 'Back to List' }}
+        backButton={{ href: APP_PATHS.purchasing.bills.list(), label: 'Back to List' }}
         actions={[
           {
             label: 'Mark as Paid',
@@ -126,7 +126,7 @@ export default function BillDetailsPage() {
           },
           {
             label: 'Edit Bill',
-            onClick: () => navigate(getPath(`/bills/${bill.id}/edit`)),
+            onClick: () => navigate(getPath(APP_PATHS.purchasing.bills.edit(bill.id))),
             icon: <FileEdit className="h-4 w-4" />,
             variant: 'outline',
             hidden: bill.status !== 'draft',

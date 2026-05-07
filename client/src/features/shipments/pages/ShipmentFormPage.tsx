@@ -12,6 +12,7 @@ import type { CreateShipmentInput } from '@shared/contracts/shipments.contract';
 import { createShipmentSchema } from '@shared/contracts/shipments.contract';
 import { useCreateShipment } from '../hooks/shipments.hooks';
 import { ShipmentForm } from '../components/ShipmentForm';
+import { APP_PATHS } from '@/lib/paths';
 
 const FORM_ID = 'shipment-form';
 
@@ -40,7 +41,7 @@ export default function ShipmentFormPage() {
         id: toastId,
         description: `Shipment ${result.shipmentNumber} has been recorded.`,
       });
-      navigate(getPath(`/shipments/${result.id}`));
+      navigate(getPath(APP_PATHS.sales.shipments.detail(result.id)));
     } catch (error) {
       console.error('Shipment creation error:', error);
       toast.error('Failed to create shipment', {
@@ -51,7 +52,7 @@ export default function ShipmentFormPage() {
   };
 
   const handleCancel = () => {
-    navigate(getPath('/shipments'));
+    navigate(getPath(APP_PATHS.sales.shipments.list()));
   };
 
   return (

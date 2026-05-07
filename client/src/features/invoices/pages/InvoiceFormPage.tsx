@@ -10,6 +10,7 @@ import { PageContainer } from '@/components/shared/PageContainer';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 import { InvoiceForm } from '../components/InvoiceForm';
 import { useCreateInvoice } from '../hooks/invoices.hooks';
@@ -65,7 +66,7 @@ export default function InvoiceFormPage() {
 
       const result = await createInvoice(enrichedData);
       toast.success('Invoice created successfully', { id: toastId });
-      navigate(getPath(`/invoices/${result.id}`));
+      navigate(getPath(APP_PATHS.sales.invoices.detail(result.id)));
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Something went wrong. Please try again.';
@@ -78,7 +79,7 @@ export default function InvoiceFormPage() {
     if (form.formState.isDirty) {
       setShowCancelConfirm(true);
     } else {
-      navigate(getPath('/invoices'));
+      navigate(getPath(APP_PATHS.sales.invoices.list()));
     }
   };
 
@@ -117,7 +118,7 @@ export default function InvoiceFormPage() {
       <ConfirmDialog
         isOpen={showCancelConfirm}
         onClose={() => setShowCancelConfirm(false)}
-        onConfirm={() => navigate(getPath('/invoices'))}
+        onConfirm={() => navigate(getPath(APP_PATHS.sales.invoices.list()))}
         title="Discard Changes?"
         description="You have unsaved changes. Are you sure you want to discard them and leave this page?"
         confirmLabel="Discard Changes"

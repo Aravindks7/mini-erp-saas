@@ -12,6 +12,7 @@ import { PageContainer } from '@/components/shared/PageContainer';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 import type { CreatePaymentInput } from '@shared/contracts/payments.contract';
 import { createPaymentSchema } from '@shared/contracts/payments.contract';
@@ -48,7 +49,7 @@ export default function PaymentFormPage() {
     try {
       const result = await createPayment(data);
       toast.success('Payment recorded successfully', { id: toastId });
-      navigate(getPath(`/payments/${result.id}`));
+      navigate(getPath(APP_PATHS.finance.payments.detail(result.id)));
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Something went wrong. Please try again.';
@@ -61,7 +62,7 @@ export default function PaymentFormPage() {
     if (form.formState.isDirty) {
       setShowCancelConfirm(true);
     } else {
-      navigate(getPath('/payments'));
+      navigate(getPath(APP_PATHS.finance.payments.list()));
     }
   };
 
@@ -100,7 +101,7 @@ export default function PaymentFormPage() {
       <ConfirmDialog
         isOpen={showCancelConfirm}
         onClose={() => setShowCancelConfirm(false)}
-        onConfirm={() => navigate(getPath('/payments'))}
+        onConfirm={() => navigate(getPath(APP_PATHS.finance.payments.list()))}
         title="Discard Changes?"
         description="You have unsaved changes. Are you sure you want to discard them and leave this page?"
         confirmLabel="Discard Changes"

@@ -11,6 +11,7 @@ import {
 import type { AccountResponse } from '../api/accounts.api';
 import { useDeleteAccount } from '../hooks/accounts.hooks';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 interface AccountRowActionsProps {
   row: { original: AccountResponse };
@@ -34,7 +35,7 @@ export function AccountRowActions({ row, onEdit }: AccountRowActionsProps) {
     {
       label: 'View',
       icon: <Eye className="h-4 w-4" />,
-      onClick: () => navigate(getPath(`/finance/accounts/${account.id}`)),
+      onClick: () => navigate(getPath(APP_PATHS.finance.accounts.detail(account.id))),
       tooltip: 'View Details',
     },
     {

@@ -11,6 +11,7 @@ import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
@@ -56,7 +57,7 @@ export default function JournalEntryDetailsPage() {
             The journal entry you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate(getPath('/finance/journal-entries'))}
+            onClick={() => navigate(getPath(APP_PATHS.finance.journalEntries.list()))}
             className="text-primary font-semibold hover:underline"
           >
             Return to General Ledger
@@ -89,7 +90,7 @@ export default function JournalEntryDetailsPage() {
       },
       {
         label: 'Edit',
-        onClick: () => navigate(getPath(`/finance/journal-entries/${entry.id}/edit`)),
+        onClick: () => navigate(getPath(APP_PATHS.finance.journalEntries.edit(entry.id))),
         icon: <FileEdit className="h-4 w-4" />,
       },
     );
@@ -109,7 +110,10 @@ export default function JournalEntryDetailsPage() {
       <PageHeader
         title={`Entry: ${entry.reference || entry.id.slice(0, 8)}`}
         description="Detailed transaction record and ledger impact."
-        backButton={{ href: getPath('/finance/journal-entries'), label: 'Back to Ledger' }}
+        backButton={{
+          href: getPath(APP_PATHS.finance.journalEntries.list()),
+          label: 'Back to Ledger',
+        }}
         actions={actions}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">

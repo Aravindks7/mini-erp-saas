@@ -16,6 +16,7 @@ import { ContactCard, type Contact } from '@/components/shared/domain/ContactCar
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 import { customersApi } from '../api/customers.api';
 
 const customerStatusMap: StatusMap<string> = {
@@ -57,7 +58,7 @@ export default function CustomerDetailsPage() {
             The customer record you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate(getPath('/customers'))}
+            onClick={() => navigate(getPath(APP_PATHS.sales.customers.list()))}
             className="text-primary font-semibold hover:underline"
           >
             Return to Customer Directory
@@ -72,11 +73,14 @@ export default function CustomerDetailsPage() {
       <PageHeader
         title={customer.companyName}
         description={`Manage details, addresses, and contacts for ${customer.companyName}.`}
-        backButton={{ href: getPath('/customers'), label: 'Back to Directory' }}
+        backButton={{
+          href: getPath(APP_PATHS.sales.customers.list()),
+          label: 'Back to Directory',
+        }}
         actions={[
           {
             label: 'Edit Customer',
-            onClick: () => navigate(getPath(`/customers/${customer.id}/edit`)),
+            onClick: () => navigate(getPath(APP_PATHS.sales.customers.edit(customer.id))),
             icon: <FileEdit className="h-4 w-4" />,
             variant: 'default',
           },

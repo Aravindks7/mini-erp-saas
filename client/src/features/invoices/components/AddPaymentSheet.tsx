@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { z } from 'zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CreditCard, Banknote, Link as LinkIcon, Loader2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -54,7 +54,7 @@ export function AddPaymentSheet({ invoice, isOpen, onClose }: AddPaymentSheetPro
   }, [balanceDue]);
 
   const form = useForm<CreatePaymentInput>({
-    resolver: zodResolver(paymentSchema) as any,
+    resolver: zodResolver(paymentSchema) as Resolver<CreatePaymentInput>,
     defaultValues: {
       paymentType: 'inbound',
       paymentMethod: 'bank_transfer',
@@ -65,7 +65,10 @@ export function AddPaymentSheet({ invoice, isOpen, onClose }: AddPaymentSheetPro
     },
   });
 
-  const watchedAmount = form.watch('amount');
+  const watchedAmount = useWatch({
+    control: form.control,
+    name: 'amount',
+  });
 
   const onManualSubmit = async (data: CreatePaymentInput) => {
     try {
@@ -136,7 +139,7 @@ export function AddPaymentSheet({ invoice, isOpen, onClose }: AddPaymentSheetPro
             </TabsList>
 
             <TabsContent value="manual" className="space-y-6">
-              <Form<CreatePaymentInput, any>
+              <Form<CreatePaymentInput, typeof paymentSchema>
                 form={form}
                 onSubmit={onManualSubmit}
                 className="space-y-6"

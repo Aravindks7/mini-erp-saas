@@ -16,6 +16,7 @@ import { ContactCard, type Contact } from '@/components/shared/domain/ContactCar
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 import { suppliersApi } from '../api/suppliers.api';
 
 const supplierStatusMap: StatusMap<string> = {
@@ -57,7 +58,7 @@ export default function SupplierDetailsPage() {
             The supplier record you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate(getPath('/suppliers'))}
+            onClick={() => navigate(getPath(APP_PATHS.purchasing.suppliers.list()))}
             className="text-primary font-semibold hover:underline"
           >
             Return to Supplier Directory
@@ -72,11 +73,14 @@ export default function SupplierDetailsPage() {
       <PageHeader
         title={supplier.name}
         description={`Manage details, addresses, and contacts for ${supplier.name}.`}
-        backButton={{ href: getPath('/suppliers'), label: 'Back to Directory' }}
+        backButton={{
+          href: getPath(APP_PATHS.purchasing.suppliers.list()),
+          label: 'Back to Directory',
+        }}
         actions={[
           {
             label: 'Edit Supplier',
-            onClick: () => navigate(getPath(`/suppliers/${supplier.id}/edit`)),
+            onClick: () => navigate(getPath(APP_PATHS.purchasing.suppliers.edit(supplier.id))),
             icon: <FileEdit className="h-4 w-4" />,
             variant: 'default',
           },

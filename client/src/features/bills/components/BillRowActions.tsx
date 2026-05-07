@@ -11,6 +11,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { useDeleteBill } from '../hooks/bills.hooks';
 import type { BillResponse } from '../api/bills.api';
+import { APP_PATHS } from '@/lib/paths';
 
 interface BillRowActionsProps {
   row: Row<BillResponse>;
@@ -37,7 +38,7 @@ export function BillRowActions({ row, onPayBill }: BillRowActionsProps) {
     {
       label: 'View',
       icon: <Eye className="h-4 w-4" />,
-      onClick: () => navigate(getPath(`/bills/${bill.id}`)),
+      onClick: () => navigate(getPath(APP_PATHS.purchasing.bills.detail(bill.id))),
       tooltip: 'View Details',
     },
   ];
@@ -47,7 +48,7 @@ export function BillRowActions({ row, onPayBill }: BillRowActionsProps) {
       {
         label: 'Edit',
         icon: <FileEdit className="h-4 w-4" />,
-        onClick: () => navigate(getPath(`/bills/${bill.id}/edit`)),
+        onClick: () => navigate(getPath(APP_PATHS.purchasing.bills.edit(bill.id))),
         tooltip: 'Edit Bill',
       },
       {

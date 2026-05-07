@@ -9,6 +9,7 @@ import { PageContainer } from '@/components/shared/PageContainer';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 import type { CreateJournalEntryInput } from '@shared/contracts/finance.contract';
 
@@ -27,7 +28,7 @@ export default function JournalEntryFormPage() {
     try {
       const result = await createEntry(data);
       toast.success('Journal entry posted successfully', { id: toastId });
-      navigate(getPath(`/finance/journal-entries/${result.id}`));
+      navigate(getPath(APP_PATHS.finance.journalEntries.detail(result.id)));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to post entry';
       toast.error(message, { id: toastId });
@@ -73,7 +74,7 @@ export default function JournalEntryFormPage() {
       <ConfirmDialog
         isOpen={showCancelConfirm}
         onClose={() => setShowCancelConfirm(false)}
-        onConfirm={() => navigate(getPath('/finance/journal-entries'))}
+        onConfirm={() => navigate(getPath(APP_PATHS.finance.journalEntries.list()))}
         title="Discard Entry?"
         description="Are you sure you want to discard this journal entry? Any data entered will be lost."
         confirmLabel="Discard Entry"

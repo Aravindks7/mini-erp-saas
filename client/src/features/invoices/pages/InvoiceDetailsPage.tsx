@@ -26,6 +26,7 @@ import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 import { invoiceStatusMap } from '../components/columns';
 import {
   Table,
@@ -70,7 +71,7 @@ export default function InvoiceDetailsPage() {
             The invoice you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate(getPath('/invoices'))}
+            onClick={() => navigate(getPath(APP_PATHS.sales.invoices.list()))}
             className="text-primary font-semibold hover:underline"
           >
             Return to Invoices List
@@ -110,7 +111,7 @@ export default function InvoiceDetailsPage() {
       <PageHeader
         title={invoice.documentNumber}
         description={`Invoice for ${invoice.customer.companyName}.`}
-        backButton={{ href: getPath('/invoices'), label: 'Back to List' }}
+        backButton={{ href: APP_PATHS.sales.invoices.list(), label: 'Back to List' }}
         actions={[
           {
             label: 'Record Payment',
@@ -129,7 +130,7 @@ export default function InvoiceDetailsPage() {
           },
           {
             label: 'Edit Invoice',
-            onClick: () => navigate(getPath(`/invoices/${invoice.id}/edit`)),
+            onClick: () => navigate(getPath(APP_PATHS.sales.invoices.edit(invoice.id))),
             icon: <FileEdit className="h-4 w-4" />,
             variant: 'outline',
             hidden: !isDraft,
@@ -189,7 +190,9 @@ export default function InvoiceDetailsPage() {
                           value: invoice.salesOrder ? (
                             <button
                               onClick={() =>
-                                navigate(getPath(`/sales-orders/${invoice.salesOrderId}`))
+                                navigate(
+                                  getPath(APP_PATHS.sales.orders.detail(invoice.salesOrderId!)),
+                                )
                               }
                               className="text-primary hover:underline"
                             >
@@ -257,7 +260,6 @@ export default function InvoiceDetailsPage() {
                   label: 'Balance Due',
                   value: currencyFormatter.format(balanceDue),
                   isTotal: true,
-                  className: balanceDue > 0 ? 'text-destructive font-bold' : 'text-emerald-600',
                 },
               ]}
             />

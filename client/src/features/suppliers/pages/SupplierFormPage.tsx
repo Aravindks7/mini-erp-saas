@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 import type { CreateSupplierInput } from '@shared/contracts/suppliers.contract';
 import { createSupplierSchema } from '@shared/contracts/suppliers.contract';
@@ -63,11 +64,11 @@ export default function SupplierFormPage() {
       if (isEditing && id) {
         await updateSupplier({ id, data });
         toast.success(`Supplier ${data.name} updated successfully`, { id: toastId });
-        navigate(getPath(`/suppliers/${id}`));
+        navigate(getPath(APP_PATHS.purchasing.suppliers.detail(id)));
       } else {
         const result = await createSupplier(data);
         toast.success(`Supplier ${data.name} created successfully`, { id: toastId });
-        navigate(getPath(`/suppliers/${result.id}`));
+        navigate(getPath(APP_PATHS.purchasing.suppliers.detail(result.id)));
       }
     } catch (error) {
       const message =
@@ -81,7 +82,13 @@ export default function SupplierFormPage() {
     if (form.formState.isDirty) {
       setShowCancelConfirm(true);
     } else {
-      navigate(getPath(isEditing ? `/suppliers/${id}` : '/suppliers'));
+      navigate(
+        getPath(
+          isEditing
+            ? APP_PATHS.purchasing.suppliers.detail(id)
+            : APP_PATHS.purchasing.suppliers.list(),
+        ),
+      );
     }
   };
 
@@ -99,7 +106,10 @@ export default function SupplierFormPage() {
         <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
           <AlertCircle className="h-12 w-12 text-destructive" />
           <h2 className="text-xl font-bold">Failed to load supplier</h2>
-          <Button variant="outline" onClick={() => navigate(getPath('/suppliers'))}>
+          <Button
+            variant="outline"
+            onClick={() => navigate(getPath(APP_PATHS.purchasing.suppliers.list()))}
+          >
             Back to List
           </Button>
         </div>
@@ -146,7 +156,15 @@ export default function SupplierFormPage() {
       <ConfirmDialog
         isOpen={showCancelConfirm}
         onClose={() => setShowCancelConfirm(false)}
-        onConfirm={() => navigate(getPath(isEditing ? `/suppliers/${id}` : '/suppliers'))}
+        onConfirm={() =>
+          navigate(
+            getPath(
+              isEditing
+                ? APP_PATHS.purchasing.suppliers.detail(id)
+                : APP_PATHS.purchasing.suppliers.list(),
+            ),
+          )
+        }
         title="Discard Changes?"
         description="You have unsaved changes. Are you sure you want to discard them and leave this page?"
         confirmLabel="Discard Changes"

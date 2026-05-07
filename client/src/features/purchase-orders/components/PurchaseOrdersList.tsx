@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Can } from '@/components/shared/Can';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
+import { APP_PATHS } from '@/lib/paths';
 
 import { getColumns, purchaseOrderStatusOptions } from './columns';
 import { usePurchaseOrders, useBulkDeletePurchaseOrders } from '../hooks/purchase-orders.hooks';
@@ -59,7 +60,7 @@ export function PurchaseOrdersList() {
   };
 
   const handleAdd = () => {
-    navigate(getPath('/purchase-orders/new'));
+    navigate(getPath(APP_PATHS.purchasing.orders.new()));
   };
 
   const handleBulkDeleteConfirm = async () => {

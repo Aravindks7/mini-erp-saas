@@ -48,13 +48,16 @@ async function run() {
         .insert(activityLogs)
         .values({
           id: generateDeterministicId(record.id, 'CREATED'),
-          organizationId: primaryOrgId, // Fallback to primary org for global users
+          organizationId: primaryOrgId,
           entityType: 'user',
           entityId: record.id,
+          entityDisplayId: record.email,
+          entityLabel: 'User',
           action: 'USER_CREATED',
           reason: `New user account provisioned for ${record.name}`,
           createdAt: record.createdAt,
-        })
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any)
         .onConflictDoNothing();
     }
 
@@ -67,10 +70,13 @@ async function run() {
           organizationId: record.organizationId || primaryOrgId,
           entityType: 'role',
           entityId: record.id,
+          entityDisplayId: record.name,
+          entityLabel: 'Role',
           action: 'ROLE_CREATED',
           reason: `System role "${record.name}" initialized with defined permissions`,
           createdAt: record.createdAt,
-        })
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any)
         .onConflictDoNothing();
     }
 
@@ -83,10 +89,13 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'user',
           entityId: record.userId,
+          entityDisplayId: record.userId,
+          entityLabel: 'User Membership',
           action: 'USER_JOINED_ORGANIZATION',
           reason: `User linked to organization with assigned role context`,
           createdAt: record.createdAt,
-        })
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any)
         .onConflictDoNothing();
     }
 
@@ -101,6 +110,8 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'tax',
           entityId: record.id,
+          entityDisplayId: record.name,
+          entityLabel: 'Tax',
           action: 'TAX_CONFIG_CREATED',
           reason: `Tax rule "${record.name}" (${record.rate}%) established for financial compliance`,
           createdAt: record.createdAt,
@@ -118,6 +129,8 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'uom',
           entityId: record.id,
+          entityDisplayId: record.code,
+          entityLabel: 'Unit of Measure',
           action: 'UOM_CREATED',
           reason: `Unit of Measure "${record.name}" (${record.code}) defined for inventory tracking`,
           createdAt: record.createdAt,
@@ -135,6 +148,8 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'product_category',
           entityId: record.id,
+          entityDisplayId: record.name,
+          entityLabel: 'Product Category',
           action: 'CATEGORY_CREATED',
           reason: `Product category "${record.name}" initialized in the catalog hierarchy`,
           createdAt: record.createdAt,
@@ -156,8 +171,10 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'customer',
           entityId: record.id,
+          entityDisplayId: record.companyName,
+          entityLabel: 'Customer',
           action: 'CREATED',
-          reason: `Initial record created for Customer "${record.name}"`,
+          reason: `Initial record created for Customer "${record.companyName}"`,
           createdAt: record.createdAt,
           createdBy: record.createdBy,
         })
@@ -174,6 +191,8 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'product',
           entityId: record.id,
+          entityDisplayId: record.sku,
+          entityLabel: 'Product',
           action: 'CREATED',
           reason: `Initial record created for Product "${record.name}"`,
           createdAt: record.createdAt,
@@ -192,6 +211,8 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'supplier',
           entityId: record.id,
+          entityDisplayId: record.name,
+          entityLabel: 'Supplier',
           action: 'CREATED',
           reason: `Initial record created for Supplier "${record.name}"`,
           createdAt: record.createdAt,
@@ -210,6 +231,8 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'warehouse',
           entityId: record.id,
+          entityDisplayId: record.name,
+          entityLabel: 'Warehouse',
           action: 'CREATED',
           reason: `Initial record created for Warehouse "${record.name}"`,
           createdAt: record.createdAt,
@@ -227,6 +250,8 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'bin',
           entityId: record.id,
+          entityDisplayId: record.code,
+          entityLabel: 'Bin',
           action: 'BIN_CREATED',
           reason: `Storage bin "${record.code}" mapped within warehouse configuration`,
           createdAt: record.createdAt,
@@ -246,8 +271,10 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'inventory_adjustment',
           entityId: record.id,
+          entityDisplayId: record.reference || record.id,
+          entityLabel: 'Inventory Adjustment',
           action: 'STOCK_ADJUSTED',
-          reason: `Inventory adjustment "${record.documentNumber}" finalized. Reason: ${record.reason || 'General Adjustment'}`,
+          reason: `Inventory adjustment "${record.reference || record.id}" finalized. Reason: ${record.reason || 'General Adjustment'}`,
           createdAt: record.createdAt,
           createdBy: record.createdBy,
         })
@@ -265,6 +292,8 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'purchase_order',
           entityId: record.id,
+          entityDisplayId: record.documentNumber,
+          entityLabel: 'Purchase Order',
           action: 'PO_CREATED',
           reason: `Purchase Order ${record.documentNumber} issued to supplier for total amount ${record.totalAmount}`,
           createdAt: record.createdAt,
@@ -282,6 +311,8 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'receipt',
           entityId: record.id,
+          entityDisplayId: record.receiptNumber,
+          entityLabel: 'Receipt',
           action: 'GOODS_RECEIVED',
           reason: `Goods receipt ${record.receiptNumber} confirmed. Stock incremented in warehouse.`,
           createdAt: record.createdAt,
@@ -299,6 +330,8 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'bill',
           entityId: record.id,
+          entityDisplayId: record.documentNumber,
+          entityLabel: 'Bill',
           action: 'VENDOR_BILL_POSTED',
           reason: `Vendor bill ${record.documentNumber} (Ref: ${record.referenceNumber}) recorded and approved for payment`,
           createdAt: record.createdAt,
@@ -318,6 +351,8 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'sales_order',
           entityId: record.id,
+          entityDisplayId: record.documentNumber,
+          entityLabel: 'Sales Order',
           action: 'ORDER_CREATED',
           reason: `Sales Order ${record.documentNumber} drafted for total amount ${record.totalAmount}`,
           createdAt: subMinutes(record.createdAt, 5),
@@ -333,6 +368,8 @@ async function run() {
             organizationId: record.organizationId,
             entityType: 'sales_order',
             entityId: record.id,
+            entityDisplayId: record.documentNumber,
+            entityLabel: 'Sales Order',
             action: 'ORDER_APPROVED',
             reason: `Credit check passed and order approved for fulfillment`,
             createdAt: record.createdAt,
@@ -351,6 +388,8 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'shipment',
           entityId: record.id,
+          entityDisplayId: record.shipmentNumber,
+          entityLabel: 'Shipment',
           action: record.status === 'shipped' ? 'ORDER_SHIPPED' : 'SHIPMENT_CREATED',
           reason:
             record.status === 'shipped'
@@ -371,6 +410,8 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'invoice',
           entityId: record.id,
+          entityDisplayId: record.documentNumber,
+          entityLabel: 'Invoice',
           action: 'INVOICE_POSTED',
           reason: `Commercial invoice ${record.documentNumber} finalized and sent to customer`,
           createdAt: record.createdAt,
@@ -388,6 +429,8 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'payment',
           entityId: record.id,
+          entityDisplayId: record.referenceNumber || record.id,
+          entityLabel: 'Payment',
           action: record.paymentType === 'inbound' ? 'PAYMENT_RECEIVED' : 'PAYMENT_SENT',
           reason: `${record.paymentType === 'inbound' ? 'Inbound' : 'Outbound'} payment of ${record.amount} confirmed via ${record.paymentMethod}`,
           createdAt: record.createdAt,
@@ -407,8 +450,10 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'journal_entry',
           entityId: record.id,
+          entityDisplayId: record.reference || record.id,
+          entityLabel: 'Journal Entry',
           action: 'LEDGER_POSTED',
-          reason: `Journal entry ${record.documentNumber} posted to General Ledger. Ref: ${record.reference}`,
+          reason: `Journal entry ${record.reference || record.id} posted to General Ledger. Ref: ${record.reference}`,
           createdAt: record.createdAt,
           createdBy: record.createdBy,
         })
@@ -424,6 +469,8 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'payment_intent',
           entityId: record.id,
+          entityDisplayId: record.id,
+          entityLabel: 'Stripe Intent',
           action: 'STRIPE_INTENT_CREATED',
           reason: `Stripe payment intent initialized for amount ${record.amount} ${record.currency}`,
           createdAt: record.createdAt,
@@ -441,11 +488,14 @@ async function run() {
           organizationId: record.organizationId,
           entityType: 'sequence',
           entityId: record.id,
+          entityDisplayId: record.prefix,
+          entityLabel: 'Sequence',
           action: 'SEQUENCE_INITIALIZED',
           reason: `Document numbering sequence "${record.prefix}" initialized for entity ${record.type}`,
           createdAt: record.createdAt,
           createdBy: record.createdBy,
-        })
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any)
         .onConflictDoNothing();
     }
 

@@ -11,6 +11,7 @@ export const PERMISSIONS = {
     READ: 'inventory:read',
     ADJUST: 'inventory:adjust',
     RECEIVE: 'inventory:receive',
+    TRANSFER: 'inventory:transfer',
   },
   UOM: {
     READ: 'uom:read',

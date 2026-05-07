@@ -8,6 +8,7 @@ import { sequencesService } from '../sequences/sequences.service.js';
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 import { PurchaseOrderReconciler, POStatus } from './purchase-orders.reconciler.js';
+import type { ActivityAction } from '#shared/config/activity-actions.config.js';
 
 export type { POStatus };
 
@@ -198,6 +199,8 @@ export class PurchaseOrdersService extends BaseService<typeof purchaseOrders> {
     userId: string,
     id: string,
     status: POStatus,
+    action: ActivityAction,
+    reason: string,
     txIn?: Transaction | typeof db,
   ) {
     const operation = async (tx: Transaction | typeof db) => {
@@ -206,7 +209,8 @@ export class PurchaseOrdersService extends BaseService<typeof purchaseOrders> {
         userId,
         id,
         status,
-        'Manual status update',
+        action,
+        reason,
         tx as Transaction,
       );
     };

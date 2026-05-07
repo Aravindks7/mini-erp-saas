@@ -14,6 +14,7 @@ import { DetailView } from '@/components/shared/DetailView';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { productsApi } from '../api/products.api';
+import { APP_PATHS } from '@/lib/paths';
 
 const productStatusMap: StatusMap<string> = {
   active: { label: 'Active', tone: 'success' },
@@ -54,7 +55,7 @@ export default function ProductDetailsPage() {
             The product record you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate(getPath('/products'))}
+            onClick={() => navigate(getPath(APP_PATHS.inventory.products.list()))}
             className="text-primary font-semibold hover:underline"
           >
             Return to Product Catalog
@@ -69,11 +70,11 @@ export default function ProductDetailsPage() {
       <PageHeader
         title={product.name}
         description={`Detailed view of product specifications, pricing, and inventory settings for ${product.name}.`}
-        backButton={{ href: getPath('/products'), label: 'Back to Catalog' }}
+        backButton={{ href: APP_PATHS.inventory.products.list(), label: 'Back to Catalog' }}
         actions={[
           {
             label: 'Edit Product',
-            onClick: () => navigate(getPath(`/products/${product.id}/edit`)),
+            onClick: () => navigate(getPath(APP_PATHS.inventory.products.edit(product.id))),
             icon: <FileEdit className="h-4 w-4" />,
             variant: 'default',
           },

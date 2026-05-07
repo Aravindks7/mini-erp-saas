@@ -1,5 +1,6 @@
 import { apiFetch } from '@/lib/api';
 import type { CreateAccountInput, UpdateAccountInput } from '@shared/contracts/finance.contract';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export interface AccountResponse {
   id: string;
@@ -20,25 +21,25 @@ export interface AccountResponse {
 
 export const accountsApi = {
   fetchAccounts: async () => {
-    return apiFetch<AccountResponse[]>('/finance/accounts');
+    return apiFetch<AccountResponse[]>(API_ENDPOINTS.finance.accounts.base);
   },
   fetchAccount: async (id: string) => {
-    return apiFetch<AccountResponse>(`/finance/accounts/${id}`);
+    return apiFetch<AccountResponse>(API_ENDPOINTS.finance.accounts.detail(id));
   },
   createAccount: async (data: CreateAccountInput) => {
-    return apiFetch<AccountResponse>('/finance/accounts', {
+    return apiFetch<AccountResponse>(API_ENDPOINTS.finance.accounts.base, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
   updateAccount: async (id: string, data: UpdateAccountInput) => {
-    return apiFetch<AccountResponse>(`/finance/accounts/${id}`, {
+    return apiFetch<AccountResponse>(API_ENDPOINTS.finance.accounts.detail(id), {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
   },
   deleteAccount: (id: string) =>
-    apiFetch<{ message: string }>(`/finance/accounts/${id}`, {
+    apiFetch<{ message: string }>(API_ENDPOINTS.finance.accounts.detail(id), {
       method: 'DELETE',
     }),
 };

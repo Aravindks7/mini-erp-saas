@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import type { SidebarGroupData } from '@/lib/navigation-utils';
@@ -10,6 +10,8 @@ interface SidebarHoverGroupProps {
 }
 
 export function SidebarHoverGroup({ group, onItemClick }: SidebarHoverGroupProps) {
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -25,6 +27,19 @@ export function SidebarHoverGroup({ group, onItemClick }: SidebarHoverGroupProps
       setIsOpen(false);
     }, 200);
   };
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (group.indexPath && pathname !== group.indexPath) {
+      navigate(group.indexPath);
+      onItemClick?.();
+      setIsOpen(false);
+    } else {
+      setIsOpen(!isOpen);
+    }
+  };
+
+  const isExactlyOnIndex = pathname === group.indexPath;
 
   const content = (
     <div
@@ -65,12 +80,13 @@ export function SidebarHoverGroup({ group, onItemClick }: SidebarHoverGroupProps
         <button
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={handleClick}
           className={cn(
             'flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200',
             group.isActive
               ? 'bg-primary/10 text-primary font-semibold'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            isExactlyOnIndex && 'bg-primary/20',
           )}
         >
           {Icon && <Icon size={18} />}

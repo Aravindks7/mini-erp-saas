@@ -1,4 +1,4 @@
-import { pgTable, text, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, index, uniqueIndex, boolean } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import { baseColumns } from './base.schema.js';
 import { timestamps, userTracking, versioning, lifecycle } from './audit.schema.js';
@@ -16,6 +16,7 @@ export const warehouses = pgTable(
 
     code: text('code').notNull(),
     name: text('name').notNull(),
+    isSystemTransit: boolean('is_system_transit').default(false).notNull(),
     ...lifecycle,
   },
   (table) => [

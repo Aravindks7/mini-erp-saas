@@ -1,4 +1,5 @@
 import { lazy } from 'react';
+import { History } from 'lucide-react';
 import type { AppRoute } from '@/lib/types/navigation';
 
 const ActivityPage = lazy(() => import('./pages/ActivityPage'));
@@ -8,8 +9,9 @@ export const activityRoutes: AppRoute[] = [
     path: 'activity',
     handle: {
       title: 'Activity',
+      icon: History,
       crumb: 'Activity',
-      // Not shown in sidebar — accessed via UserProfileDropdown
+      // Accessible via sidebar footer and UserProfileDropdown
     },
     children: [
       {

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,6 +29,11 @@ interface SearchableSelectProps {
   className?: string;
   disabled?: boolean;
   id?: string;
+  action?: {
+    label: string;
+    onClick: () => void;
+    icon?: React.ReactNode;
+  };
 }
 
 /**
@@ -45,6 +50,7 @@ export function SearchableSelect({
   className,
   disabled = false,
   id,
+  action,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -113,6 +119,22 @@ export function SearchableSelect({
               </CommandGroup>
             ))}
           </CommandList>
+          {action && (
+            <div className="border-t p-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start text-primary font-medium hover:text-primary hover:bg-primary/5 h-9 px-2"
+                onClick={() => {
+                  action.onClick();
+                  setOpen(false);
+                }}
+              >
+                {action.icon || <Plus className="mr-2 h-4 w-4" />}
+                {action.label}
+              </Button>
+            </div>
+          )}
         </Command>
       </PopoverContent>
     </Popover>

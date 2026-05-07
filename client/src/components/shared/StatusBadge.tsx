@@ -1,7 +1,17 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-export type StatusTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'secondary';
+export type StatusTone =
+  | 'success'
+  | 'warning'
+  | 'danger'
+  | 'info'
+  | 'neutral'
+  | 'secondary'
+  | 'indigo'
+  | 'purple'
+  | 'teal'
+  | 'orange';
 
 export interface StatusConfig {
   label: string;
@@ -14,6 +24,7 @@ interface StatusBadgeProps<T extends string> {
   value: T;
   statusMap: StatusMap<T>;
   className?: string;
+  variant?: 'default' | 'outline';
 }
 
 const toneMap: Record<StatusTone, string> = {
@@ -27,6 +38,13 @@ const toneMap: Record<StatusTone, string> = {
   neutral: 'bg-muted text-muted-foreground border-transparent',
   secondary:
     'bg-slate-500/10 text-slate-600 border-slate-500/20 dark:bg-slate-500/20 dark:text-slate-400 dark:border-slate-500/40',
+  indigo:
+    'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400 dark:border-indigo-500/40',
+  purple:
+    'bg-purple-500/10 text-purple-600 border-purple-500/20 dark:bg-purple-500/20 dark:text-purple-400 dark:border-purple-500/40',
+  teal: 'bg-teal-500/10 text-teal-600 border-teal-500/20 dark:bg-teal-500/20 dark:text-teal-400 dark:border-teal-500/40',
+  orange:
+    'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/40',
 };
 
 /**

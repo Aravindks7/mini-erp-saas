@@ -79,4 +79,54 @@ router.post(
   inventoryController.createAdjustment,
 );
 
+/**
+ * POST /inventory/adjustments/:id/status
+ * Approve a draft adjustment.
+ */
+router.post(
+  '/adjustments/:id/status',
+  requirePermission(PERMISSIONS.INVENTORY.ADJUST),
+  inventoryController.updateAdjustmentStatus,
+);
+
+/**
+ * GET /inventory/transfers
+ * Audit trail of inter-warehouse transfers.
+ */
+router.get(
+  '/transfers',
+  requirePermission(PERMISSIONS.INVENTORY.READ),
+  inventoryController.listTransfers,
+);
+
+/**
+ * GET /inventory/transfers/:id
+ * Detail view of an inter-warehouse transfer.
+ */
+router.get(
+  '/transfers/:id',
+  requirePermission(PERMISSIONS.INVENTORY.READ),
+  inventoryController.getTransfer,
+);
+
+/**
+ * POST /inventory/transfers
+ * Create a new inter-warehouse transfer.
+ */
+router.post(
+  '/transfers',
+  requirePermission(PERMISSIONS.INVENTORY.ADJUST), // Using ADJUST for transfers too
+  inventoryController.createTransfer,
+);
+
+/**
+ * POST /inventory/transfers/:id/status
+ * Update transfer status (ship/receive).
+ */
+router.post(
+  '/transfers/:id/status',
+  requirePermission(PERMISSIONS.INVENTORY.ADJUST),
+  inventoryController.updateTransferStatus,
+);
+
 export default router;

@@ -11,14 +11,14 @@ const SalesOrderDetailsPage = lazy(() => import('./pages/SalesOrderDetailsPage')
 
 export const salesOrdersRoutes: AppRoute[] = [
   {
-    path: 'sales-orders',
+    path: 'orders',
     handle: {
-      title: 'Sales Orders',
+      title: 'Orders',
       icon: LayoutList,
       showInSidebar: true,
       sidebarGroup: 'Sales',
       order: 10,
-      crumb: 'Sales Orders',
+      crumb: 'Orders',
     },
     children: [
       {

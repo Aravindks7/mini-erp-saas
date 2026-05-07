@@ -11,8 +11,10 @@ import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { EntityTable } from '@/components/shared/data-table/EntityTable';
 import { columns as ledgerColumns } from '../components/ledger/columns';
+import { APP_PATHS } from '@/lib/paths';
+import { Button } from '@/components/ui/button';
 
-export function InventoryLevelDetailsPage() {
+export default function InventoryLevelDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
@@ -33,12 +35,13 @@ export function InventoryLevelDetailsPage() {
         <div className="flex flex-col items-center justify-center min-h-[400px]">
           <AlertCircle className="h-12 w-12 text-destructive mb-4" />
           <h2 className="text-2xl font-bold">Inventory Level Not Found</h2>
-          <button
-            onClick={() => navigate(getPath('/inventory'))}
-            className="text-primary hover:underline mt-4"
+          <Button
+            variant="outline"
+            onClick={() => navigate(getPath(APP_PATHS.inventory.index()))}
+            className="mt-4"
           >
             Return to Inventory
-          </button>
+          </Button>
         </div>
       </PageContainer>
     );
@@ -49,7 +52,7 @@ export function InventoryLevelDetailsPage() {
       <PageHeader
         title={`${level.product.name} at ${level.warehouse.name}`}
         description={`SKU: ${level.product.sku} | Bin: ${level.bin?.name || 'N/A'}`}
-        backButton={{ href: getPath('/inventory'), label: 'Back to Inventory' }}
+        backButton={{ href: APP_PATHS.inventory.index(), label: 'Back to Inventory' }}
       />
 
       <Tabs defaultValue="overview" className="mt-6">

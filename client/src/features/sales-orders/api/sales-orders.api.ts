@@ -1,5 +1,7 @@
 import { apiFetch } from '@/lib/api';
 import type { CreateSalesOrderInput } from '@shared/contracts/sales-orders.contract';
+import type { ActivityAction } from '@shared/config/activity-actions.config';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export interface SalesOrderLineResponse {
   id: string;
@@ -16,11 +18,19 @@ export interface SalesOrderLineResponse {
   };
 }
 
+export type SOStatus =
+  | 'draft'
+  | 'approved'
+  | 'partially_shipped'
+  | 'shipped'
+  | 'closed'
+  | 'cancelled';
+
 export interface SalesOrderResponse {
   id: string;
   customerId: string;
   documentNumber: string;
-  status: 'draft' | 'approved' | 'partially_shipped' | 'shipped' | 'closed' | 'cancelled';
+  status: SOStatus;
   totalAmount: string;
   createdAt: string;
   updatedAt: string;
@@ -32,29 +42,35 @@ export interface SalesOrderResponse {
 }
 
 export const salesOrdersApi = {
-  fetchSalesOrders: () => apiFetch<SalesOrderResponse[]>('/sales-orders'),
-  fetchSalesOrder: (id: string) => apiFetch<SalesOrderResponse>(`/sales-orders/${id}`),
+  fetchSalesOrders: () => apiFetch<SalesOrderResponse[]>(API_ENDPOINTS.sales.orders.base),
+  fetchSalesOrder: (id: string) =>
+    apiFetch<SalesOrderResponse>(API_ENDPOINTS.sales.orders.detail(id)),
   createSalesOrder: (data: CreateSalesOrderInput) =>
-    apiFetch<SalesOrderResponse>('/sales-orders', {
+    apiFetch<SalesOrderResponse>(API_ENDPOINTS.sales.orders.base, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   updateSalesOrder: (id: string, data: CreateSalesOrderInput) =>
-    apiFetch<SalesOrderResponse>(`/sales-orders/${id}`, {
+    apiFetch<SalesOrderResponse>(API_ENDPOINTS.sales.orders.detail(id), {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
-  updateSalesOrderStatus: (id: string, status: SalesOrderResponse['status']) =>
-    apiFetch<SalesOrderResponse>(`/sales-orders/${id}/status`, {
+  updateSalesOrderStatus: (
+    id: string,
+    status: SalesOrderResponse['status'],
+    action: ActivityAction,
+    reason: string,
+  ) =>
+    apiFetch<SalesOrderResponse>(API_ENDPOINTS.sales.orders.status(id), {
       method: 'PATCH',
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, action, reason }),
     }),
   deleteSalesOrder: (id: string) =>
-    apiFetch<void>(`/sales-orders/${id}`, {
+    apiFetch<void>(API_ENDPOINTS.sales.orders.detail(id), {
       method: 'DELETE',
     }),
   bulkDeleteSalesOrders: (ids: string[]) =>
-    apiFetch<void>('/sales-orders', {
+    apiFetch<void>(API_ENDPOINTS.sales.orders.bulkDelete, {
       method: 'DELETE',
       body: JSON.stringify({ ids }),
     }),

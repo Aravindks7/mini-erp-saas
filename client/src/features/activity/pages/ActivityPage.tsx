@@ -1,5 +1,4 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Activity,
   X,
@@ -32,7 +31,6 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
-import { useTenantPath } from '@/hooks/useTenantPath';
 import { useDebounce } from '@/hooks/useDebounce';
 import { DateRangePicker } from '@/components/shared/form/DateRangePicker';
 import { SearchInput } from '@/components/shared/SearchInput';
@@ -63,9 +61,6 @@ const ENTITY_OPTIONS = [
 ];
 
 export default function ActivityPage() {
-  const navigate = useNavigate();
-  const { getPath } = useTenantPath();
-
   // Filter States
   const [activeEntityTypes, setActiveEntityTypes] = React.useState<string[]>([]);
   const [search, setSearch] = React.useState('');
@@ -80,7 +75,23 @@ export default function ActivityPage() {
       endDate: dateRange?.to?.toISOString(),
     });
 
-  const allItems = React.useMemo(() => data?.pages.flatMap((page) => page.items) ?? [], [data]);
+  const allItems = React.useMemo(
+    () =>
+      data?.pages.flatMap((page) =>
+        page.items.map((item) => {
+          const snapshot = item.snapshot as Record<string, unknown> | null;
+          const documentNumber =
+            snapshot && 'documentNumber' in snapshot ? (snapshot.documentNumber as string) : null;
+
+          return {
+            ...item,
+            entityDisplayId: documentNumber || item.entityId.slice(0, 8),
+            entityLabel: item.entityType.replace(/_/g, ' ').toUpperCase(),
+          };
+        }),
+      ) ?? [],
+    [data],
+  );
 
   const clearFilters = () => {
     setActiveEntityTypes([]);

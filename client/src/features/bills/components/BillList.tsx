@@ -24,6 +24,7 @@ import { billStatusOptions, getColumns } from './columns';
 import { useBills, useBulkDeleteBills } from '../hooks/bills.hooks';
 import type { BillResponse } from '../api/bills.api';
 import { PayBillSheet } from './PayBillSheet';
+import { APP_PATHS } from '@/lib/paths';
 
 const searchSchema = z.object({
   referenceNumber: z.string().optional(),
@@ -117,7 +118,7 @@ export function BillList() {
               }
             />
             <AddButton
-              to="/bills/new"
+              to={APP_PATHS.purchasing.bills.new()}
               permission={PERMISSIONS.BILLS.CREATE}
               label="Add Bill"
               className="shadow-lg shadow-primary/20"
@@ -128,7 +129,7 @@ export function BillList() {
     );
   }
 
-  const handleAddClick = () => navigate(getPath('/bills/new'));
+  const handleAddClick = () => navigate(getPath(APP_PATHS.purchasing.bills.new()));
 
   return (
     <>
@@ -154,7 +155,11 @@ export function BillList() {
               templateEndpoint="/bills/import/template"
               onSuccess={handleImportSuccess}
             />
-            <AddButton to="/bills/new" permission={PERMISSIONS.BILLS.CREATE} label="Add Bill" />
+            <AddButton
+              to={APP_PATHS.purchasing.bills.new()}
+              permission={PERMISSIONS.BILLS.CREATE}
+              label="Add Bill"
+            />
           </div>
         }
         bulkActions={[

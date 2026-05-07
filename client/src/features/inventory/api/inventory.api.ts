@@ -1,5 +1,7 @@
 import { apiFetch } from '@/lib/api';
-import type { CreateAdjustmentInput } from '@mini-erp/shared';
+import type { CreateInventoryAdjustmentInput } from '@shared/contracts/inventory-adjustments.contract';
+import type { CreateInventoryTransferInput } from '@shared/contracts/inventory-transfers.contract';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export interface InventoryLevelResponse {
   id: string;
@@ -65,6 +67,37 @@ export interface InventoryAdjustmentResponse {
   }[];
 }
 
+export interface InventoryTransferResponse {
+  id: string;
+  transferDate: string;
+  fromWarehouseId: string;
+  toWarehouseId: string;
+  reference: string | null;
+  status: 'draft' | 'shipped' | 'received' | 'cancelled';
+  createdAt: string;
+  updatedAt: string;
+  fromWarehouse: {
+    id: string;
+    code: string;
+    name: string;
+  };
+  toWarehouse: {
+    id: string;
+    code: string;
+    name: string;
+  };
+  lines: {
+    id: string;
+    productId: string;
+    quantity: string;
+    product: {
+      id: string;
+      sku: string;
+      name: string;
+    };
+  }[];
+}
+
 export interface InventoryLedgerResponse {
   id: string;
   productId: string;
@@ -93,27 +126,51 @@ export interface InventoryLedgerResponse {
 
 export const inventoryApi = {
   fetchLevels: async () => {
-    return apiFetch<InventoryLevelResponse[]>('/inventory/levels');
+    return apiFetch<InventoryLevelResponse[]>(API_ENDPOINTS.inventory.levels.base);
   },
   fetchLedger: async () => {
-    return apiFetch<InventoryLedgerResponse[]>('/inventory/ledger');
+    return apiFetch<InventoryLedgerResponse[]>(API_ENDPOINTS.inventory.ledger);
   },
   fetchLevel: async (id: string) => {
-    return apiFetch<InventoryLevelResponse>(`/inventory/levels/${id}`);
+    return apiFetch<InventoryLevelResponse>(API_ENDPOINTS.inventory.levels.detail(id));
   },
   fetchLevelLedger: async (id: string) => {
-    return apiFetch<InventoryLedgerResponse[]>(`/inventory/levels/${id}/ledger`);
+    return apiFetch<InventoryLedgerResponse[]>(API_ENDPOINTS.inventory.levels.ledger(id));
   },
   fetchAdjustments: async () => {
-    return apiFetch<InventoryAdjustmentResponse[]>('/inventory/adjustments');
+    return apiFetch<InventoryAdjustmentResponse[]>(API_ENDPOINTS.inventory.adjustments.base);
   },
   fetchAdjustment: async (id: string) => {
-    return apiFetch<InventoryAdjustmentResponse>(`/inventory/adjustments/${id}`);
+    return apiFetch<InventoryAdjustmentResponse>(API_ENDPOINTS.inventory.adjustments.detail(id));
   },
-  createAdjustment: async (data: CreateAdjustmentInput) => {
-    return apiFetch<InventoryAdjustmentResponse>('/inventory/adjustments', {
+  createAdjustment: async (data: CreateInventoryAdjustmentInput) => {
+    return apiFetch<InventoryAdjustmentResponse>(API_ENDPOINTS.inventory.adjustments.base, {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  },
+  updateAdjustmentStatus: async (id: string, status: 'approved' | 'cancelled') => {
+    return apiFetch<InventoryAdjustmentResponse>(API_ENDPOINTS.inventory.adjustments.status(id), {
+      method: 'POST',
+      body: JSON.stringify({ status }),
+    });
+  },
+  fetchTransfers: async () => {
+    return apiFetch<InventoryTransferResponse[]>(API_ENDPOINTS.inventory.transfers.base);
+  },
+  fetchTransfer: async (id: string) => {
+    return apiFetch<InventoryTransferResponse>(API_ENDPOINTS.inventory.transfers.detail(id));
+  },
+  createTransfer: async (data: CreateInventoryTransferInput) => {
+    return apiFetch<InventoryTransferResponse>(API_ENDPOINTS.inventory.transfers.base, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  updateTransferStatus: async (id: string, status: 'shipped' | 'received' | 'cancelled') => {
+    return apiFetch<InventoryTransferResponse>(API_ENDPOINTS.inventory.transfers.status(id), {
+      method: 'POST',
+      body: JSON.stringify({ status }),
     });
   },
 };

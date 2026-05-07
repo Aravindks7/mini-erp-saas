@@ -5,6 +5,7 @@ import SelectOrganizationPage from '../SelectOrganization';
 import { useTenant } from '@/contexts/TenantContext';
 import { useOrganizations } from '@/features/organizations/hooks/organizations.hooks';
 import { useAuth } from '@/contexts/AuthContext';
+import { APP_PATHS } from '@/lib/paths';
 
 // Mock the dependencies
 vi.mock('@/contexts/TenantContext', () => ({
@@ -117,7 +118,7 @@ describe('SelectOrganizationPage', () => {
     );
 
     // useEffect handles this, and navigate is called
-    expect(mockNavigate).toHaveBeenCalledWith('/onboarding');
+    expect(mockNavigate).toHaveBeenCalledWith(APP_PATHS.auth.onboarding());
   });
 
   it('should open create dialog when "Create New Organization" is clicked', () => {

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
 import type { CreateSalesOrderInput } from '@shared/contracts/sales-orders.contract';
-import { salesOrdersApi } from '../api/sales-orders.api';
+import type { ActivityAction } from '@shared/config/activity-actions.config';
+import { salesOrdersApi, type SOStatus } from '../api/sales-orders.api';
 
 export const salesOrderKeys = {
   all: ['sales-orders'] as const,
@@ -80,11 +81,21 @@ export function useUpdateSalesOrderStatus() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: any }) =>
-      salesOrdersApi.updateSalesOrderStatus(id, status),
+    mutationFn: ({
+      id,
+      status,
+      action,
+      reason,
+    }: {
+      id: string;
+      status: SOStatus;
+      action: ActivityAction;
+      reason: string;
+    }) => salesOrdersApi.updateSalesOrderStatus(id, status, action, reason),
     onSuccess: (data) => {
+      queryClient.setQueryData(salesOrderKeys.detail(data.id), data);
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: salesOrderKeys.detail(data.id) });
+      queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
     },
   });
 }

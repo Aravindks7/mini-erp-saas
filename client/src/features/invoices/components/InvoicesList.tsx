@@ -20,6 +20,9 @@ import { useInvoices, useBulkDeleteInvoices } from '../hooks/invoices.hooks';
 import { AddPaymentSheet } from './AddPaymentSheet';
 import type { InvoiceResponse } from '../api/invoices.api';
 import { Trash2 } from 'lucide-react';
+import { APP_PATHS } from '@/lib/paths';
+import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
+import { toast } from 'sonner';
 
 const searchSchema = z.object({
   documentNumber: z.string().optional(),
@@ -40,19 +43,40 @@ export function InvoicesList() {
     isOpen: false,
   });
 
-  const handleBulkDeleteConfirm = React.useCallback(
-    (rows: InvoiceResponse[]) => {
-      bulkDelete(rows.map((r) => r.id));
-    },
-    [bulkDelete],
-  );
+  const [bulkDeleteState, setBulkDeleteState] = React.useState<{
+    isOpen: boolean;
+    rows: InvoiceResponse[];
+    clearSelection: () => void;
+  }>({
+    isOpen: false,
+    rows: [],
+    clearSelection: () => {},
+  });
+
+  const handleBulkDeleteConfirm = async () => {
+    const ids = bulkDeleteState.rows.map((r) => r.id);
+    try {
+      bulkDelete(ids, {
+        onSuccess: () => {
+          toast.success(`Successfully processed ${ids.length} invoice(s)`);
+          bulkDeleteState.clearSelection();
+          setBulkDeleteState((prev) => ({ ...prev, isOpen: false }));
+        },
+        onError: (error: Error) => {
+          toast.error(error.message || 'Failed to process invoices');
+        },
+      });
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+    }
+  };
 
   const handleAddPayment = React.useCallback((invoice: InvoiceResponse) => {
     setPaymentSheetState({ isOpen: true, invoice });
   }, []);
 
   const handleAdd = () => {
-    navigate(getPath('/invoices/new'));
+    navigate(getPath(APP_PATHS.sales.invoices.new()));
   };
 
   const columns = React.useMemo(
@@ -118,11 +142,10 @@ export function InvoicesList() {
           {
             label: 'Delete/Void',
             icon: <Trash2 className="mr-2 h-4 w-4" />,
-            onConfirm: handleBulkDeleteConfirm,
+            onAction: (rows, clearSelection) => {
+              setBulkDeleteState({ isOpen: true, rows, clearSelection });
+            },
             variant: 'destructive',
-            title: 'Delete/Void Selected Invoices',
-            description:
-              'Are you sure you want to process the selected invoices? Drafts will be deleted permanently, and committed invoices will be voided.',
           },
         ]}
         headerActions={
@@ -143,6 +166,15 @@ export function InvoicesList() {
           onClose={() => setPaymentSheetState({ isOpen: false })}
         />
       )}
+
+      <DeleteConfirmDialog
+        isOpen={bulkDeleteState.isOpen}
+        onClose={() => setBulkDeleteState((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={handleBulkDeleteConfirm}
+        title={`Delete / Void ${bulkDeleteState.rows.length} Invoice(s)?`}
+        description="Are you sure you want to process the selected invoices? Drafts will be permanently deleted, while committed invoices will be marked as void and their ledger entries reversed. This action cannot be undone."
+        confirmLabel="Confirm Action"
+      />
     </>
   );
 }

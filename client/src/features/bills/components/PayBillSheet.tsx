@@ -1,7 +1,6 @@
-import * as React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CreditCard, CheckCircle2 } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -37,7 +36,7 @@ export function PayBillSheet({ bill, isOpen, onClose }: PayBillSheetProps) {
   const amountToPay = Number(bill.totalAmount);
 
   const form = useForm<CreatePaymentInput>({
-    resolver: zodResolver(createPaymentSchema),
+    resolver: zodResolver(createPaymentSchema) as Resolver<CreatePaymentInput>,
     defaultValues: {
       paymentType: 'outbound',
       paymentMethod: 'bank_transfer',
@@ -45,7 +44,6 @@ export function PayBillSheet({ bill, isOpen, onClose }: PayBillSheetProps) {
       paymentDate: new Date(),
       billId: bill.id,
       supplierId: bill.supplierId,
-      status: 'completed',
     },
   });
 
@@ -94,7 +92,7 @@ export function PayBillSheet({ bill, isOpen, onClose }: PayBillSheetProps) {
                     {({ field }) => <AmountInput {...field} currency="USD" />}
                   </FormField>
                   <FormField name="paymentDate" label="Payment Date">
-                    {({ field }) => <DatePicker value={field.value} onChange={field.onChange} />}
+                    {({ field }) => <DatePicker date={field.value} onChange={field.onChange} />}
                   </FormField>
                 </div>
 
@@ -130,7 +128,7 @@ export function PayBillSheet({ bill, isOpen, onClose }: PayBillSheetProps) {
                   <Button type="button" variant="ghost" onClick={onClose}>
                     Cancel
                   </Button>
-                  <Button type="submit" isLoading={createPaymentMutation.isPending}>
+                  <Button type="submit" loading={createPaymentMutation.isPending}>
                     Record Payment
                   </Button>
                 </ResponsiveDrawerFooter>

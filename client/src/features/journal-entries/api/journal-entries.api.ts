@@ -1,6 +1,7 @@
 import { apiFetch } from '@/lib/api';
 import type { CreateJournalEntryInput } from '@shared/contracts/finance.contract';
 import type { AccountResponse } from '@/features/accounts/api/accounts.api';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export interface JournalEntryLineResponse {
   id: string;
@@ -29,19 +30,19 @@ export interface JournalEntryResponse {
 
 export const journalEntriesApi = {
   fetchJournalEntries: async () => {
-    return apiFetch<JournalEntryResponse[]>('/finance/journal-entries');
+    return apiFetch<JournalEntryResponse[]>(API_ENDPOINTS.finance.journalEntries.base);
   },
   fetchJournalEntry: async (id: string) => {
-    return apiFetch<JournalEntryResponse>(`/finance/journal-entries/${id}`);
+    return apiFetch<JournalEntryResponse>(API_ENDPOINTS.finance.journalEntries.detail(id));
   },
   createJournalEntry: async (data: CreateJournalEntryInput) => {
-    return apiFetch<JournalEntryResponse>('/finance/journal-entries', {
+    return apiFetch<JournalEntryResponse>(API_ENDPOINTS.finance.journalEntries.base, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
   voidJournalEntry: async (id: string) => {
-    return apiFetch<JournalEntryResponse>(`/finance/journal-entries/${id}/void`, {
+    return apiFetch<JournalEntryResponse>(API_ENDPOINTS.finance.journalEntries.void(id), {
       method: 'POST',
     });
   },

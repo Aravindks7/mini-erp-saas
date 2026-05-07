@@ -3,11 +3,15 @@ import { activityLogs } from '../db/schema/index.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
+import type { ActivityAction, EntityType } from '#shared/config/activity-actions.config.js';
+
 export interface ActivityLogParams {
   organizationId: string;
-  entityType: string;
+  entityType: EntityType;
   entityId: string;
-  action: string;
+  entityDisplayId: string;
+  entityLabel: string;
+  action: ActivityAction;
   reason?: string | null;
   snapshot?: Record<string, unknown> | null;
   userId: string;
@@ -35,6 +39,8 @@ export class ActivityLogger {
       organizationId: params.organizationId,
       entityType: params.entityType,
       entityId: params.entityId,
+      entityDisplayId: params.entityDisplayId,
+      entityLabel: params.entityLabel,
       action: params.action,
       reason: params.reason || null,
       snapshot: params.snapshot || null,

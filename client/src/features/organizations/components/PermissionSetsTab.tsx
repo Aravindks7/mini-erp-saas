@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import type { PermissionSetResponse } from '@shared/index';
+import { APP_PATHS } from '@/lib/paths';
 
 export function PermissionSetsTab() {
   const navigate = useNavigate();
@@ -72,12 +73,12 @@ export function PermissionSetsTab() {
         columns={columns}
         isLoading={isLoading}
         headerActions={
-          <Button onClick={() => navigate(getPath('/settings/permission-sets/new'))}>
+          <Button onClick={() => navigate(getPath(APP_PATHS.settings.permissionSets.new()))}>
             <Plus className="mr-2 h-4 w-4" /> New Set
           </Button>
         }
         actions={{
-          onEdit: (set) => navigate(getPath(`/settings/permission-sets/${set.id}`)),
+          onEdit: (set) => navigate(getPath(APP_PATHS.settings.permissionSets.detail(set.id))),
           onDelete: (set) => setSetToDelete(set),
           deleteLabel: 'Delete Set',
         }}

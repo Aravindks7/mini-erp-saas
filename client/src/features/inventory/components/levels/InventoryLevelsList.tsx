@@ -12,6 +12,7 @@ import { PERMISSIONS } from '@shared/index';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { APP_PATHS } from '@/lib/paths';
 
 import { columns } from './columns';
 import { useInventoryLevels } from '../../hooks/inventory.hooks';
@@ -55,7 +56,7 @@ export function InventoryLevelsList() {
           icon={Boxes}
         >
           <AddButton
-            to="/adjustments/new"
+            to={APP_PATHS.inventory.adjustments.new()}
             permission={PERMISSIONS.INVENTORY.ADJUST}
             label="Create Adjustment"
             icon={<Plus className="mr-2 h-4 w-4" />}
@@ -65,7 +66,7 @@ export function InventoryLevelsList() {
     );
   }
 
-  const handleAddClick = () => navigate(getPath('/adjustments/new'));
+  const handleAddClick = () => navigate(getPath(APP_PATHS.inventory.adjustments.new()));
 
   return (
     <EntityTable
@@ -84,7 +85,7 @@ export function InventoryLevelsList() {
       onReset={resetAll}
       headerActions={
         <AddButton
-          to="/adjustments/new"
+          to={APP_PATHS.inventory.adjustments.new()}
           permission={PERMISSIONS.INVENTORY.ADJUST}
           label="New Adjustment"
         />

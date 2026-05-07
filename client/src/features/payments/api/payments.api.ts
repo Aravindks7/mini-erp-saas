@@ -1,5 +1,6 @@
 import { apiFetch } from '@/lib/api';
 import type { CreatePaymentInput } from '@shared/contracts/payments.contract';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export interface PaymentResponse {
   id: string;
@@ -36,16 +37,18 @@ export interface PaymentIntentResponse {
 }
 
 export const paymentsApi = {
-  getPayments: () => apiFetch<PaymentResponse[]>('/payments'),
-  getPayment: (id: string) => apiFetch<PaymentResponse>(`/payments/${id}`),
+  getPayments: () => apiFetch<PaymentResponse[]>(API_ENDPOINTS.finance.payments.base),
+  getPayment: (id: string) => apiFetch<PaymentResponse>(API_ENDPOINTS.finance.payments.detail(id)),
   getPaymentIntents: (filters: { invoiceId?: string; billId?: string }) => {
     const params = new URLSearchParams();
     if (filters.invoiceId) params.append('invoiceId', filters.invoiceId);
     if (filters.billId) params.append('billId', filters.billId);
-    return apiFetch<PaymentIntentResponse[]>(`/payments/intents?${params.toString()}`);
+    return apiFetch<PaymentIntentResponse[]>(
+      `${API_ENDPOINTS.finance.payments.intents}?${params.toString()}`,
+    );
   },
   createPayment: (data: CreatePaymentInput) =>
-    apiFetch<PaymentResponse>('/payments', {
+    apiFetch<PaymentResponse>(API_ENDPOINTS.finance.payments.base, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -55,16 +58,16 @@ export const paymentsApi = {
     successUrl: string;
     cancelUrl: string;
   }) =>
-    apiFetch<{ url: string }>('/payments/create-stripe-session', {
+    apiFetch<{ url: string }>(API_ENDPOINTS.finance.payments.createStripeSession, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   deletePayment: (id: string) =>
-    apiFetch<void>(`/payments/${id}`, {
+    apiFetch<void>(API_ENDPOINTS.finance.payments.detail(id), {
       method: 'DELETE',
     }),
   bulkDeletePayments: (ids: string[]) =>
-    apiFetch<void>('/payments', {
+    apiFetch<void>(API_ENDPOINTS.finance.payments.bulkDelete, {
       method: 'DELETE',
       body: JSON.stringify({ ids }),
     }),

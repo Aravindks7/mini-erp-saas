@@ -44,13 +44,18 @@ export function JournalLinesSection<TFieldValues extends FieldValues>({
     value: a.id,
   }));
 
+  interface JournalLine {
+    debit?: string | number;
+    credit?: string | number;
+  }
+
   // Calculate totals for real-time feedback
-  const totalDebit = (lines || []).reduce(
-    (sum: number, line: any) => sum + Number(line?.debit || 0),
+  const totalDebit = ((lines as JournalLine[]) || []).reduce(
+    (sum: number, line: JournalLine) => sum + Number(line?.debit || 0),
     0,
   );
-  const totalCredit = (lines || []).reduce(
-    (sum: number, line: any) => sum + Number(line?.credit || 0),
+  const totalCredit = ((lines as JournalLine[]) || []).reduce(
+    (sum: number, line: JournalLine) => sum + Number(line?.credit || 0),
     0,
   );
   const difference = Math.abs(totalDebit - totalCredit);
@@ -89,6 +94,7 @@ export function JournalLinesSection<TFieldValues extends FieldValues>({
                 {({ field: debitField }) => (
                   <AmountInput
                     {...debitField}
+                    currency="USD"
                     onChange={(val) => {
                       debitField.onChange(val);
                       if (Number(val) > 0) {
@@ -108,6 +114,7 @@ export function JournalLinesSection<TFieldValues extends FieldValues>({
                 {({ field: creditField }) => (
                   <AmountInput
                     {...creditField}
+                    currency="USD"
                     onChange={(val) => {
                       creditField.onChange(val);
                       if (Number(val) > 0) {

@@ -81,9 +81,9 @@ export function LineItemsSection<TFieldValues extends FieldValues>({
         {fields.map((field, index) => (
           <div
             key={field.id}
-            className="grid grid-cols-12 gap-4 items-end border p-4 rounded-lg bg-muted/20 relative group"
+            className="grid grid-cols-12 gap-4 items-end border p-4 rounded-lg bg-muted/20 relative group transition-all hover:border-primary/30"
           >
-            <div className="col-span-4">
+            <div className="col-span-12 md:col-span-6">
               <FormField name={`${name}.${index}.productId`} label="Product">
                 {({ field: pField }) => (
                   <SearchableSelect
@@ -104,17 +104,17 @@ export function LineItemsSection<TFieldValues extends FieldValues>({
                 )}
               </FormField>
             </div>
-            <div className="col-span-2">
-              <FormField name={`${name}.${index}.quantity`} label="Quantity">
+            <div className="col-span-6 sm:col-span-4 md:col-span-1">
+              <FormField name={`${name}.${index}.quantity`} label="Qty">
                 {({ field: qField }) => <Input {...qField} type="text" />}
               </FormField>
             </div>
-            <div className="col-span-2">
-              <FormField name={`${name}.${index}.unitPrice`} label="Unit Price">
+            <div className="col-span-6 sm:col-span-4 md:col-span-2">
+              <FormField name={`${name}.${index}.unitPrice`} label="Price">
                 {({ field: priceField }) => <Input {...priceField} type="text" />}
               </FormField>
             </div>
-            <div className="col-span-2">
+            <div className="col-span-9 sm:col-span-3 md:col-span-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium leading-none">
                   Tax ({String((lines as Record<string, unknown>[])?.[index]?.taxRateAtOrder || 0)}
@@ -127,16 +127,17 @@ export function LineItemsSection<TFieldValues extends FieldValues>({
                 />
               </div>
             </div>
-            <div className="col-span-2 flex justify-end pb-1">
+            <div className="col-span-3 sm:col-span-1 md:col-span-1 flex justify-end pb-1">
               <Button
                 type="button"
-                variant="ghost"
+                variant="destructive"
                 size="icon"
-                className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                 onClick={() => remove(index)}
                 disabled={fields.length === 1}
               >
                 <Trash2 className="h-4 w-4" />
+                <span className="sr-only">Remove Line Item</span>
               </Button>
             </div>
           </div>

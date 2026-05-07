@@ -8,6 +8,7 @@ import {
 
 import type { InventoryLevelResponse } from '../../api/inventory.api';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 interface InventoryLevelRowActionsProps {
   row: { original: InventoryLevelResponse };
@@ -23,7 +24,7 @@ export function InventoryLevelRowActions({ row }: InventoryLevelRowActionsProps)
       label: 'View Details',
       icon: <Eye className="h-4 w-4" />,
       onClick: () => {
-        navigate(getPath(`/inventory/${level.id}`));
+        navigate(getPath(APP_PATHS.inventory.levels.detail(level.id)));
       },
       tooltip: 'View Level Details',
     },

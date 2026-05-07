@@ -8,6 +8,7 @@ import {
 
 import type { InventoryAdjustmentResponse } from '../../api/inventory.api';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 interface AdjustmentRowActionsProps {
   row: { original: InventoryAdjustmentResponse };
@@ -22,7 +23,7 @@ export function AdjustmentRowActions({ row }: AdjustmentRowActionsProps) {
     {
       label: 'View',
       icon: <Eye className="h-4 w-4" />,
-      onClick: () => navigate(getPath(`/adjustments/${adjustment.id}`)),
+      onClick: () => navigate(getPath(APP_PATHS.inventory.adjustments.detail(adjustment.id))),
       tooltip: 'View Details',
     },
   ];

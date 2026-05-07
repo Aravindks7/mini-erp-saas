@@ -7,7 +7,7 @@ const BalanceSheetPage = lazy(() => import('./pages/BalanceSheetPage'));
 
 export const financeReportsRoutes: AppRoute[] = [
   {
-    path: 'finance/reports/pnl',
+    path: 'reports/pnl',
     element: <ProfitAndLossPage />,
     handle: {
       title: 'Profit & Loss',
@@ -19,7 +19,7 @@ export const financeReportsRoutes: AppRoute[] = [
     },
   },
   {
-    path: 'finance/reports/balance-sheet',
+    path: 'reports/balance-sheet',
     element: <BalanceSheetPage />,
     handle: {
       title: 'Balance Sheet',

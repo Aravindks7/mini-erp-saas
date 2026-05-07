@@ -2,15 +2,8 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
 import { formatDate } from '@shared/utils/date';
 import type { InventoryLedgerResponse } from '../../api/inventory.api';
-import { Badge } from '@/components/ui/badge';
-
-const referenceTypeMap: Record<string, string> = {
-  po_receipt: 'PO Receipt',
-  so_shipment: 'SO Shipment',
-  adjustment: 'Adjustment',
-  transfer: 'Transfer',
-  stock_count: 'Stock Count',
-};
+import { StatusBadge } from '@/components/shared/StatusBadge';
+import { referenceTypeStatusMap } from '../../config/index';
 
 export const columns: ColumnDef<InventoryLedgerResponse>[] = [
   {
@@ -23,9 +16,11 @@ export const columns: ColumnDef<InventoryLedgerResponse>[] = [
     accessorKey: 'referenceType',
     header: ({ column }) => <DataTableColumnHeader column={column} title="Type" />,
     cell: ({ row }) => (
-      <Badge variant="outline">
-        {referenceTypeMap[row.original.referenceType] || row.original.referenceType}
-      </Badge>
+      <StatusBadge
+        value={row.original.referenceType}
+        statusMap={referenceTypeStatusMap}
+        variant="outline"
+      />
     ),
     meta: { variant: 'field', label: 'Type' },
   },

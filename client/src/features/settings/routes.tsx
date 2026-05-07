@@ -10,6 +10,7 @@ import { PermissionSetsTab } from '../organizations/components/PermissionSetsTab
 import RoleFormPage from '../organizations/pages/RoleFormPage';
 import PermissionSetFormPage from '../organizations/pages/PermissionSetFormPage';
 import { SequenceSettingsTab } from './components/SequenceSettingsTab';
+import { APP_PATHS } from '@/lib/paths';
 
 export const settingsRoutes: AppRoute[] = [
   // The main settings layout with tabs
@@ -26,7 +27,7 @@ export const settingsRoutes: AppRoute[] = [
     children: [
       {
         index: true,
-        element: <Navigate to="profile" replace />,
+        element: <Navigate to={APP_PATHS.settings.profile()} replace />,
       },
       {
         path: 'profile',

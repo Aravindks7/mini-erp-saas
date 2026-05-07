@@ -115,10 +115,14 @@ export async function bulkDeleteSOs(req: Request, res: Response) {
 
 export async function updateSOStatus(req: Request, res: Response) {
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, action, reason } = req.body;
 
   if (!status) {
     return res.status(400).json({ error: 'Status is required' });
+  }
+
+  if (!action || !reason) {
+    return res.status(400).json({ error: 'Action and Reason are required for status updates' });
   }
 
   const organizationId = req.organizationId;
@@ -130,17 +134,17 @@ export async function updateSOStatus(req: Request, res: Response) {
       userId,
       id as string,
       status,
+      action,
+      reason,
     );
     res.json(updatedSO);
   } catch (error: unknown) {
     logger.error(
-      { error, organizationId, userId, id, status },
+      { error, organizationId, userId, id, status, action, reason },
       'Failed to update sales order status',
     );
-    res
-      .status(400)
-      .json({
-        error: error instanceof Error ? error.message : 'Failed to update sales order status',
-      });
+    res.status(400).json({
+      error: error instanceof Error ? error.message : 'Failed to update sales order status',
+    });
   }
 }

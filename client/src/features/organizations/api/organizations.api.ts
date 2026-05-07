@@ -8,6 +8,7 @@ import {
   type UpdateMemberRoleInput,
   type InviteMemberInput,
 } from '@shared/contracts/organizations.contract';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export type OrganizationMember = z.infer<typeof memberResponseSchema>;
 export type OrganizationInvite = z.infer<typeof inviteResponseSchema>;
@@ -23,45 +24,57 @@ export interface OrganizationResponse {
 }
 
 export const organizationsApi = {
-  fetchMyOrganizations: () => apiFetch<OrganizationResponse[]>('/organizations'),
+  fetchMyOrganizations: () => apiFetch<OrganizationResponse[]>(API_ENDPOINTS.organizations.base),
   createOrganization: (data: CreateOrganizationInput) =>
-    apiFetch<OrganizationResponse>('/organizations', {
+    apiFetch<OrganizationResponse>(API_ENDPOINTS.organizations.base, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   updateOrganization: (id: string, data: UpdateOrganizationInput) =>
-    apiFetch<OrganizationResponse>(`/organizations/${id}`, {
+    apiFetch<OrganizationResponse>(API_ENDPOINTS.organizations.detail(id), {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
   deleteOrganization: (id: string) =>
-    apiFetch<{ message: string }>(`/organizations/${id}`, {
+    apiFetch<{ message: string }>(API_ENDPOINTS.organizations.detail(id), {
       method: 'DELETE',
     }),
   fetchMembers: (organizationId: string) =>
-    apiFetch<OrganizationMember[]>(`/organizations/${organizationId}/members`),
+    apiFetch<OrganizationMember[]>(API_ENDPOINTS.organizations.members(organizationId)),
   updateMemberRole: (organizationId: string, userId: string, data: UpdateMemberRoleInput) =>
-    apiFetch<{ message: string }>(`/organizations/${organizationId}/members/${userId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    }),
+    apiFetch<{ message: string }>(
+      API_ENDPOINTS.organizations.memberDetail(organizationId, userId),
+      {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      },
+    ),
   removeMember: (organizationId: string, userId: string) =>
-    apiFetch<{ message: string }>(`/organizations/${organizationId}/members/${userId}`, {
-      method: 'DELETE',
-    }),
+    apiFetch<{ message: string }>(
+      API_ENDPOINTS.organizations.memberDetail(organizationId, userId),
+      {
+        method: 'DELETE',
+      },
+    ),
   fetchInvitations: (organizationId: string) =>
-    apiFetch<OrganizationInvite[]>(`/organizations/${organizationId}/invites`),
+    apiFetch<OrganizationInvite[]>(API_ENDPOINTS.organizations.invites(organizationId)),
   inviteMember: (organizationId: string, data: InviteMemberInput) =>
-    apiFetch<{ message: string }>(`/organizations/${organizationId}/invites`, {
+    apiFetch<{ message: string }>(API_ENDPOINTS.organizations.invites(organizationId), {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   resendInvite: (organizationId: string, inviteId: string) =>
-    apiFetch<{ message: string }>(`/organizations/${organizationId}/invites/${inviteId}/resend`, {
-      method: 'POST',
-    }),
+    apiFetch<{ message: string }>(
+      API_ENDPOINTS.organizations.resendInvite(organizationId, inviteId),
+      {
+        method: 'POST',
+      },
+    ),
   cancelInvite: (organizationId: string, inviteId: string) =>
-    apiFetch<{ message: string }>(`/organizations/${organizationId}/invites/${inviteId}`, {
-      method: 'DELETE',
-    }),
+    apiFetch<{ message: string }>(
+      API_ENDPOINTS.organizations.inviteDetail(organizationId, inviteId),
+      {
+        method: 'DELETE',
+      },
+    ),
 };

@@ -10,6 +10,7 @@ import { useLoginMutation } from '../hooks/auth.hooks';
 import { Form } from '@/components/shared/form/Form';
 import { FormField } from '@/components/shared/form/FormField';
 import { getAuthErrorMessage } from '../utils/error-utils';
+import { APP_PATHS } from '@/lib/paths';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ export default function LoginPage() {
       if (result.error) {
         form.setError('root', { message: getAuthErrorMessage(result.error) });
       } else {
-        navigate('/', { replace: true });
+        navigate(APP_PATHS.dashboard(), { replace: true });
       }
     } catch (error) {
       console.error('[Login] Unexpected login failure:', error);
@@ -94,7 +95,10 @@ export default function LoginPage() {
         </Button>
         <div className="text-sm text-center text-muted-foreground">
           <span className="mr-1">Don't have an account?</span>
-          <Link to="/register" className="font-bold text-primary hover:underline transition-colors">
+          <Link
+            to={APP_PATHS.auth.register()}
+            className="font-bold text-primary hover:underline transition-colors"
+          >
             Sign up
           </Link>
         </div>

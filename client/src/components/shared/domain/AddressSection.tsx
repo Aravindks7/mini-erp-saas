@@ -125,7 +125,7 @@ function AddressItem({
   const countryData = getCountryByName(country);
 
   return (
-    <Card className="relative overflow-hidden border-muted-foreground/20">
+    <Card className="relative overflow-hidden border-muted-foreground/20 animate-in fade-in slide-in-from-top-2 duration-300">
       <CardHeader className="bg-muted/30 py-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -141,16 +141,20 @@ function AddressItem({
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="grid gap-6 p-6 sm:grid-cols-2">
+      <CardContent className="grid gap-6 p-6 grid-cols-12 md:grid-cols-2">
         <FormField
           name={`${name}.${index}.addressLine1`}
           label="Address Line 1"
-          className="sm:col-span-2"
+          className="col-span-12 md:col-span-2"
         >
           {({ field }) => <Input {...field} placeholder="e.g. 123 Business Way" />}
         </FormField>
 
-        <FormField name={`${name}.${index}.country`} label="Country">
+        <FormField
+          name={`${name}.${index}.country`}
+          label="Country"
+          className="col-span-12 md:col-span-1"
+        >
           {({ field }) => (
             <SearchableSelect
               id={field.id}
@@ -163,7 +167,11 @@ function AddressItem({
           )}
         </FormField>
 
-        <FormField name={`${name}.${index}.postalCode`} label="Postal Code">
+        <FormField
+          name={`${name}.${index}.postalCode`}
+          label="Postal Code"
+          className="col-span-12 md:col-span-1"
+        >
           {({ field }) => (
             <div className="relative group">
               <Input
@@ -190,7 +198,7 @@ function AddressItem({
           )}
         </FormField>
 
-        <FormField name={`${name}.${index}.city`} label="City">
+        <FormField name={`${name}.${index}.city`} label="City" className="col-span-6 md:col-span-1">
           {({ field }) => (
             <Input
               {...field}
@@ -204,7 +212,11 @@ function AddressItem({
           )}
         </FormField>
 
-        <FormField name={`${name}.${index}.state`} label="State/Province">
+        <FormField
+          name={`${name}.${index}.state`}
+          label="State/Province"
+          className="col-span-6 md:col-span-1"
+        >
           {({ field }) => (
             <Input
               {...field}
@@ -222,14 +234,14 @@ function AddressItem({
         <FormField
           name={`${name}.${index}.addressLine2`}
           label="Address Line 2 (Optional)"
-          className="sm:col-span-2"
+          className="col-span-12 md:col-span-2"
         >
           {({ field }) => (
             <Input {...field} value={field.value ?? ''} placeholder="Apt, Suite, etc." />
           )}
         </FormField>
 
-        <FormField name={`${name}.${index}.isPrimary`} className="sm:col-span-2">
+        <FormField name={`${name}.${index}.isPrimary`} className="col-span-12 md:col-span-2">
           {({ field: { value, onChange, ...field } }) => (
             <div className="flex items-center space-x-3 p-3 border rounded-lg bg-muted/10">
               <Checkbox

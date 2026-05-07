@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
@@ -40,7 +40,7 @@ export function AccountForm({ isOpen, onClose, account }: AccountFormProps) {
   const { mutateAsync: updateAccount, status: updateStatus } = useUpdateAccount();
 
   const form = useForm<CreateAccountInput>({
-    resolver: zodResolver(createAccountSchema),
+    resolver: zodResolver(createAccountSchema) as Resolver<CreateAccountInput>,
     defaultValues: {
       code: '',
       name: '',

@@ -32,7 +32,8 @@ async function main() {
     for (const table of tables) {
       const name = table.table_name;
       const countResult = await db.execute(sql.raw(`SELECT count(*) as count FROM "${name}"`));
-      const count = (countResult.rows[0] as any).count;
+      const row = countResult.rows[0] as { count: string | number };
+      const count = row.count;
       stats.push({ table: name, rows: count });
     }
 

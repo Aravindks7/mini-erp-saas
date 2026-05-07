@@ -22,6 +22,8 @@ import {
 } from '@/components/ui/dialog';
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect';
 import { COUNTRIES } from '@shared/utils/countries';
+import { getTenantPath } from '@/lib/path-utils';
+import { APP_PATHS } from '@/lib/paths';
 
 interface CreateOrganizationDialogProps {
   isOpen: boolean;
@@ -78,8 +80,10 @@ export function CreateOrganizationDialog({ isOpen, onOpenChange }: CreateOrganiz
       syncActiveOrganizationId(newOrg.id);
 
       // 2. Hard navigate to the new slug's dashboard to clear all caches
-      // and guarantee 100% data isolation.
-      window.location.assign(`/${newOrg.slug}`);
+      // and guarantee 100% data isolation. Window.location.assign is intentional —
+      // it performs a full page reload to bust React Query's cache and prevents
+      // cross-tenant data leakage between organizations.
+      window.location.assign(getTenantPath(APP_PATHS.dashboard(), newOrg.slug));
     } catch {
       toast.error('Failed to create organization');
     }

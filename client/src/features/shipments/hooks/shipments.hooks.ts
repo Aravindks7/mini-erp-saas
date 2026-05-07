@@ -32,7 +32,8 @@ export function useCreateShipment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: shipmentKeys.lists() });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-orders'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ['activity-logs'], refetchType: 'all' });
     },
   });
 }
@@ -45,6 +46,7 @@ export function useDeleteShipment() {
       queryClient.invalidateQueries({ queryKey: shipmentKeys.lists() });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
       queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
     },
   });
 }
@@ -57,6 +59,7 @@ export function useBulkDeleteShipments() {
       queryClient.invalidateQueries({ queryKey: shipmentKeys.lists() });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
       queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
     },
   });
 }

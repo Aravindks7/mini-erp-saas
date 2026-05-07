@@ -12,6 +12,7 @@ import type { JournalEntryResponse } from '../api/journal-entries.api';
 import { useVoidJournalEntry } from '../hooks/journal-entries.hooks';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { toast } from 'sonner';
+import { APP_PATHS } from '@/lib/paths';
 
 interface JournalEntryRowActionsProps {
   row: { original: JournalEntryResponse };
@@ -25,7 +26,6 @@ export function JournalEntryRowActions({ row }: JournalEntryRowActionsProps) {
   const entry = row.original;
 
   const isDraft = entry.status === 'draft';
-  const isVoid = entry.status === 'void';
 
   const handleVoid = () => {
     voidEntry(entry.id, {
@@ -43,7 +43,7 @@ export function JournalEntryRowActions({ row }: JournalEntryRowActionsProps) {
     {
       label: 'View Details',
       icon: <Eye className="h-4 w-4" />,
-      onClick: () => navigate(getPath(`/finance/journal-entries/${entry.id}`)),
+      onClick: () => navigate(getPath(APP_PATHS.finance.journalEntries.detail(entry.id))),
       tooltip: 'View Journal Entry',
     },
   ];
@@ -53,7 +53,7 @@ export function JournalEntryRowActions({ row }: JournalEntryRowActionsProps) {
       {
         label: 'Edit',
         icon: <FileEdit className="h-4 w-4" />,
-        onClick: () => navigate(getPath(`/finance/journal-entries/${entry.id}/edit`)),
+        onClick: () => navigate(getPath(APP_PATHS.finance.journalEntries.edit(entry.id))),
         tooltip: 'Edit Journal Entry',
       },
       {

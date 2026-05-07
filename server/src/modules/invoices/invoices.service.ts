@@ -8,6 +8,7 @@ import {
 import { BaseService } from '../../lib/base.service.js';
 import { sequencesService } from '../sequences/sequences.service.js';
 import { InvoiceReconciler, InvoiceStatus } from './invoices.reconciler.js';
+import { ActivityLogger } from '../../lib/activity-logger.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -90,12 +91,12 @@ export class InvoicesService extends BaseService<typeof invoices> {
           );
         }
 
-        // Void invoice using reconciler
         await InvoiceReconciler.updateStatus(
           organizationId,
           userId,
           id,
           'void',
+          'VOIDED',
           'Invoice manually voided',
           tx as Transaction,
         );
@@ -243,7 +244,23 @@ export class InvoicesService extends BaseService<typeof invoices> {
         })),
       };
 
-      return await this.createInvoice(organizationId, userId, invoiceData, tx);
+      const invoice = await this.createInvoice(organizationId, userId, invoiceData, tx);
+
+      if (invoice) {
+        await ActivityLogger.record(tx, {
+          organizationId,
+          entityType: 'sales_order',
+          entityId: so.id,
+          entityDisplayId: so.documentNumber,
+          entityLabel: 'Sales Order',
+          action: 'ORDER_INVOICED',
+          reason: 'Invoice generated from sales order',
+          snapshot: { invoiceId: invoice.id, invoiceNumber: invoice.documentNumber },
+          userId,
+        });
+      }
+
+      return invoice;
     });
   }
 
@@ -259,6 +276,7 @@ export class InvoicesService extends BaseService<typeof invoices> {
         userId,
         id,
         data.status as InvoiceStatus,
+        'STATUS_CHANGED',
         'Manual status update',
         tx as Transaction,
       );

@@ -3,6 +3,7 @@ import type {
   CreateInvoiceInput,
   UpdateInvoiceStatusInput,
 } from '@shared/contracts/invoices.contract';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export interface InvoiceLineResponse {
   id: string;
@@ -45,28 +46,28 @@ export interface InvoiceResponse {
 }
 
 export const invoicesApi = {
-  fetchInvoices: () => apiFetch<InvoiceResponse[]>('/invoices'),
-  fetchInvoice: (id: string) => apiFetch<InvoiceResponse>(`/invoices/${id}`),
+  fetchInvoices: () => apiFetch<InvoiceResponse[]>(API_ENDPOINTS.sales.invoices.base),
+  fetchInvoice: (id: string) => apiFetch<InvoiceResponse>(API_ENDPOINTS.sales.invoices.detail(id)),
   createInvoice: (data: CreateInvoiceInput) =>
-    apiFetch<InvoiceResponse>('/invoices', {
+    apiFetch<InvoiceResponse>(API_ENDPOINTS.sales.invoices.base, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   createFromSalesOrder: (soId: string) =>
-    apiFetch<InvoiceResponse>(`/invoices/from-so/${soId}`, {
+    apiFetch<InvoiceResponse>(API_ENDPOINTS.sales.invoices.fromOrder(soId), {
       method: 'POST',
     }),
   updateInvoiceStatus: (id: string, data: UpdateInvoiceStatusInput) =>
-    apiFetch<InvoiceResponse>(`/invoices/${id}/status`, {
+    apiFetch<InvoiceResponse>(API_ENDPOINTS.sales.invoices.status(id), {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
   deleteInvoice: (id: string) =>
-    apiFetch<{ message: string }>(`/invoices/${id}`, {
+    apiFetch<{ message: string }>(API_ENDPOINTS.sales.invoices.detail(id), {
       method: 'DELETE',
     }),
   bulkDeleteInvoices: (ids: string[]) =>
-    apiFetch<{ message: string }>('/invoices/bulk-delete', {
+    apiFetch<{ message: string }>(API_ENDPOINTS.sales.invoices.bulkDelete, {
       method: 'DELETE',
       body: JSON.stringify({ ids }),
     }),

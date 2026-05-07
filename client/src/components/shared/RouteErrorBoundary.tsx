@@ -3,6 +3,7 @@ import { AlertTriangle, Home, RotateCcw, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from './ErrorState';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 import { useState } from 'react';
 import { IconButton } from './IconButton';
 
@@ -37,7 +38,7 @@ export function RouteErrorBoundary() {
             title="404 - Page Not Found"
             description="The resource you are looking for does not exist or has been moved to a new location."
             className="max-w-md border-none shadow-none"
-            onRetry={() => navigate(getPath('/'))}
+            onRetry={() => navigate(getPath(APP_PATHS.dashboard()))}
           />
         </div>
       );
@@ -50,7 +51,7 @@ export function RouteErrorBoundary() {
             title="401 - Unauthorized"
             description="You do not have permission to access this page. Please log in to continue."
             className="max-w-md border-none shadow-none"
-            onRetry={() => navigate('/login')}
+            onRetry={() => navigate(APP_PATHS.auth.login())}
           />
         </div>
       );
@@ -87,7 +88,11 @@ export function RouteErrorBoundary() {
           <RotateCcw className="h-4 w-4" />
           Reload Application
         </Button>
-        <Button variant="outline" onClick={() => navigate(getPath('/'))} className="gap-2">
+        <Button
+          variant="outline"
+          onClick={() => navigate(getPath(APP_PATHS.dashboard()))}
+          className="gap-2"
+        >
           <Home className="h-4 w-4" />
           Go to Dashboard
         </Button>

@@ -161,6 +161,9 @@ describe('Sales Orders Module', () => {
               }),
             }),
           })),
+          insert: vi.fn(() => ({
+            values: vi.fn().mockResolvedValue({}),
+          })),
         } as any;
         return cb(tx);
       });
@@ -217,6 +220,9 @@ describe('Sales Orders Module', () => {
                 returning: vi.fn().mockResolvedValue(mockSOs),
               }),
             }),
+          })),
+          insert: vi.fn(() => ({
+            values: vi.fn().mockResolvedValue({}),
           })),
         } as any;
         return cb(tx);

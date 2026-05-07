@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { SidebarClose, SidebarOpen, Settings, LogOut } from 'lucide-react';
+import { SidebarClose, SidebarOpen, Settings, LogOut, Activity } from 'lucide-react';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
@@ -14,6 +14,7 @@ import { useSignOutMutation } from '@/features/auth/hooks/auth.hooks';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { useState } from 'react';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { APP_PATHS } from '@/lib/paths';
 
 interface SidebarContentProps {
   onItemClick?: () => void;
@@ -145,9 +146,42 @@ export function SidebarContent({ onItemClick, isCollapsed, toggle }: SidebarCont
       </nav>
 
       <div className={cn('mt-auto border-t border-border/50 p-3 space-y-1', isCollapsed && 'p-2')}>
+        {/* Activity Button */}
+        {(() => {
+          const activityPath = getPath(APP_PATHS.system.activity());
+          const isActive = pathname.startsWith(activityPath);
+          const link = (
+            <NavLink
+              to={activityPath}
+              onClick={onItemClick}
+              className={cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200',
+                isCollapsed ? 'justify-center px-0 w-10 h-10' : 'w-full',
+                isActive
+                  ? 'bg-primary/10 text-primary font-semibold'
+                  : 'text-muted-foreground hover:bg-muted font-medium',
+              )}
+            >
+              <Activity size={18} className="shrink-0" />
+              {!isCollapsed && <span className="truncate">Activity</span>}
+            </NavLink>
+          );
+
+          return isCollapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>{link}</TooltipTrigger>
+              <TooltipContent side="right" sideOffset={10} className="font-semibold">
+                Activity
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            link
+          );
+        })()}
+
         {/* Settings Button */}
         {(() => {
-          const settingsPath = getPath('/settings');
+          const settingsPath = getPath(APP_PATHS.system.settings());
           const isActive = pathname.startsWith(settingsPath);
           const link = (
             <NavLink

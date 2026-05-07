@@ -1,7 +1,7 @@
 import { db } from '../../db/index.js';
 import { accounts } from '../../db/schema/accounts.schema.js';
 import { journalEntryLines } from '../../db/schema/journal-entry-lines.schema.js';
-import { and, eq, sql, sum } from 'drizzle-orm';
+import { and, eq, sum } from 'drizzle-orm';
 import { CreateAccountInput, UpdateAccountInput } from '#shared/contracts/finance.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 

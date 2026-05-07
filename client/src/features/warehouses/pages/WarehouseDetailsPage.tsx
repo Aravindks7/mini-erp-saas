@@ -16,6 +16,7 @@ import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { warehousesApi } from '../api/warehouses.api';
+import { APP_PATHS } from '@/lib/paths';
 
 export default function WarehouseDetailsPage() {
   const { id } = useParams();
@@ -51,7 +52,7 @@ export default function WarehouseDetailsPage() {
             The warehouse record you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate(getPath('/warehouses'))}
+            onClick={() => navigate(getPath(APP_PATHS.setup.warehouses.list()))}
             className="text-primary font-semibold hover:underline"
           >
             Return to Warehouse List
@@ -66,11 +67,11 @@ export default function WarehouseDetailsPage() {
       <PageHeader
         title={warehouse.name}
         description={`Manage details, addresses, and bins for ${warehouse.name}.`}
-        backButton={{ href: getPath('/warehouses'), label: 'Back to List' }}
+        backButton={{ href: APP_PATHS.setup.warehouses.list(), label: 'Back to List' }}
         actions={[
           {
             label: 'Edit Warehouse',
-            onClick: () => navigate(getPath(`/warehouses/${warehouse.id}/edit`)),
+            onClick: () => navigate(getPath(APP_PATHS.setup.warehouses.edit(warehouse.id))),
             icon: <FileEdit className="h-4 w-4" />,
             variant: 'default',
           },

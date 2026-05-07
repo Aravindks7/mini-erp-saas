@@ -1,5 +1,6 @@
 import { apiFetch } from '@/lib/api';
 import type { CreateReceiptInput } from '@shared/contracts/receipts.contract';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export interface ReceiptLineResponse {
   id: string;
@@ -41,19 +42,20 @@ export interface ReceiptResponse {
 }
 
 export const receiptsApi = {
-  fetchReceipts: () => apiFetch<ReceiptResponse[]>('/receipts'),
-  fetchReceipt: (id: string) => apiFetch<ReceiptResponse>(`/receipts/${id}`),
+  fetchReceipts: () => apiFetch<ReceiptResponse[]>(API_ENDPOINTS.purchasing.receipts.base),
+  fetchReceipt: (id: string) =>
+    apiFetch<ReceiptResponse>(API_ENDPOINTS.purchasing.receipts.detail(id)),
   createReceipt: (data: CreateReceiptInput) =>
-    apiFetch<ReceiptResponse>('/receipts', {
+    apiFetch<ReceiptResponse>(API_ENDPOINTS.purchasing.receipts.base, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   deleteReceipt: (id: string) =>
-    apiFetch<void>(`/receipts/${id}`, {
+    apiFetch<void>(API_ENDPOINTS.purchasing.receipts.detail(id), {
       method: 'DELETE',
     }),
   bulkDeleteReceipts: (ids: string[]) =>
-    apiFetch<void>('/receipts', {
+    apiFetch<void>(API_ENDPOINTS.purchasing.receipts.bulkDelete, {
       method: 'DELETE',
       body: JSON.stringify({ ids }),
     }),

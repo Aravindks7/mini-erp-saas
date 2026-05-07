@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import type { RoleResponse } from '@shared/index';
+import { APP_PATHS } from '@/lib/paths';
 
 export function RolesTab() {
   const navigate = useNavigate();
@@ -74,12 +75,12 @@ export function RolesTab() {
         columns={columns}
         isLoading={isLoading}
         headerActions={
-          <Button onClick={() => navigate(getPath('/settings/roles/new'))}>
+          <Button onClick={() => navigate(getPath(APP_PATHS.settings.roles.new()))}>
             <Plus className="mr-2 h-4 w-4" /> New Role
           </Button>
         }
         actions={{
-          onEdit: (role) => navigate(getPath(`/settings/roles/${role.id}`)),
+          onEdit: (role) => navigate(getPath(APP_PATHS.settings.roles.detail(role.id))),
           onDelete: (role) => setRoleToDelete(role),
           deleteLabel: 'Delete Role',
         }}

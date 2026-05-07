@@ -10,7 +10,7 @@ const AccountDetailsPage = lazy(() => import('./pages/AccountDetailsPage'));
 
 export const accountRoutes: AppRoute[] = [
   {
-    path: 'finance/accounts',
+    path: 'accounts',
     handle: {
       title: 'Chart of Accounts',
       icon: LayoutGrid,

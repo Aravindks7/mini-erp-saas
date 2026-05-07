@@ -12,6 +12,7 @@ import { DetailView } from '@/components/shared/DetailView';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { UomFormSheet } from '../components/UomFormSheet';
+import { APP_PATHS } from '@/lib/paths';
 
 export default function UomDetailsPage() {
   const { id } = useParams();
@@ -41,10 +42,10 @@ export default function UomDetailsPage() {
             The unit of measure record you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate(getPath('/uom'))}
+            onClick={() => navigate(getPath(APP_PATHS.setup.uom.list()))}
             className="text-primary font-semibold hover:underline"
           >
-            Return to Units of Measure
+            Return to UOMs
           </button>
         </div>
       </PageContainer>
@@ -55,8 +56,8 @@ export default function UomDetailsPage() {
     <PageContainer>
       <PageHeader
         title={uom.name}
-        description={`Detailed view of unit of measure: ${uom.name} (${uom.code}).`}
-        backButton={{ href: getPath('/uom'), label: 'Back to Units of Measure' }}
+        description={`Detailed view of unit of measure configuration for ${uom.name}.`}
+        backButton={{ href: APP_PATHS.setup.uom.list(), label: 'Back to UOMs' }}
         actions={[
           {
             label: 'Edit UoM',

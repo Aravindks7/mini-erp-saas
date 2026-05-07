@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { productCategoriesService } from './product-categories.service.js';
 import { db } from '../../db/index.js';
-import { productCategories } from '../../db/schema/product-categories.schema.js';
-import { eq, and, sql } from 'drizzle-orm';
 
 vi.mock('../../db/index.js', () => ({
   db: {

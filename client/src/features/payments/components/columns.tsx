@@ -68,7 +68,7 @@ export const columns: ColumnDef<PaymentResponse>[] = [
     header: ({ column }) => <DataTableColumnHeader column={column} title="Payee/Payer" />,
     cell: ({ row }) => {
       const payment = row.original;
-      return payment.customer?.companyName || payment.supplier?.name || '-';
+      return payment.customer?.companyName || payment.supplier?.companyName || '-';
     },
     meta: { variant: 'subtitle', label: 'Entity' },
   },

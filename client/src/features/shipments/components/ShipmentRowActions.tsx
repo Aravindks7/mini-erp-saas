@@ -9,6 +9,7 @@ import type { ShipmentResponse } from '../api/shipments.api';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 import { useDeleteShipment } from '../hooks/shipments.hooks';
+import { APP_PATHS } from '@/lib/paths';
 
 interface ShipmentRowActionsProps {
   row: { original: ShipmentResponse };
@@ -37,7 +38,7 @@ export function ShipmentRowActions({ row }: ShipmentRowActionsProps) {
     {
       label: 'View',
       icon: <Eye className="h-4 w-4" />,
-      onClick: () => navigate(getPath(`/shipments/${shipment.id}`)),
+      onClick: () => navigate(getPath(APP_PATHS.sales.shipments.detail(shipment.id))),
       tooltip: 'View Details',
     },
   ];
@@ -47,7 +48,7 @@ export function ShipmentRowActions({ row }: ShipmentRowActionsProps) {
       {
         label: 'Edit',
         icon: <FileEdit className="h-4 w-4" />,
-        onClick: () => navigate(getPath(`/shipments/${shipment.id}/edit`)),
+        onClick: () => navigate(getPath(APP_PATHS.sales.shipments.edit(shipment.id))),
         tooltip: 'Edit Shipment',
       },
       {
@@ -81,7 +82,6 @@ export function ShipmentRowActions({ row }: ShipmentRowActionsProps) {
         description={dialogDescription}
         confirmLabel={actionLabel}
         isLoading={isDeleting}
-        variant={isDraft ? 'destructive' : 'default'}
       />
     </>
   );

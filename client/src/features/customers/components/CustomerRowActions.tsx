@@ -11,6 +11,7 @@ import {
 import type { CustomerResponse } from '../api/customers.api';
 import { useDeleteCustomer } from '../hooks/customers.hooks';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 interface CustomerRowActionsProps {
   row: { original: CustomerResponse };
@@ -33,13 +34,13 @@ export function CustomerRowActions({ row }: CustomerRowActionsProps) {
     {
       label: 'View',
       icon: <Eye className="h-4 w-4" />,
-      onClick: () => navigate(getPath(`/customers/${customer.id}`)),
+      onClick: () => navigate(getPath(APP_PATHS.sales.customers.detail(customer.id))),
       tooltip: 'View Details',
     },
     {
       label: 'Edit',
       icon: <FileEdit className="h-4 w-4" />,
-      onClick: () => navigate(getPath(`/customers/${customer.id}/edit`)),
+      onClick: () => navigate(getPath(APP_PATHS.sales.customers.edit(customer.id))),
       tooltip: 'Edit Customer',
     },
     {

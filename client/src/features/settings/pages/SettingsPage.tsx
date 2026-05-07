@@ -2,11 +2,13 @@ import { PageContainer } from '@/components/shared/PageContainer';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { RouteTabs } from '@/components/shared/RouteTabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Outlet, useLocation, Navigate, useParams } from 'react-router-dom';
+import { Outlet, useLocation, Navigate } from 'react-router-dom';
 import { Building2, Users, Mail, ShieldCheck, KeyRound, Hash } from 'lucide-react';
 import { usePermission } from '@/hooks/usePermission';
 import { useMyPermissions } from '@/features/auth/hooks/rbac.hooks';
 import { PERMISSIONS } from '@shared/index';
+import { APP_PATHS } from '@/lib/paths';
+import { useTenantPath } from '@/hooks/useTenantPath';
 
 const tabs = [
   { label: 'Profile', path: 'profile', icon: <Building2 className="h-4 w-4" /> },
@@ -38,9 +40,9 @@ const tabs = [
 ];
 
 export default function SettingsPage() {
-  const { slug } = useParams();
+  const { getPath } = useTenantPath();
   const location = useLocation();
-  const settingsBase = `/${slug}/settings`;
+  const settingsBase = getPath(APP_PATHS.settings.index());
 
   const { isLoading: isLoadingPermissions } = useMyPermissions();
   const canManageMembers = usePermission(PERMISSIONS.ORGANIZATION.MEMBERS);
@@ -60,11 +62,11 @@ export default function SettingsPage() {
 
   if (!isLoadingPermissions) {
     if (!canManageMembers && isMembersPath) {
-      return <Navigate to={settingsBase + '/profile'} replace />;
+      return <Navigate to={getPath(APP_PATHS.settings.profile())} replace />;
     }
 
     if (!canManageRoles && isRolesPath) {
-      return <Navigate to={settingsBase + '/profile'} replace />;
+      return <Navigate to={getPath(APP_PATHS.settings.profile())} replace />;
     }
   }
 

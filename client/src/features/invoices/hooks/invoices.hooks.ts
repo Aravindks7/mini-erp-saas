@@ -53,7 +53,8 @@ export function useCreateInvoiceFromSO() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
       // Also invalidate SO details if we show invoices on SO page
-      queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-orders'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ['activity-logs'], refetchType: 'all' });
     },
   });
 }
@@ -67,6 +68,7 @@ export function useUpdateInvoiceStatus() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
       queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(data.id) });
+      queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
     },
   });
 }
@@ -80,8 +82,8 @@ export function useDeleteInvoice() {
       queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
       toast.success('Invoice processed successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to process invoice');
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Failed to process invoice');
     },
   });
 }
@@ -95,8 +97,8 @@ export function useBulkDeleteInvoices() {
       queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
       toast.success('Invoices processed successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to process invoices');
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Failed to process invoices');
     },
   });
 }

@@ -189,6 +189,7 @@ export class BillsService extends BaseService<typeof bills> {
         userId,
         id,
         data.status as BillStatus,
+        'STATUS_CHANGED',
         'Manual status update',
         tx as Transaction,
       );
@@ -237,12 +238,12 @@ export class BillsService extends BaseService<typeof bills> {
           );
         }
 
-        // Transition status to void using reconciler
         await BillReconciler.updateStatus(
           organizationId,
           userId,
           id,
           'void',
+          'VOIDED',
           'Bill manually voided',
           tx as Transaction,
         );

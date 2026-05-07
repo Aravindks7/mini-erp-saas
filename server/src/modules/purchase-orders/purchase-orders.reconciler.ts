@@ -2,6 +2,7 @@ import { db } from '../../db/index.js';
 import { purchaseOrders, purchaseOrderLines, receipts } from '../../db/schema/index.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { ActivityLogger } from '../../lib/activity-logger.js';
+import type { ActivityAction } from '#shared/config/activity-actions.config.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -25,6 +26,7 @@ export class PurchaseOrderReconciler {
     userId: string,
     id: string,
     newStatus: POStatus,
+    action: ActivityAction,
     reason: string,
     tx: Transaction,
   ) {
@@ -60,7 +62,9 @@ export class PurchaseOrderReconciler {
       organizationId,
       entityType: 'purchase_order',
       entityId: id,
-      action: 'STATUS_CHANGED',
+      entityDisplayId: existing.documentNumber,
+      entityLabel: 'Purchase Order',
+      action,
       reason: reason || `Status changed from ${existing.status} to ${newStatus}`,
       snapshot: { previousStatus: existing.status, newStatus },
       userId,
@@ -142,6 +146,7 @@ export class PurchaseOrderReconciler {
         userId,
         id,
         newStatus,
+        'SYSTEM_RECONCILIATION',
         'System reconciliation of receiving',
         tx,
       );

@@ -19,11 +19,13 @@ import {
 } from '@/features/auth/hooks/rbac.hooks';
 import { createPermissionSetSchema, type CreatePermissionSetInput } from '@shared/index';
 
+import { APP_PATHS } from '@/lib/paths';
+
 export default function PermissionSetFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const backPath = getPath('/settings/permission-sets');
+  const backPath = getPath(APP_PATHS.settings.permissionSets.list());
 
   const [searchQuery, setSearchQuery] = React.useState('');
 
@@ -100,7 +102,7 @@ export default function PermissionSetFormPage() {
               : 'Edit Permission Set'
             : 'New Permission Set'
         }
-        backButton={{ href: '/settings/permission-sets', label: 'Back to Sets' }}
+        backButton={{ href: APP_PATHS.settings.permissionSets.list(), label: 'Back to Sets' }}
         actions={[
           {
             label: 'Cancel',

@@ -8,52 +8,55 @@ import type {
   UpdatePermissionSetInput,
   UpdateRoleInput,
 } from '@shared/index';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export const rbacApi = {
-  fetchMyPermissions: () => apiFetch<{ permissions: Permission[] }>('/rbac/permissions'),
+  fetchMyPermissions: () => apiFetch<{ permissions: Permission[] }>(API_ENDPOINTS.rbac.permissions),
 
   fetchAllPermissions: () =>
-    apiFetch<{ id: string; description: string | null }[]>('/rbac/all-permissions'),
+    apiFetch<{ id: string; description: string | null }[]>(API_ENDPOINTS.rbac.allPermissions),
 
-  fetchPermissionSets: () => apiFetch<PermissionSetResponse[]>('/rbac/sets'),
+  fetchPermissionSets: () =>
+    apiFetch<PermissionSetResponse[]>(API_ENDPOINTS.rbac.permissionSets.base),
 
-  fetchPermissionSet: (id: string) => apiFetch<PermissionSetResponse>(`/rbac/sets/${id}`),
+  fetchPermissionSet: (id: string) =>
+    apiFetch<PermissionSetResponse>(API_ENDPOINTS.rbac.permissionSets.detail(id)),
 
   createPermissionSet: (data: CreatePermissionSetInput) =>
-    apiFetch<PermissionSetResponse>('/rbac/sets', {
+    apiFetch<PermissionSetResponse>(API_ENDPOINTS.rbac.permissionSets.base, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
   updatePermissionSet: (id: string, data: UpdatePermissionSetInput) =>
-    apiFetch<PermissionSetResponse>(`/rbac/sets/${id}`, {
+    apiFetch<PermissionSetResponse>(API_ENDPOINTS.rbac.permissionSets.detail(id), {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
 
   deletePermissionSet: (id: string) =>
-    apiFetch<{ success: boolean }>(`/rbac/sets/${id}`, {
+    apiFetch<{ success: boolean }>(API_ENDPOINTS.rbac.permissionSets.detail(id), {
       method: 'DELETE',
     }),
 
-  fetchRoles: () => apiFetch<RoleResponse[]>('/rbac/roles'),
+  fetchRoles: () => apiFetch<RoleResponse[]>(API_ENDPOINTS.rbac.roles.base),
 
-  fetchRole: (id: string) => apiFetch<RoleResponse>(`/rbac/roles/${id}`),
+  fetchRole: (id: string) => apiFetch<RoleResponse>(API_ENDPOINTS.rbac.roles.detail(id)),
 
   createRole: (data: CreateRoleInput) =>
-    apiFetch<RoleResponse>('/rbac/roles', {
+    apiFetch<RoleResponse>(API_ENDPOINTS.rbac.roles.base, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
   updateRole: (id: string, data: UpdateRoleInput) =>
-    apiFetch<RoleResponse>(`/rbac/roles/${id}`, {
+    apiFetch<RoleResponse>(API_ENDPOINTS.rbac.roles.detail(id), {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
 
   deleteRole: (id: string) =>
-    apiFetch<{ success: boolean }>(`/rbac/roles/${id}`, {
+    apiFetch<{ success: boolean }>(API_ENDPOINTS.rbac.roles.detail(id), {
       method: 'DELETE',
     }),
 };

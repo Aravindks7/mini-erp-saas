@@ -11,6 +11,7 @@ import { DataTableFilter } from '@/components/shared/data-table/DataTableFilter'
 import { useDataTableState } from '@/hooks/useDataTableState';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { PERMISSIONS } from '@shared/index';
+import { APP_PATHS } from '@/lib/paths';
 
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -88,7 +89,7 @@ export function PaymentList() {
         >
           <div className="flex items-center justify-center gap-4">
             <AddButton
-              to="/payments/new"
+              to={APP_PATHS.finance.payments.new()}
               permission={PERMISSIONS.PAYMENTS.CREATE}
               label="Record Payment"
               className="shadow-lg shadow-primary/20"
@@ -99,7 +100,7 @@ export function PaymentList() {
     );
   }
 
-  const handleAddClick = () => navigate(getPath('/payments/new'));
+  const handleAddClick = () => navigate(getPath(APP_PATHS.finance.payments.new()));
 
   return (
     <>
@@ -119,7 +120,7 @@ export function PaymentList() {
         onReset={resetAll}
         headerActions={
           <AddButton
-            to="/payments/new"
+            to={APP_PATHS.finance.payments.new()}
             permission={PERMISSIONS.PAYMENTS.CREATE}
             label="Record Payment"
           />

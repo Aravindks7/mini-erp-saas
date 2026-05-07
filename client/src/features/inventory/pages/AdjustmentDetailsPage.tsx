@@ -17,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { APP_PATHS } from '@/lib/paths';
 
 const adjustmentStatusMap: StatusMap<string> = {
   draft: { label: 'Draft', tone: 'neutral' },
@@ -24,7 +25,7 @@ const adjustmentStatusMap: StatusMap<string> = {
   cancelled: { label: 'Cancelled', tone: 'danger' },
 };
 
-export function AdjustmentDetailsPage() {
+export default function AdjustmentDetailsPage() {
   const { id } = useParams();
   const { data: adjustment, isLoading, isError } = useInventoryAdjustment(id);
 
@@ -51,7 +52,7 @@ export function AdjustmentDetailsPage() {
       <PageHeader
         title={adjustment.reference || 'Adjustment Details'}
         description={`Stock correction recorded on ${new Date(adjustment.adjustmentDate).toLocaleDateString()}`}
-        backButton={{ href: '/adjustments', label: 'Back to Adjustments' }}
+        backButton={{ href: APP_PATHS.inventory.adjustments.list(), label: 'Back to Adjustments' }}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">
           <StatusBadge value={adjustment.status} statusMap={adjustmentStatusMap} />

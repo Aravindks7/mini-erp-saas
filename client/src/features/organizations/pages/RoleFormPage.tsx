@@ -19,11 +19,13 @@ import {
 } from '@/features/auth/hooks/rbac.hooks';
 import { createRoleSchema, type CreateRoleInput } from '@shared/index';
 
+import { APP_PATHS } from '@/lib/paths';
+
 export default function RoleFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const backPath = getPath('/settings/roles');
+  const backPath = getPath(APP_PATHS.settings.roles.list());
 
   const { data: existingRole, isLoading: isFetchingRole } = useRole(id!);
   const { data: availableSets, isLoading: isFetchingSets } = usePermissionSets();
@@ -103,7 +105,7 @@ export default function RoleFormPage() {
     <PageContainer maxWidth="lg">
       <PageHeader
         title={isEditing ? (isForking ? 'Copy Role' : 'Edit Role') : 'New Role'}
-        backButton={{ href: '/settings/roles', label: 'Back to Roles' }}
+        backButton={{ href: APP_PATHS.settings.roles.list(), label: 'Back to Roles' }}
         actions={[
           {
             label: 'Cancel',

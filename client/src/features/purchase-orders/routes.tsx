@@ -11,14 +11,14 @@ const PurchaseOrderDetailsPage = lazy(() => import('./pages/PurchaseOrderDetails
 
 export const purchaseOrdersRoutes: AppRoute[] = [
   {
-    path: 'purchase-orders',
+    path: 'orders',
     handle: {
-      title: 'Purchase Orders',
+      title: 'Orders',
       icon: ShoppingCart,
       showInSidebar: true,
       sidebarGroup: 'Purchasing',
       order: 10,
-      crumb: 'Purchase Orders',
+      crumb: 'Orders',
     },
     children: [
       {

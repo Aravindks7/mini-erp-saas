@@ -1,15 +1,10 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatDate } from '@shared/utils/date';
 import type { InventoryAdjustmentResponse } from '../../api/inventory.api';
 import { AdjustmentRowActions } from './AdjustmentRowActions';
-
-const adjustmentStatusMap: StatusMap<string> = {
-  draft: { label: 'Draft', tone: 'neutral' },
-  approved: { label: 'Approved', tone: 'success' },
-  cancelled: { label: 'Cancelled', tone: 'danger' },
-};
+import { adjustmentStatusMap } from '../../config/index';
 
 export const adjustmentStatusOptions = Object.entries(adjustmentStatusMap).map(
   ([value, config]) => ({

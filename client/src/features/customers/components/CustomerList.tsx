@@ -23,6 +23,8 @@ import { columns, customerStatusOptions } from './columns';
 import { useCustomers, useBulkDeleteCustomers } from '../hooks/customers.hooks';
 import type { CustomerResponse } from '../api/customers.api';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { APP_PATHS } from '@/lib/paths';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 const searchSchema = z.object({
   search: z.string().optional(),
@@ -94,8 +96,8 @@ export function CustomerList() {
         >
           <div className="flex items-center justify-center gap-4">
             <ImportModal
-              endpoint="/customers/import"
-              templateEndpoint="/customers/import/template"
+              endpoint={API_ENDPOINTS.customers.import}
+              templateEndpoint={API_ENDPOINTS.customers.importTemplate}
               onSuccess={handleImportSuccess}
               trigger={
                 <Button variant="outline" className="px-6">
@@ -105,7 +107,7 @@ export function CustomerList() {
               }
             />
             <AddButton
-              to="/customers/new"
+              to={APP_PATHS.sales.customers.new()}
               permission={PERMISSIONS.CUSTOMERS.CREATE}
               label="Add Customer"
               className="shadow-lg shadow-primary/20"
@@ -116,7 +118,7 @@ export function CustomerList() {
     );
   }
 
-  const handleAddClick = () => navigate(getPath('/customers/new'));
+  const handleAddClick = () => navigate(getPath(APP_PATHS.sales.customers.new()));
 
   return (
     <>
@@ -136,14 +138,17 @@ export function CustomerList() {
         onReset={resetAll}
         headerActions={
           <div className="flex items-center gap-2">
-            <ExportButton endpoint="/customers/export" filename="customers-export.csv" />
+            <ExportButton
+              endpoint={API_ENDPOINTS.customers.export}
+              filename="customers-export.csv"
+            />
             <ImportModal
-              endpoint="/customers/import"
-              templateEndpoint="/customers/import/template"
+              endpoint={API_ENDPOINTS.customers.import}
+              templateEndpoint={API_ENDPOINTS.customers.importTemplate}
               onSuccess={handleImportSuccess}
             />
             <AddButton
-              to="/customers/new"
+              to={APP_PATHS.sales.customers.new()}
               permission={PERMISSIONS.CUSTOMERS.CREATE}
               label="Add Customer"
             />

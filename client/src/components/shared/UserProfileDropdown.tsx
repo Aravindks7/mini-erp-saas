@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { useSignOutMutation } from '@/features/auth/hooks/auth.hooks';
+import { APP_PATHS } from '@/lib/paths';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -90,10 +91,10 @@ export function UserProfileDropdown({ className }: UserProfileDropdownProps) {
             </DropdownMenuItem>
             <DropdownMenuItem
               className="py-2.5 px-3 rounded-xl cursor-pointer"
-              onClick={() => navigate(getPath('/activity'))}
+              onClick={() => navigate(getPath(APP_PATHS.system.activity()))}
             >
-              <Activity size={18} className="mr-2 text-muted-foreground/80" />
-              <span className="font-medium">Activity</span>
+              <Activity className="mr-2 h-4 w-4" />
+              <span>Activity Log</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
 

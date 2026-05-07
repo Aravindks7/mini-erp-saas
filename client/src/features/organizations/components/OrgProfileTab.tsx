@@ -12,6 +12,7 @@ import { Users, Mail, Calendar, Building2, Trash2, AlertCircle } from 'lucide-re
 import { formatDate } from '@shared/utils/date';
 import { usePermission } from '@/hooks/usePermission';
 import { PERMISSIONS } from '@shared/index';
+import { APP_PATHS } from '@/lib/paths';
 
 export function OrgProfileTab() {
   const { activeOrganization, activeOrganizationId, syncActiveOrganizationId } = useTenant();
@@ -30,7 +31,7 @@ export function OrgProfileTab() {
       await deleteOrg.mutateAsync(activeOrganizationId || '');
       toast.success('Organization deleted successfully');
       syncActiveOrganizationId(null);
-      window.location.assign('/');
+      window.location.assign(APP_PATHS.dashboard());
     } catch {
       toast.error('Failed to delete organization');
     }

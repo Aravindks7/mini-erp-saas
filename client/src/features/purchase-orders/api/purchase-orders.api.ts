@@ -1,5 +1,6 @@
 import { apiFetch } from '@/lib/api';
 import type { CreatePurchaseOrderInput } from '@shared/contracts/purchase-orders.contract';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export interface PurchaseOrderLineResponse {
   id: string;
@@ -31,24 +32,26 @@ export interface PurchaseOrderResponse {
 }
 
 export const purchaseOrdersApi = {
-  fetchPurchaseOrders: () => apiFetch<PurchaseOrderResponse[]>('/purchase-orders'),
-  fetchPurchaseOrder: (id: string) => apiFetch<PurchaseOrderResponse>(`/purchase-orders/${id}`),
+  fetchPurchaseOrders: () =>
+    apiFetch<PurchaseOrderResponse[]>(API_ENDPOINTS.purchasing.orders.base),
+  fetchPurchaseOrder: (id: string) =>
+    apiFetch<PurchaseOrderResponse>(API_ENDPOINTS.purchasing.orders.detail(id)),
   createPurchaseOrder: (data: CreatePurchaseOrderInput) =>
-    apiFetch<PurchaseOrderResponse>('/purchase-orders', {
+    apiFetch<PurchaseOrderResponse>(API_ENDPOINTS.purchasing.orders.base, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   updatePurchaseOrder: (id: string, data: CreatePurchaseOrderInput) =>
-    apiFetch<PurchaseOrderResponse>(`/purchase-orders/${id}`, {
+    apiFetch<PurchaseOrderResponse>(API_ENDPOINTS.purchasing.orders.detail(id), {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
   deletePurchaseOrder: (id: string) =>
-    apiFetch<void>(`/purchase-orders/${id}`, {
+    apiFetch<void>(API_ENDPOINTS.purchasing.orders.detail(id), {
       method: 'DELETE',
     }),
   bulkDeletePurchaseOrders: (ids: string[]) =>
-    apiFetch<void>('/purchase-orders', {
+    apiFetch<void>(API_ENDPOINTS.purchasing.orders.bulkDelete, {
       method: 'DELETE',
       body: JSON.stringify({ ids }),
     }),

@@ -31,7 +31,7 @@ test.describe('RBAC UI Pruning', () => {
     await page.click('button:has-text("Add Customer")');
     await page.getByLabel('Company Name').fill(customerName);
     await page.click('button:has-text("Save Customer")');
-    await expect(page).toHaveURL(/\/customers\/[0-9a-f-]+$/);
+    await expect(page).toHaveURL(/\/sales\/customers\/[0-9a-f-]+$/);
 
     // 2. Sign out
     await page.click('button:has-text("Logout")'); // UserProfileDropdown

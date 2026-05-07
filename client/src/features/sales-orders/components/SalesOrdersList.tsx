@@ -22,6 +22,7 @@ import { getColumns, salesOrderStatusOptions } from './columns';
 import { useSalesOrders, useBulkDeleteSalesOrders } from '../hooks/sales-orders.hooks';
 import type { SalesOrderResponse } from '../api/sales-orders.api';
 import { FulfillSalesOrderSheet } from './FulfillSalesOrderSheet';
+import { APP_PATHS } from '@/lib/paths';
 
 const searchSchema = z.object({
   documentNumber: z.string().optional(),
@@ -60,7 +61,7 @@ export function SalesOrdersList() {
   }, []);
 
   const handleAdd = () => {
-    navigate(getPath('/sales-orders/new'));
+    navigate(getPath(APP_PATHS.sales.orders.new()));
   };
 
   const handleBulkDeleteConfirm = async () => {

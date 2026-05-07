@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import type { DashboardResponse } from '@shared/contracts/dashboard.contract';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export const dashboardKeys = {
   all: ['dashboard'] as const,
@@ -13,7 +14,7 @@ export const dashboardKeys = {
 export function useDashboard() {
   return useQuery<DashboardResponse>({
     queryKey: dashboardKeys.all,
-    queryFn: () => apiFetch<DashboardResponse>('/dashboard'),
+    queryFn: () => apiFetch<DashboardResponse>(API_ENDPOINTS.dashboard.base),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
@@ -27,7 +28,9 @@ export function useRefreshDashboard() {
 
   return useMutation({
     mutationFn: () =>
-      apiFetch<{ status: string; message: string }>('/dashboard/refresh', { method: 'POST' }),
+      apiFetch<{ status: string; message: string }>(API_ENDPOINTS.dashboard.refresh, {
+        method: 'POST',
+      }),
     onSuccess: () => {
       // Invalidate the dashboard query to pull fresh pre-aggregated metrics.
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all });

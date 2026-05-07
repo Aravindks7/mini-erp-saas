@@ -16,6 +16,8 @@ import {
 } from '../ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { getTenantPath } from '@/lib/path-utils';
+import { APP_PATHS } from '@/lib/paths';
 
 interface OrganizationSwitcherProps {
   isCollapsed?: boolean;
@@ -47,7 +49,7 @@ export function OrganizationSwitcher({ isCollapsed }: OrganizationSwitcherProps)
 
     // 2. Hard navigate to the new slug's dashboard to clear all memory caches (QueryClient, etc)
     // and guarantee 100% data isolation between tenants.
-    window.location.assign(`/${slug}`);
+    window.location.assign(getTenantPath(APP_PATHS.dashboard(), slug));
   };
 
   if (isLoading) {
