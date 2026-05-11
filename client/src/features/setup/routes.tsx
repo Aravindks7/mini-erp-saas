@@ -5,6 +5,7 @@ import { productCategoryRoutes } from '../product-categories/routes';
 import { uomRoutes } from '../uom/routes';
 import { taxRoutes } from '../taxes/routes';
 import { warehouseRoutes } from '../warehouses/routes';
+import { currencyRoutes } from '../currencies/routes';
 
 export const setupRoutes: AppRoute[] = [
   {
@@ -27,6 +28,7 @@ export const setupRoutes: AppRoute[] = [
       ...uomRoutes,
       ...taxRoutes,
       ...warehouseRoutes,
+      ...currencyRoutes,
     ],
   },
 ];

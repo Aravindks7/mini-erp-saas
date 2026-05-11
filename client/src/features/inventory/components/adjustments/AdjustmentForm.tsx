@@ -14,8 +14,8 @@ import { Separator } from '@/components/ui/separator';
 
 import type { CreateInventoryAdjustmentInput } from '@shared/contracts/inventory-adjustments.contract';
 import { createInventoryAdjustmentSchema } from '@shared/contracts/inventory-adjustments.contract';
-import { useProducts } from '@/features/products/hooks/products.hooks';
-import { useWarehouses } from '@/features/warehouses/hooks/warehouses.hooks';
+import { useProductsQuery } from '@/features/products/hooks/products.hooks';
+import { useWarehousesQuery } from '@/features/warehouses/hooks/warehouses.hooks';
 
 interface AdjustmentFormProps {
   form: UseFormReturn<CreateInventoryAdjustmentInput>;
@@ -24,8 +24,8 @@ interface AdjustmentFormProps {
 }
 
 export function AdjustmentForm({ form, onSubmit, formId }: AdjustmentFormProps) {
-  const { data: products = [] } = useProducts();
-  const { data: warehouses = [] } = useWarehouses();
+  const { data: products = [] } = useProductsQuery();
+  const { data: warehouses = [] } = useWarehousesQuery();
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,

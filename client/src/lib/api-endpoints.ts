@@ -159,6 +159,11 @@ export const API_ENDPOINTS = {
       base: '/product-categories',
       detail: (id: string) => `/product-categories/${id}`,
     },
+    currencies: {
+      base: '/currencies',
+      detail: (id: string) => `/currencies/${id}`,
+      bulkDelete: '/currencies/bulk-delete',
+    },
   },
   activityLogs: {
     base: '/activity-logs',

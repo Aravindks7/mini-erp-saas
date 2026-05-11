@@ -5,6 +5,8 @@ import type {
   UpdateInvoiceStatusInput,
 } from '@shared/contracts/invoices.contract';
 import { invoicesApi } from '../api/invoices.api';
+import { salesOrderKeys } from '../../sales-orders/hooks/sales-orders.hooks';
+import { activityKeys } from '../../activity/hooks/activity.hooks';
 
 export const invoiceKeys = {
   all: ['invoices'] as const,
@@ -19,12 +21,23 @@ export const invoiceDetailQuery = (id: string) =>
     queryFn: () => invoicesApi.fetchInvoice(id),
   });
 
-export function useInvoices() {
-  return useQuery({
+export const invoiceListQuery = () =>
+  queryOptions({
     queryKey: invoiceKeys.lists(),
     queryFn: invoicesApi.fetchInvoices,
     staleTime: 5000,
   });
+
+export function useInvoicesQuery() {
+  return useQuery(invoiceListQuery());
+}
+
+export function useInvoicesActions() {
+  const queryClient = useQueryClient();
+
+  return {
+    invalidateInvoices: () => queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() }),
+  };
 }
 
 export function useInvoice(id: string | undefined) {
@@ -39,8 +52,10 @@ export function useCreateInvoice() {
 
   return useMutation({
     mutationFn: (data: CreateInvoiceInput) => invoicesApi.createInvoice(data),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(invoiceKeys.detail(data.id), data);
       queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }
@@ -53,8 +68,8 @@ export function useCreateInvoiceFromSO() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
       // Also invalidate SO details if we show invoices on SO page
-      queryClient.invalidateQueries({ queryKey: ['sales-orders'], refetchType: 'all' });
-      queryClient.invalidateQueries({ queryKey: ['activity-logs'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: salesOrderKeys.all, refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all, refetchType: 'all' });
     },
   });
 }
@@ -66,9 +81,9 @@ export function useUpdateInvoiceStatus() {
     mutationFn: ({ id, data }: { id: string; data: UpdateInvoiceStatusInput }) =>
       invoicesApi.updateInvoiceStatus(id, data),
     onSuccess: (data) => {
+      queryClient.setQueryData(invoiceKeys.detail(data.id), data);
       queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(data.id) });
-      queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }
@@ -80,6 +95,7 @@ export function useDeleteInvoice() {
     mutationFn: (id: string) => invoicesApi.deleteInvoice(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
       toast.success('Invoice processed successfully');
     },
     onError: (error) => {
@@ -95,6 +111,7 @@ export function useBulkDeleteInvoices() {
     mutationFn: (ids: string[]) => invoicesApi.bulkDeleteInvoices(ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
       toast.success('Invoices processed successfully');
     },
     onError: (error) => {

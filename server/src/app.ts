@@ -27,6 +27,7 @@ import paymentsRoutes from './modules/payments/payments.routes.js';
 import sequencesRoutes from './modules/sequences/sequences.routes.js';
 import financeRoutes from './modules/finance/finance.routes.js';
 import activityLogsRoutes from './modules/activity-logs/activity-logs.routes.js';
+import currenciesRoutes from './modules/currencies/currencies.routes.js';
 
 const app = express();
 
@@ -86,6 +87,7 @@ app.use('/sequences', sequencesRoutes);
 app.use('/finance', financeRoutes);
 app.use('/dashboard', dashboardRoutes);
 app.use('/activity-logs', activityLogsRoutes);
+app.use('/currencies', currenciesRoutes);
 
 // Global error handler — must be last
 app.use(errorMiddleware);

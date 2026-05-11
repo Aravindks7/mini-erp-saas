@@ -58,17 +58,21 @@ export class PurchaseOrderReconciler {
       .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.organizationId, organizationId)));
 
     // 2. Business Activity Log (Temporal Narrative)
-    await ActivityLogger.record(tx, {
-      organizationId,
-      entityType: 'purchase_order',
-      entityId: id,
-      entityDisplayId: existing.documentNumber,
-      entityLabel: 'Purchase Order',
-      action,
-      reason: reason || `Status changed from ${existing.status} to ${newStatus}`,
-      snapshot: { previousStatus: existing.status, newStatus },
-      userId,
-    });
+    await ActivityLogger.recordUpdate(
+      tx,
+      {
+        organizationId,
+        entityType: 'purchase_order',
+        entityId: id,
+        entityDisplayId: existing.documentNumber,
+        entityLabel: 'Purchase Order',
+        action,
+        reason: reason || `Status changed from ${existing.status} to ${newStatus}`,
+        userId,
+      },
+      existing,
+      { status: newStatus },
+    );
 
     return newStatus;
   }

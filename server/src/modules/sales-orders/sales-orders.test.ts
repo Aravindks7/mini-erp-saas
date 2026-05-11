@@ -236,4 +236,54 @@ describe('Sales Orders Module', () => {
       expect(response.status).toBe(204);
     });
   });
+
+  describe('PATCH /sales-orders/:id/status', () => {
+    it('should update status and return the full sales order object', async () => {
+      const soId = 'so-123';
+      const mockSO = {
+        id: soId,
+        status: 'approved',
+        documentNumber: 'SO-001',
+        customer: { companyName: 'Test Customer' },
+        lines: [],
+      };
+
+      // Mock the transaction to return our mockSO after the update
+      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
+        const tx = {
+          query: {
+            salesOrders: {
+              findFirst: vi.fn().mockResolvedValue(mockSO),
+            },
+          },
+          update: vi.fn(() => ({
+            set: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                returning: vi.fn().mockResolvedValue([{ status: 'approved' }]),
+              }),
+            }),
+          })),
+          insert: vi.fn(() => ({
+            values: vi.fn().mockResolvedValue({}),
+          })),
+        } as any;
+        return cb(tx);
+      });
+
+      const response = await request(app)
+        .patch(`/sales-orders/${soId}/status`)
+        .set('x-organization-id', mockOrgId)
+        .send({
+          status: 'approved',
+          action: 'STATUS_CHANGED',
+          reason: 'Test approval',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('id', soId);
+      expect(response.body).toHaveProperty('status', 'approved');
+      expect(response.body).toHaveProperty('documentNumber', 'SO-001');
+      expect(response.body).toHaveProperty('customer');
+    });
+  });
 });

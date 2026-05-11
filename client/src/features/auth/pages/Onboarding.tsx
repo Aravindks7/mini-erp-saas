@@ -1,7 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import {
   createOrganizationSchema,
@@ -16,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Building2, ArrowRight, Loader2 } from 'lucide-react';
 import {
   useCreateOrganization,
-  organizationKeys,
+  useOrganizationsActions,
 } from '@/features/organizations/hooks/organizations.hooks';
 import type { OrganizationResponse } from '@/features/organizations/api/organizations.api';
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect';
@@ -28,9 +27,9 @@ const countryOptions = COUNTRIES.map((c) => ({ label: c.name, value: c.name }));
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { setActiveOrganizationId } = useTenant();
   const { mutateAsync: createOrg, status: createStatus } = useCreateOrganization();
+  const { setOrganizationsData } = useOrganizationsActions();
 
   const form = useForm<CreateOrganizationInput>({
     resolver: zodResolver(createOrganizationSchema),
@@ -68,10 +67,9 @@ export default function OnboardingPage() {
   const onSubmit = async (data: CreateOrganizationInput) => {
     try {
       const newOrg = await createOrg(data);
-      const queryKey = organizationKeys.mine();
 
       // OPTIMISTIC UPDATE: Update the cache immediately so the TenantGuard sees the new org
-      queryClient.setQueryData<OrganizationResponse[]>(queryKey, (old) => {
+      setOrganizationsData((old) => {
         const newOrgWithRole = { ...newOrg, role: 'admin' };
         return old ? [...old, newOrgWithRole] : [newOrgWithRole];
       });

@@ -35,6 +35,13 @@ vi.mock('../sequences/sequences.service.js', () => ({
   },
 }));
 
+vi.mock('../../lib/activity-logger.js', () => ({
+  ActivityLogger: {
+    record: vi.fn().mockResolvedValue(undefined),
+    recordUpdate: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 // Complex mock for db to handle transactions and queries
 vi.mock('../../db/index.js', () => {
   const mockTx = {
@@ -141,12 +148,88 @@ describe('Purchase Orders Module', () => {
 
       expect(response.status).toBe(201);
       expect(db.transaction).toHaveBeenCalled();
+
+      const { ActivityLogger } = await import('../../lib/activity-logger.js');
+      expect(ActivityLogger.record).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          action: 'PO_CREATED',
+          entityType: 'purchase_order',
+        }),
+      );
+    });
+  });
+
+  describe('PATCH /purchase-orders/:id', () => {
+    it('should update a draft PO and record diff', async () => {
+      const poId = '550e8400-e29b-41d4-a716-446655440004';
+      const supplierId1 = '550e8400-e29b-41d4-a716-446655440005';
+      const supplierId2 = '550e8400-e29b-41d4-a716-446655440006';
+      const productId = '550e8400-e29b-41d4-a716-446655440007';
+
+      const mockPO = {
+        id: poId,
+        status: 'draft',
+        documentNumber: 'PO-001',
+        supplierId: supplierId1,
+        totalAmount: '100',
+      };
+      const payload = {
+        supplierId: supplierId2,
+        lines: [
+          {
+            productId: productId,
+            quantity: '10',
+            unitPrice: '20',
+            taxRateAtOrder: '0',
+            taxAmount: '0',
+          },
+        ],
+      };
+
+      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
+        const tx = {
+          query: {
+            purchaseOrders: {
+              findFirst: vi.fn().mockResolvedValue(mockPO),
+            },
+          },
+          update: vi.fn(() => ({
+            set: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                returning: vi.fn().mockResolvedValue([mockPO]),
+              }),
+            }),
+          })),
+          delete: vi.fn(() => ({
+            where: vi.fn().mockResolvedValue([]),
+          })),
+          insert: vi.fn(() => ({
+            values: vi.fn().mockResolvedValue({}),
+          })),
+        } as any;
+        return cb(tx);
+      });
+
+      const response = await request(app)
+        .patch(`/purchase-orders/${poId}`)
+        .set('x-organization-id', mockOrgId)
+        .send(payload);
+
+      expect(response.status).toBe(200);
+      const { ActivityLogger } = await import('../../lib/activity-logger.js');
+      expect(ActivityLogger.recordUpdate).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ action: 'UPDATED' }),
+        expect.objectContaining({ id: poId }),
+        expect.objectContaining({ supplierId: supplierId2 }),
+      );
     });
   });
 
   describe('DELETE /purchase-orders/:id', () => {
     it('should delete a draft PO successfully', async () => {
-      const poId = '550e8400-e29b-41d4-a716-446655440004';
+      const poId = '550e8400-e29b-41d4-a716-446655440008';
       const mockPO = { id: poId, status: 'draft', documentNumber: 'PO-001' };
 
       vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
@@ -172,10 +255,18 @@ describe('Purchase Orders Module', () => {
         .set('x-organization-id', mockOrgId);
 
       expect(response.status).toBe(204);
+      const { ActivityLogger } = await import('../../lib/activity-logger.js');
+      expect(ActivityLogger.record).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          action: 'DELETED',
+          entityId: poId,
+        }),
+      );
     });
 
     it('should return 400 when deleting a non-draft PO', async () => {
-      const poId = '550e8400-e29b-41d4-a716-446655440004';
+      const poId = '550e8400-e29b-41d4-a716-446655440009';
       const mockPO = { id: poId, status: 'received', documentNumber: 'PO-001' };
 
       vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
@@ -200,10 +291,10 @@ describe('Purchase Orders Module', () => {
 
   describe('DELETE /purchase-orders', () => {
     it('should bulk delete draft POs successfully', async () => {
-      const ids = ['po-1', 'po-2'];
+      const ids = ['550e8400-e29b-41d4-a716-446655440010', '550e8400-e29b-41d4-a716-446655440011'];
       const mockPOs = [
-        { id: 'po-1', status: 'draft', documentNumber: 'PO-001' },
-        { id: 'po-2', status: 'draft', documentNumber: 'PO-002' },
+        { id: ids[0], status: 'draft', documentNumber: 'PO-001' },
+        { id: ids[1], status: 'draft', documentNumber: 'PO-002' },
       ];
 
       vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
@@ -230,6 +321,70 @@ describe('Purchase Orders Module', () => {
         .send({ ids });
 
       expect(response.status).toBe(204);
+      const { ActivityLogger } = await import('../../lib/activity-logger.js');
+      expect(ActivityLogger.record).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('PATCH /purchase-orders/:id/status', () => {
+    it('should update status and return the full purchase order object', async () => {
+      const poId = 'po-123';
+      const mockPO = {
+        id: poId,
+        status: 'sent',
+        documentNumber: 'PO-001',
+        supplier: { name: 'Test Supplier' },
+        lines: [],
+      };
+
+      // Mock the transaction to return our mockPO after the update
+      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
+        const tx = {
+          query: {
+            purchaseOrders: {
+              findFirst: vi.fn().mockResolvedValue(mockPO),
+            },
+          },
+          update: vi.fn(() => ({
+            set: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                returning: vi.fn().mockResolvedValue([{ status: 'sent' }]),
+              }),
+            }),
+          })),
+          insert: vi.fn(() => ({
+            values: vi.fn().mockResolvedValue({}),
+          })),
+        } as any;
+        return cb(tx);
+      });
+
+      const response = await request(app)
+        .patch(`/purchase-orders/${poId}/status`)
+        .set('x-organization-id', mockOrgId)
+        .send({
+          status: 'sent',
+          action: 'STATUS_CHANGED',
+          reason: 'PO sent to supplier',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('id', poId);
+      expect(response.body).toHaveProperty('status', 'sent');
+      expect(response.body).toHaveProperty('documentNumber', 'PO-001');
+      expect(response.body).toHaveProperty('supplier');
+    });
+
+    it('should return 400 when action or reason is missing', async () => {
+      const response = await request(app)
+        .patch('/purchase-orders/po-123/status')
+        .set('x-organization-id', mockOrgId)
+        .send({ status: 'sent' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toHaveProperty('fieldErrors');
+      expect(response.body.error.fieldErrors).toHaveProperty('action');
+      expect(response.body.error.fieldErrors).toHaveProperty('reason');
     });
   });
 });

@@ -3,7 +3,14 @@ import request from 'supertest';
 import { app } from '../../app.js';
 import { auth } from '../auth/auth.js';
 import { db } from '../../db/index.js';
-import { organizationInvites, organizationMemberships } from '../../db/schema/index.js';
+import {
+  organizations,
+  organizationInvites,
+  organizationMemberships,
+  roles,
+  currencies,
+} from '../../db/schema/index.js';
+
 import { rbacService } from '../rbac/rbac.service.js';
 
 // --- MOCKS ---
@@ -45,11 +52,23 @@ vi.mock('../auth/auth.js', () => ({
   },
 }));
 
+vi.mock('../../lib/activity-logger.js', () => ({
+  ActivityLogger: {
+    record: vi.fn().mockResolvedValue(undefined),
+    recordUpdate: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 vi.mock('../../db/index.js', () => {
   const mockResult = {
-    returning: vi.fn().mockResolvedValue([{ id: 'mock-id', name: 'Test Org', slug: 'test-org' }]),
+    returning: vi
+      .fn()
+      .mockResolvedValue([
+        { id: 'mock-id', name: 'Test Org', slug: 'test-org', defaultCountry: 'US' },
+      ]),
     where: vi.fn().mockReturnThis(),
     values: vi.fn().mockReturnThis(),
+    set: vi.fn().mockReturnThis(),
     onConflictDoUpdate: vi.fn().mockReturnThis(),
   };
 
@@ -72,6 +91,9 @@ vi.mock('../../db/index.js', () => {
     },
     roles: {
       findFirst: vi.fn().mockResolvedValue({ id: '550e8400-e29b-41d4-a716-446655440001' }),
+    },
+    currencies: {
+      findFirst: vi.fn().mockResolvedValue(null),
     },
     user: {
       findFirst: vi.fn(),
@@ -159,6 +181,7 @@ describe('Organizations Module Integration', () => {
         .send({ name: 'New Org', slug: 'new-org', defaultCountry: 'US' });
 
       expect(response.status).toBe(201);
+
       expect(response.body.name).toBe('Test Org'); // from our mock
       expect(db.transaction).toHaveBeenCalled();
     });
@@ -261,7 +284,7 @@ describe('Organizations Module Integration', () => {
                 findFirst: vi.fn().mockResolvedValue({ role: 'admin' } as any),
               },
               organizations: {
-                findFirst: vi.fn().mockResolvedValue(null as any),
+                findFirst: vi.fn().mockResolvedValue({ id: mockOrgId, name: 'Old Name' } as any),
               },
               roles: {
                 findFirst: vi.fn().mockResolvedValue({ id: 'role-1' } as any),

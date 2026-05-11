@@ -10,7 +10,9 @@ import { PermissionSetsTab } from '../organizations/components/PermissionSetsTab
 import RoleFormPage from '../organizations/pages/RoleFormPage';
 import PermissionSetFormPage from '../organizations/pages/PermissionSetFormPage';
 import { SequenceSettingsTab } from './components/SequenceSettingsTab';
-import { APP_PATHS } from '@/lib/paths';
+import { queryClient } from '@/lib/query-client';
+import { roleDetailQuery, permissionSetDetailQuery } from '../auth/hooks/rbac.hooks';
+import type { RoleResponse, PermissionSetResponse } from '@shared/index';
 
 export const settingsRoutes: AppRoute[] = [
   // The main settings layout with tabs
@@ -27,7 +29,7 @@ export const settingsRoutes: AppRoute[] = [
     children: [
       {
         index: true,
-        element: <Navigate to={APP_PATHS.settings.profile()} replace />,
+        element: <Navigate to="profile" replace />,
       },
       {
         path: 'profile',
@@ -85,9 +87,13 @@ export const settingsRoutes: AppRoute[] = [
   {
     path: 'settings/roles/:id',
     element: <RoleFormPage />,
+    loader: async ({ params }) => {
+      if (!params.id) throw new Error('No id provided');
+      return queryClient.ensureQueryData(roleDetailQuery(params.id));
+    },
     handle: {
       title: 'Edit Role',
-      crumb: 'Edit Role',
+      crumb: (data: RoleResponse) => (data ? `Edit ${data.name}` : 'Edit Role'),
     },
   },
   {
@@ -101,9 +107,13 @@ export const settingsRoutes: AppRoute[] = [
   {
     path: 'settings/permission-sets/:id',
     element: <PermissionSetFormPage />,
+    loader: async ({ params }) => {
+      if (!params.id) throw new Error('No id provided');
+      return queryClient.ensureQueryData(permissionSetDetailQuery(params.id));
+    },
     handle: {
       title: 'Edit Permission Set',
-      crumb: 'Edit Permission Set',
+      crumb: (data: PermissionSetResponse) => (data ? `Edit ${data.name}` : 'Edit Permission Set'),
     },
   },
 ];

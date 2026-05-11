@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { ClipboardList, Plus } from 'lucide-react';
 import { z } from 'zod';
 
@@ -13,10 +12,15 @@ import { PERMISSIONS } from '@shared/index';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { usePermissionsStatus } from '@/hooks/usePermission';
+import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 import { APP_PATHS } from '@/lib/paths';
 
 import { columns, adjustmentStatusOptions } from './columns';
-import { useInventoryAdjustments } from '../../hooks/inventory.hooks';
+import {
+  useInventoryAdjustmentsQuery,
+  useInventoryAdjustmentsActions,
+} from '../../hooks/inventory.hooks';
 
 const searchSchema = z.object({
   reference: z.string().optional(),
@@ -26,8 +30,9 @@ const searchSchema = z.object({
 export function AdjustmentsList() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
-  const { data: adjustments, isLoading, isError } = useInventoryAdjustments();
+  const { data: adjustments, isLoading: isDataLoading, isError } = useInventoryAdjustmentsQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateAdjustments } = useInventoryAdjustmentsActions();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
   if (isError) {
@@ -35,17 +40,13 @@ export function AdjustmentsList() {
       <ErrorState
         title="Failed to load adjustments"
         description="Encountered an error while fetching the adjustment history. Please try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['inventory', 'adjustments'] })}
+        onRetry={invalidateAdjustments}
       />
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
+  if (isDataLoading || isPermissionsLoading) {
+    return <DataTableSkeleton columnCount={5} rowCount={8} />;
   }
 
   if (!adjustments || adjustments.length === 0) {
@@ -78,7 +79,7 @@ export function AdjustmentsList() {
       enableGlobalSearch
       data={adjustments}
       columns={columns}
-      isLoading={isLoading}
+      isLoading={isDataLoading}
       onAddClick={handleAddClick}
       viewMode={tableState.viewMode}
       onViewModeChange={tableSetters.setViewMode}

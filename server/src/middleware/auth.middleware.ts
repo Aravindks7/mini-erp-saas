@@ -31,8 +31,12 @@ export async function authMiddleware(
     headers: fromNodeHeaders(req.headers),
   });
 
-  // DEV-ONLY BYPASS: Allows httpie smoke tests to function without a real session
-  if (!sessionData && process.env.NODE_ENV === 'development' && req.headers['x-dev-bypass']) {
+  // DEV-ONLY BYPASS: Allows httpie smoke tests and Vitest integration tests to function without a real session
+  if (
+    !sessionData &&
+    (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') &&
+    req.headers['x-dev-bypass']
+  ) {
     logger.info('Auth bypass triggered via x-dev-bypass header');
     const mockUserId = '00000000-0000-4000-a000-000000000002';
     sessionData = {

@@ -26,6 +26,8 @@ router.patch(
   billsController.updateBillStatus,
 );
 
+router.patch('/:id', requirePermission(PERMISSIONS.BILLS.UPDATE), billsController.updateBill);
+
 router.delete('/', requirePermission(PERMISSIONS.BILLS.DELETE), billsController.bulkDeleteBills);
 
 router.delete('/:id', requirePermission(PERMISSIONS.BILLS.DELETE), billsController.deleteBill);

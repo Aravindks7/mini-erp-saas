@@ -1,9 +1,10 @@
 import { db } from '../../db/index.js';
 import { accounts } from '../../db/schema/accounts.schema.js';
 import { journalEntryLines } from '../../db/schema/journal-entry-lines.schema.js';
-import { and, eq, sum } from 'drizzle-orm';
+import { and, eq, sum, ne } from 'drizzle-orm';
 import { CreateAccountInput, UpdateAccountInput } from '#shared/contracts/finance.contract.js';
 import { BaseService } from '../../lib/base.service.js';
+import { ActivityLogger } from '../../lib/activity-logger.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -25,12 +26,45 @@ export class AccountsService extends BaseService<typeof accounts> {
     });
   }
 
+  async checkDuplicateCode(organizationId: string, code: string, excludeId?: string) {
+    return await db.query.accounts.findFirst({
+      where: and(
+        eq(accounts.organizationId, organizationId),
+        eq(accounts.code, code),
+        excludeId ? ne(accounts.id, excludeId) : undefined,
+      ),
+    });
+  }
+
   async createAccount(organizationId: string, userId: string, data: CreateAccountInput) {
-    const [newAccount] = await db
-      .insert(accounts)
-      .values(this.withAudit({ ...data, organizationId }, userId))
-      .returning();
-    return newAccount;
+    return await db.transaction(async (tx) => {
+      const existing = await this.checkDuplicateCode(organizationId, data.code);
+      if (existing) {
+        throw new Error(`Account with code '${data.code}' already exists`);
+      }
+
+      const [newAccount] = await tx
+        .insert(accounts)
+        .values(this.withAudit({ ...data, organizationId }, userId))
+        .returning();
+
+      if (!newAccount) {
+        throw new Error('Failed to create account');
+      }
+
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        userId,
+        entityType: 'account',
+        entityId: newAccount.id,
+        entityDisplayId: newAccount.code,
+        entityLabel: 'Account',
+        action: 'CREATED',
+        reason: `Account ${newAccount.name} (${newAccount.code}) created.`,
+      });
+
+      return await this.getAccountById(organizationId, newAccount.id, tx);
+    });
   }
 
   async updateAccount(
@@ -39,12 +73,45 @@ export class AccountsService extends BaseService<typeof accounts> {
     id: string,
     data: UpdateAccountInput,
   ) {
-    const [updatedAccount] = await db
-      .update(accounts)
-      .set(this.withAudit(data, userId, true))
-      .where(this.getTenantWhere(organizationId, id))
-      .returning();
-    return updatedAccount;
+    return await db.transaction(async (tx) => {
+      const existingAccount = await this.getAccountById(organizationId, id, tx);
+      if (!existingAccount) {
+        throw new Error('Account not found');
+      }
+
+      if (data.code) {
+        const duplicate = await this.checkDuplicateCode(organizationId, data.code, id);
+        if (duplicate) {
+          throw new Error(`Account with code '${data.code}' already exists`);
+        }
+      }
+
+      const [updatedAccount] = await tx
+        .update(accounts)
+        .set(this.withAudit(data, userId, true))
+        .where(this.getTenantWhere(organizationId, id))
+        .returning();
+
+      if (updatedAccount) {
+        await ActivityLogger.recordUpdate(
+          tx as Transaction,
+          {
+            organizationId,
+            userId,
+            entityType: 'account',
+            entityId: id,
+            entityDisplayId: existingAccount.code,
+            entityLabel: 'Account',
+            action: 'UPDATED',
+            reason: 'Account master data modified',
+          },
+          existingAccount,
+          data,
+        );
+      }
+
+      return await this.getAccountById(organizationId, id, tx);
+    });
   }
 
   async getAccountBalance(organizationId: string, accountId: string) {

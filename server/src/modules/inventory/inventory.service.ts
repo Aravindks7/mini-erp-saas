@@ -10,8 +10,14 @@ import {
 } from '../../db/schema/index.js';
 import { sequencesService } from '../sequences/sequences.service.js';
 import { sql, desc, and, eq } from 'drizzle-orm';
-import { CreateInventoryAdjustmentInput } from '#shared/contracts/inventory-adjustments.contract.js';
-import { CreateInventoryTransferInput } from '#shared/contracts/inventory-transfers.contract.js';
+import {
+  CreateInventoryAdjustmentInput,
+  UpdateInventoryAdjustmentInput,
+} from '#shared/contracts/inventory-adjustments.contract.js';
+import {
+  CreateInventoryTransferInput,
+  UpdateInventoryTransferInput,
+} from '#shared/contracts/inventory-transfers.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 import { ActivityLogger } from '../../lib/activity-logger.js';
 
@@ -130,7 +136,7 @@ export class InventoryService extends BaseService<typeof inventoryAdjustments> {
         userId,
       });
 
-      return adjustment;
+      return await this.getAdjustmentById(organizationId, adjustment.id, tx);
     };
 
     if (txIn) {
@@ -139,6 +145,90 @@ export class InventoryService extends BaseService<typeof inventoryAdjustments> {
 
     return await db.transaction(async (tx) => {
       return await operation(tx);
+    });
+  }
+
+  async updateAdjustment(
+    organizationId: string,
+    userId: string,
+    id: string,
+    data: UpdateInventoryAdjustmentInput,
+  ) {
+    return await db.transaction(async (tx) => {
+      const existing = await this.getAdjustmentById(organizationId, id, tx);
+      if (!existing) throw new Error('Adjustment not found');
+
+      if (existing.status !== 'draft') {
+        throw new Error('Only draft adjustments can be modified.');
+      }
+
+      const { lines, ...headerData } = data;
+
+      // Update Header
+      if (Object.keys(headerData).length > 0) {
+        const headerToUpdate = {
+          ...headerData,
+          adjustmentDate: headerData.adjustmentDate
+            ? new Date(headerData.adjustmentDate)
+            : undefined,
+        };
+
+        await tx
+          .update(inventoryAdjustments)
+          .set(this.withAudit(headerToUpdate, userId, true))
+          .where(
+            and(
+              eq(inventoryAdjustments.id, id),
+              eq(inventoryAdjustments.organizationId, organizationId),
+            ),
+          );
+      }
+
+      // Replace Lines if provided
+      if (lines) {
+        await tx
+          .delete(inventoryAdjustmentLines)
+          .where(
+            and(
+              eq(inventoryAdjustmentLines.adjustmentId, id),
+              eq(inventoryAdjustmentLines.organizationId, organizationId),
+            ),
+          );
+
+        for (const line of lines) {
+          await tx.insert(inventoryAdjustmentLines).values(
+            this.withAudit(
+              {
+                organizationId,
+                adjustmentId: id,
+                productId: line.productId,
+                warehouseId: line.warehouseId,
+                binId: line.binId,
+                quantityChange: line.quantityVariance.toString(),
+              },
+              userId,
+            ),
+          );
+        }
+      }
+
+      // Record Update
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          userId,
+          entityType: 'inventory_adjustment',
+          entityId: id,
+          entityDisplayId: existing.reference || id,
+          entityLabel: 'Inventory Adjustment',
+          action: 'UPDATED',
+        },
+        existing,
+        data as Record<string, unknown>,
+      );
+
+      return await this.getAdjustmentById(organizationId, id, tx);
     });
   }
 
@@ -213,16 +303,21 @@ export class InventoryService extends BaseService<typeof inventoryAdjustments> {
         with: { lines: true },
       });
 
-      await ActivityLogger.record(tx as Transaction, {
-        organizationId,
-        entityType: 'inventory_adjustment',
-        entityId: adjustment.id,
-        entityDisplayId: adjustment.reference || adjustment.id,
-        entityLabel: 'Inventory Adjustment',
-        action: 'STATUS_CHANGED',
-        snapshot: { previousStatus: 'draft', newStatus: 'approved' },
-        userId,
-      });
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          userId,
+          entityType: 'inventory_adjustment',
+          entityId: id,
+          entityDisplayId: adjustment.reference || id,
+          entityLabel: 'Inventory Adjustment',
+          action: 'STATUS_CHANGED',
+          reason: 'Adjustment approved and stock committed',
+        },
+        adjustment,
+        { status: 'approved' },
+      );
 
       return updated!;
     });
@@ -279,12 +374,92 @@ export class InventoryService extends BaseService<typeof inventoryAdjustments> {
         entityId: transfer.id,
         entityDisplayId: sequenceNumber,
         entityLabel: 'Inventory Transfer',
-        action: 'CREATED',
+        action: 'INVENTORY_TRANSFER_CREATED',
         snapshot: { lines: data.lines },
         userId,
       });
 
-      return transfer;
+      return await this.getTransferById(organizationId, transfer.id, tx);
+    });
+  }
+
+  async updateTransfer(
+    organizationId: string,
+    userId: string,
+    id: string,
+    data: UpdateInventoryTransferInput,
+  ) {
+    return await db.transaction(async (tx) => {
+      const existing = await this.getTransferById(organizationId, id, tx);
+      if (!existing) throw new Error('Transfer not found');
+
+      if (existing.status !== 'draft') {
+        throw new Error('Only draft transfers can be modified.');
+      }
+
+      const { lines, ...headerData } = data;
+
+      // Update Header
+      if (Object.keys(headerData).length > 0) {
+        const headerToUpdate = {
+          ...headerData,
+          transferDate: headerData.transferDate ? new Date(headerData.transferDate) : undefined,
+        };
+
+        await tx
+          .update(inventoryTransfers)
+          .set(this.withAudit(headerToUpdate, userId, true))
+          .where(
+            and(
+              eq(inventoryTransfers.id, id),
+              eq(inventoryTransfers.organizationId, organizationId),
+            ),
+          );
+      }
+
+      // Replace Lines if provided
+      if (lines) {
+        await tx
+          .delete(inventoryTransferLines)
+          .where(
+            and(
+              eq(inventoryTransferLines.transferId, id),
+              eq(inventoryTransferLines.organizationId, organizationId),
+            ),
+          );
+
+        for (const line of lines) {
+          await tx.insert(inventoryTransferLines).values(
+            this.withAudit(
+              {
+                organizationId,
+                transferId: id,
+                productId: line.productId,
+                quantity: line.quantity.toString(),
+              },
+              userId,
+            ),
+          );
+        }
+      }
+
+      // Record Update
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          userId,
+          entityType: 'inventory_transfer',
+          entityId: id,
+          entityDisplayId: existing.reference || id,
+          entityLabel: 'Inventory Transfer',
+          action: 'UPDATED',
+        },
+        existing,
+        data as Record<string, unknown>,
+      );
+
+      return await this.getTransferById(organizationId, id, tx);
     });
   }
 
@@ -389,16 +564,21 @@ export class InventoryService extends BaseService<typeof inventoryAdjustments> {
         with: { lines: true },
       });
 
-      await ActivityLogger.record(tx as Transaction, {
-        organizationId,
-        entityType: 'inventory_transfer',
-        entityId: transfer.id,
-        entityDisplayId: transfer.reference || transfer.id,
-        entityLabel: 'Inventory Transfer',
-        action: 'STATUS_CHANGED',
-        snapshot: { previousStatus: 'draft', newStatus: 'shipped' },
-        userId,
-      });
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          userId,
+          entityType: 'inventory_transfer',
+          entityId: id,
+          entityDisplayId: transfer.reference || id,
+          entityLabel: 'Inventory Transfer',
+          action: 'STATUS_CHANGED',
+          reason: 'Transfer shipped: stock moved to transit',
+        },
+        transfer,
+        { status: 'shipped' },
+      );
 
       return updated!;
     });
@@ -505,16 +685,21 @@ export class InventoryService extends BaseService<typeof inventoryAdjustments> {
         with: { lines: true },
       });
 
-      await ActivityLogger.record(tx as Transaction, {
-        organizationId,
-        entityType: 'inventory_transfer',
-        entityId: transfer.id,
-        entityDisplayId: transfer.reference || transfer.id,
-        entityLabel: 'Inventory Transfer',
-        action: 'STATUS_CHANGED',
-        snapshot: { previousStatus: 'shipped', newStatus: 'received' },
-        userId,
-      });
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          userId,
+          entityType: 'inventory_transfer',
+          entityId: id,
+          entityDisplayId: transfer.reference || id,
+          entityLabel: 'Inventory Transfer',
+          action: 'STATUS_CHANGED',
+          reason: 'Transfer received: stock moved from transit to destination',
+        },
+        transfer,
+        { status: 'received' },
+      );
 
       return updated!;
     });
@@ -542,8 +727,8 @@ export class InventoryService extends BaseService<typeof inventoryAdjustments> {
   /**
    * Retrieves a specific inventory transfer by ID.
    */
-  async getTransferById(organizationId: string, id: string) {
-    return await db.query.inventoryTransfers.findFirst({
+  async getTransferById(organizationId: string, id: string, tx: Transaction | typeof db = db) {
+    return await tx.query.inventoryTransfers.findFirst({
       where: this.getTenantWhere(organizationId, id, inventoryTransfers),
       with: {
         fromWarehouse: true,
@@ -560,8 +745,8 @@ export class InventoryService extends BaseService<typeof inventoryAdjustments> {
   /**
    * Retrieves a specific inventory adjustment by ID.
    */
-  async getAdjustmentById(organizationId: string, id: string) {
-    return await db.query.inventoryAdjustments.findFirst({
+  async getAdjustmentById(organizationId: string, id: string, tx: Transaction | typeof db = db) {
+    return await tx.query.inventoryAdjustments.findFirst({
       where: this.getTenantWhere(organizationId, id),
       with: {
         lines: {

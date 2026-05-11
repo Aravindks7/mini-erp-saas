@@ -3,21 +3,25 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, ShieldCheck, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { useRoles, usePermissionSets, useDeleteRole } from '@/features/auth/hooks/rbac.hooks';
+import {
+  useRolesQuery,
+  usePermissionSetsQuery,
+  useDeleteRole,
+} from '@/features/auth/hooks/rbac.hooks';
 import { EntityTable } from '@/components/shared/data-table/EntityTable';
 import { type ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { useTenantPath } from '@/hooks/useTenantPath';
-import type { RoleResponse } from '@shared/index';
+import type { RoleResponse, PermissionSetResponse } from '@/features/auth/api/rbac.api';
 import { APP_PATHS } from '@/lib/paths';
 
 export function RolesTab() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const { data: roles, isLoading } = useRoles();
-  const { data: sets } = usePermissionSets();
+  const { data: roles, isLoading } = useRolesQuery();
+  const { data: sets } = usePermissionSetsQuery();
   const deleteRole = useDeleteRole();
 
   const [roleToDelete, setRoleToDelete] = React.useState<RoleResponse | null>(null);
@@ -54,10 +58,12 @@ export function RolesTab() {
     {
       header: 'Permission Sets',
       cell: ({ row }) => {
-        const roleSets = sets?.filter((s) => row.original.permissionSetIds.includes(s.id));
+        const roleSets = sets?.filter((s: PermissionSetResponse) =>
+          row.original.permissionSetIds.includes(s.id),
+        );
         return (
           <div className="flex flex-wrap gap-1">
-            {roleSets?.map((s) => (
+            {roleSets?.map((s: PermissionSetResponse) => (
               <Badge key={s.id} variant="outline">
                 {s.name}
               </Badge>

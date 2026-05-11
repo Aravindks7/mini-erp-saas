@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, queryOptions } from '@tanstack/react-query';
 import { financeReportsApi } from '../api/finance-reports.api';
 
 export const financeReportsKeys = {
@@ -9,18 +9,24 @@ export const financeReportsKeys = {
     [...financeReportsKeys.all, 'balance-sheet', params] as const,
 };
 
-export function useProfitAndLoss(params: { startDate: string; endDate: string }) {
-  return useQuery({
+export const profitAndLossQuery = (params: { startDate: string; endDate: string }) =>
+  queryOptions({
     queryKey: financeReportsKeys.pnl(params),
     queryFn: () => financeReportsApi.getProfitAndLoss(params),
-    staleTime: 60000, // Finance reports can be cached longer
+    staleTime: 60000,
   });
-}
 
-export function useBalanceSheet(params: { endDate: string }) {
-  return useQuery({
+export const balanceSheetQuery = (params: { endDate: string }) =>
+  queryOptions({
     queryKey: financeReportsKeys.balanceSheet(params),
     queryFn: () => financeReportsApi.getBalanceSheet(params),
     staleTime: 60000,
   });
+
+export function useProfitAndLoss(params: { startDate: string; endDate: string }) {
+  return useQuery(profitAndLossQuery(params));
+}
+
+export function useBalanceSheet(params: { endDate: string }) {
+  return useQuery(balanceSheetQuery(params));
 }

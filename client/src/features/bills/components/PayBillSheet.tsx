@@ -30,7 +30,10 @@ interface PayBillSheetProps {
   onClose: () => void;
 }
 
+import { useCurrency } from '@/features/currencies/hooks/use-currency';
+
 export function PayBillSheet({ bill, isOpen, onClose }: PayBillSheetProps) {
+  const { format: formatCurrency } = useCurrency();
   const createPaymentMutation = useCreatePayment();
 
   const amountToPay = Number(bill.totalAmount);
@@ -75,11 +78,7 @@ export function PayBillSheet({ bill, isOpen, onClose }: PayBillSheetProps) {
               <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">
                 Total Amount
               </p>
-              <p className="text-2xl font-bold text-primary">
-                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
-                  amountToPay,
-                )}
-              </p>
+              <p className="text-2xl font-bold text-primary">{formatCurrency(amountToPay)}</p>
             </div>
             <CheckCircle2 className="h-8 w-8 text-primary/20" />
           </div>
@@ -89,7 +88,7 @@ export function PayBillSheet({ bill, isOpen, onClose }: PayBillSheetProps) {
               <>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField name="amount" label="Payment Amount">
-                    {({ field }) => <AmountInput {...field} currency="USD" />}
+                    {({ field }) => <AmountInput {...field} />}
                   </FormField>
                   <FormField name="paymentDate" label="Payment Date">
                     {({ field }) => <DatePicker date={field.value} onChange={field.onChange} />}

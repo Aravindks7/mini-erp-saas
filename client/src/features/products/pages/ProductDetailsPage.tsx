@@ -1,9 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { Package, Tag, FileEdit, AlertCircle, Scale, Receipt, Info } from 'lucide-react';
-import * as React from 'react';
 
-import { useProduct, productKeys } from '../hooks/products.hooks';
+import { useProduct } from '../hooks/products.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
@@ -13,7 +11,6 @@ import { AuditInfo } from '@/components/shared/AuditInfo';
 import { DetailView } from '@/components/shared/DetailView';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
-import { productsApi } from '../api/products.api';
 import { APP_PATHS } from '@/lib/paths';
 
 const productStatusMap: StatusMap<string> = {
@@ -21,19 +18,14 @@ const productStatusMap: StatusMap<string> = {
   inactive: { label: 'Inactive', tone: 'neutral' },
 };
 
+import { useCurrency } from '@/features/currencies/hooks/use-currency';
+
 export default function ProductDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
+  const { format: formatCurrency } = useCurrency();
   const { data: product, isLoading, isError } = useProduct(id);
-
-  React.useEffect(() => {
-    queryClient.prefetchQuery({
-      queryKey: productKeys.lists(),
-      queryFn: productsApi.fetchProducts,
-    });
-  }, [queryClient]);
 
   if (isLoading) {
     return (
@@ -158,10 +150,7 @@ export default function ProductDetailsPage() {
                       {
                         label: 'Base Price',
                         icon: Tag,
-                        value: new Intl.NumberFormat('en-US', {
-                          style: 'currency',
-                          currency: 'USD',
-                        }).format(Number(product.basePrice)),
+                        value: formatCurrency(Number(product.basePrice)),
                         valueClassName: 'text-xl font-bold tracking-tight text-primary',
                       },
                       {

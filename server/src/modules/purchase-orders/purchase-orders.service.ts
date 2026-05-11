@@ -1,9 +1,14 @@
 import { db } from '../../db/index.js';
 import { purchaseOrders, purchaseOrderLines } from '../../db/schema/index.js';
 import { and, desc, eq, inArray } from 'drizzle-orm';
-import { CreatePurchaseOrderInput } from '#shared/contracts/purchase-orders.contract.js';
+import {
+  CreatePurchaseOrderInput,
+  UpdatePurchaseOrderInput,
+} from '#shared/contracts/purchase-orders.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 import { sequencesService } from '../sequences/sequences.service.js';
+
+import { ActivityLogger } from '../../lib/activity-logger.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -114,7 +119,18 @@ export class PurchaseOrdersService extends BaseService<typeof purchaseOrders> {
         );
       }
 
-      return po;
+      await ActivityLogger.record(tx, {
+        organizationId,
+        entityType: 'purchase_order',
+        entityId: po.id,
+        entityDisplayId: po.documentNumber,
+        entityLabel: 'Purchase Order',
+        action: 'PO_CREATED',
+        reason: 'Initial order creation',
+        userId,
+      });
+
+      return await this.getPOById(organizationId, po.id, tx);
     });
   }
 
@@ -126,7 +142,7 @@ export class PurchaseOrdersService extends BaseService<typeof purchaseOrders> {
     organizationId: string,
     userId: string,
     id: string,
-    data: CreatePurchaseOrderInput,
+    data: UpdatePurchaseOrderInput,
   ) {
     return await db.transaction(async (tx) => {
       // 1. Verify existence and status
@@ -187,7 +203,26 @@ export class PurchaseOrdersService extends BaseService<typeof purchaseOrders> {
         );
       }
 
-      return { id, status: 'draft' };
+      await ActivityLogger.recordUpdate(
+        tx,
+        {
+          organizationId,
+          entityType: 'purchase_order',
+          entityId: id,
+          entityDisplayId: existingPO.documentNumber,
+          entityLabel: 'Purchase Order',
+          action: 'UPDATED',
+          reason: data.reason ?? null,
+          userId,
+        },
+        existingPO,
+        {
+          supplierId: data.supplierId,
+          totalAmount: totalAmount.toString(),
+        },
+      );
+
+      return await this.getPOById(organizationId, id, tx);
     });
   }
 
@@ -204,7 +239,7 @@ export class PurchaseOrdersService extends BaseService<typeof purchaseOrders> {
     txIn?: Transaction | typeof db,
   ) {
     const operation = async (tx: Transaction | typeof db) => {
-      return await PurchaseOrderReconciler.updateStatus(
+      await PurchaseOrderReconciler.updateStatus(
         organizationId,
         userId,
         id,
@@ -213,6 +248,7 @@ export class PurchaseOrdersService extends BaseService<typeof purchaseOrders> {
         reason,
         tx as Transaction,
       );
+      return await this.getPOById(organizationId, id, tx);
     };
 
     if (txIn) return await operation(txIn);
@@ -238,6 +274,19 @@ export class PurchaseOrdersService extends BaseService<typeof purchaseOrders> {
         .set(this.withAudit({ deletedAt: new Date() }, userId, true))
         .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.organizationId, organizationId)))
         .returning();
+
+      if (deleted) {
+        await ActivityLogger.record(tx, {
+          organizationId,
+          entityType: 'purchase_order',
+          entityId: id,
+          entityDisplayId: po.documentNumber,
+          entityLabel: 'Purchase Order',
+          action: 'DELETED',
+          reason: 'Order manually deleted',
+          userId,
+        });
+      }
 
       return deleted;
     });
@@ -271,6 +320,19 @@ export class PurchaseOrdersService extends BaseService<typeof purchaseOrders> {
           and(eq(purchaseOrders.organizationId, organizationId), inArray(purchaseOrders.id, ids)),
         )
         .returning();
+
+      for (const deleted of deletedPOs) {
+        await ActivityLogger.record(tx, {
+          organizationId,
+          entityType: 'purchase_order',
+          entityId: deleted.id,
+          entityDisplayId: deleted.documentNumber,
+          entityLabel: 'Purchase Order',
+          action: 'DELETED',
+          reason: 'Order deleted via bulk action',
+          userId,
+        });
+      }
 
       return deletedPOs;
     });

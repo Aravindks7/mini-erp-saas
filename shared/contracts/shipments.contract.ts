@@ -8,6 +8,7 @@ export const createShipmentSchema = z.object({
   reason: z.string().optional(),
   shipmentDate: z.string().or(z.date()).optional(),
   reference: z.string().max(100).optional().nullable(),
+  status: shipmentStatusEnumSchema.optional(),
   lines: z
     .array(
       z.object({
@@ -26,5 +27,10 @@ export const createShipmentSchema = z.object({
     .min(1, 'At least one shipment line is required'),
 });
 
+export const updateShipmentSchema = createShipmentSchema.partial().extend({
+  lines: z.array(z.any()).optional(), // Any for now, ideally reused line schema
+});
+
 export type CreateShipmentInput = z.infer<typeof createShipmentSchema>;
+export type UpdateShipmentInput = z.infer<typeof updateShipmentSchema>;
 export type ShipmentStatus = z.infer<typeof shipmentStatusEnumSchema>;

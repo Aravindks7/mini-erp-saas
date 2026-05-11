@@ -55,4 +55,9 @@ export const purchaseOrdersApi = {
       method: 'DELETE',
       body: JSON.stringify({ ids }),
     }),
+  updatePurchaseOrderStatus: (id: string, status: string, action: string, reason: string) =>
+    apiFetch<PurchaseOrderResponse>(API_ENDPOINTS.purchasing.orders.status(id), {
+      method: 'PATCH',
+      body: JSON.stringify({ status, action, reason }),
+    }),
 };

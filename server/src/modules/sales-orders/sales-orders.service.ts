@@ -1,7 +1,10 @@
 import { db } from '../../db/index.js';
 import { salesOrders, salesOrderLines } from '../../db/schema/index.js';
 import { and, desc, eq, inArray } from 'drizzle-orm';
-import { CreateSalesOrderInput } from '#shared/contracts/sales-orders.contract.js';
+import {
+  CreateSalesOrderInput,
+  UpdateSalesOrderInput,
+} from '#shared/contracts/sales-orders.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 import { sequencesService } from '../sequences/sequences.service.js';
 import { ActivityLogger } from '../../lib/activity-logger.js';
@@ -164,11 +167,11 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
         userId,
       });
 
-      return so;
+      return await this.getSOById(organizationId, so.id, tx);
     });
   }
 
-  async updateSO(organizationId: string, userId: string, id: string, data: CreateSalesOrderInput) {
+  async updateSO(organizationId: string, userId: string, id: string, data: UpdateSalesOrderInput) {
     return await db.transaction(async (tx) => {
       const existingSO = await this.getSOById(organizationId, id, tx);
       if (!existingSO) {
@@ -224,18 +227,26 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
         );
       }
 
-      await ActivityLogger.record(tx, {
-        organizationId,
-        entityType: 'sales_order',
-        entityId: id,
-        entityDisplayId: existingSO.documentNumber,
-        entityLabel: 'Sales Order',
-        action: 'UPDATED',
-        reason: 'Manual order details update',
-        userId,
-      });
+      await ActivityLogger.recordUpdate(
+        tx,
+        {
+          organizationId,
+          entityType: 'sales_order',
+          entityId: id,
+          entityDisplayId: existingSO.documentNumber,
+          entityLabel: 'Sales Order',
+          action: 'UPDATED',
+          reason: data.reason ?? null,
+          userId,
+        },
+        existingSO,
+        {
+          customerId: data.customerId,
+          totalAmount: totalAmount.toString(),
+        },
+      );
 
-      return { id, status: 'draft' };
+      return await this.getSOById(organizationId, id, tx);
     });
   }
 
@@ -253,7 +264,7 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
   ) {
     const operation = async (tx: Transaction | typeof db) => {
       // We pass the transaction cast to `Transaction` to satisfy Drizzle types.
-      return await SalesOrderReconciler.updateStatus(
+      await SalesOrderReconciler.updateStatus(
         organizationId,
         userId,
         id,
@@ -262,6 +273,8 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
         reason,
         tx as Transaction,
       );
+
+      return await this.getSOById(organizationId, id, tx);
     };
 
     if (txIn) return await operation(txIn);

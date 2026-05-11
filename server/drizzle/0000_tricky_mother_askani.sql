@@ -189,6 +189,21 @@ CREATE TABLE "contacts" (
 	"job_title" text
 );
 --> statement-breakpoint
+CREATE TABLE "currencies" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_by" uuid,
+	"updated_by" uuid,
+	"deleted_at" timestamp,
+	"code" text NOT NULL,
+	"symbol" text NOT NULL,
+	"name" text NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"is_default" boolean DEFAULT false NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "customer_addresses" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"organization_id" uuid NOT NULL,
@@ -835,6 +850,7 @@ ALTER TABLE "bills" ADD CONSTRAINT "bills_purchase_order_id_purchase_orders_id_f
 ALTER TABLE "bins" ADD CONSTRAINT "bins_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "bins" ADD CONSTRAINT "bins_warehouse_id_warehouses_id_fk" FOREIGN KEY ("warehouse_id") REFERENCES "public"."warehouses"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "contacts" ADD CONSTRAINT "contacts_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "currencies" ADD CONSTRAINT "currencies_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "customer_addresses" ADD CONSTRAINT "customer_addresses_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "customer_addresses" ADD CONSTRAINT "customer_addresses_customer_id_customers_id_fk" FOREIGN KEY ("customer_id") REFERENCES "public"."customers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "customer_addresses" ADD CONSTRAINT "customer_addresses_address_id_addresses_id_fk" FOREIGN KEY ("address_id") REFERENCES "public"."addresses"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -961,6 +977,8 @@ CREATE INDEX "bins_org_idx" ON "bins" USING btree ("organization_id");--> statem
 CREATE INDEX "bins_warehouse_idx" ON "bins" USING btree ("warehouse_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "bins_org_wh_code_unique" ON "bins" USING btree ("organization_id","warehouse_id",lower("code"));--> statement-breakpoint
 CREATE INDEX "contacts_org_idx" ON "contacts" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "currencies_org_idx" ON "currencies" USING btree ("organization_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "currencies_org_code_unique" ON "currencies" USING btree ("organization_id",lower("code"));--> statement-breakpoint
 CREATE UNIQUE INDEX "customer_addresses_customer_id_address_id_key" ON "customer_addresses" USING btree ("customer_id","address_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "idx_customer_addresses_primary_unique" ON "customer_addresses" USING btree ("customer_id") WHERE "customer_addresses"."is_primary" = true;--> statement-breakpoint
 CREATE UNIQUE INDEX "customer_contacts_customer_id_contact_id_key" ON "customer_contacts" USING btree ("customer_id","contact_id");--> statement-breakpoint

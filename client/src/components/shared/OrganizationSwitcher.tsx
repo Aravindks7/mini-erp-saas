@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Building2, ChevronsUpDown, Plus } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
-import { useOrganizations } from '@/features/organizations/hooks/organizations.hooks';
+import { useOrganizationsQuery } from '@/features/organizations/hooks/organizations.hooks';
 import { CreateOrganizationDialog } from '@/features/organizations/components/CreateOrganizationDialog';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
@@ -38,7 +38,7 @@ export function OrganizationSwitcher({ isCollapsed }: OrganizationSwitcherProps)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const isDesktop = useBreakpoint('lg');
 
-  const { data: organizations, isLoading } = useOrganizations();
+  const { data: organizations, isLoading } = useOrganizationsQuery();
   const activeOrg = organizations?.find((org) => org.id === activeOrganizationId);
 
   const handleOrgSwitch = (orgId: string, slug: string) => {

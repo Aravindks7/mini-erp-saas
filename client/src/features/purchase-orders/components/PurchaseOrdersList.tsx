@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { z } from 'zod';
-import { useQueryClient } from '@tanstack/react-query';
 import { ShoppingCart, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -17,10 +16,16 @@ import { Button } from '@/components/ui/button';
 import { Can } from '@/components/shared/Can';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
+import { usePermissionsStatus } from '@/hooks/usePermission';
+import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 import { APP_PATHS } from '@/lib/paths';
 
-import { getColumns, purchaseOrderStatusOptions } from './columns';
-import { usePurchaseOrders, useBulkDeletePurchaseOrders } from '../hooks/purchase-orders.hooks';
+import { usePurchaseOrderColumns, purchaseOrderStatusOptions } from './columns';
+import {
+  usePurchaseOrdersQuery,
+  useBulkDeletePurchaseOrders,
+  usePurchaseOrdersActions,
+} from '../hooks/purchase-orders.hooks';
 import type { PurchaseOrderResponse } from '../api/purchase-orders.api';
 import { ReceivePurchaseOrderSheet } from './ReceivePurchaseOrderSheet';
 
@@ -32,8 +37,9 @@ const searchSchema = z.object({
 export function PurchaseOrdersList() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
-  const { data: pos, isLoading, isError } = usePurchaseOrders();
+  const { data: pos, isLoading: isDataLoading, isError } = usePurchaseOrdersQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidatePurchaseOrders } = usePurchaseOrdersActions();
   const bulkDeleteMutation = useBulkDeletePurchaseOrders();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
@@ -76,24 +82,20 @@ export function PurchaseOrdersList() {
     }
   };
 
-  const columns = React.useMemo(() => getColumns({ onReceive: handleReceive }), []);
+  const columns = usePurchaseOrderColumns({ onReceive: handleReceive });
 
   if (isError) {
     return (
       <ErrorState
         title="Failed to load purchase orders"
         description="We encountered an error while fetching the purchase orders. Please check your network or try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['purchase-orders'] })}
+        onRetry={invalidatePurchaseOrders}
       />
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
+  if (isDataLoading || isPermissionsLoading) {
+    return <DataTableSkeleton columnCount={5} rowCount={8} />;
   }
 
   if (!pos || pos.length === 0) {
@@ -130,7 +132,7 @@ export function PurchaseOrdersList() {
         enableGlobalSearch
         data={pos || []}
         columns={columns}
-        isLoading={isLoading}
+        isLoading={isDataLoading}
         onAddClick={handleAdd}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

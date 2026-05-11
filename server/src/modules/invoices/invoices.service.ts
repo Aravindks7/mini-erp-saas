@@ -3,12 +3,14 @@ import { invoices, invoiceLines, salesOrders, payments } from '../../db/schema/i
 import { and, desc, eq } from 'drizzle-orm';
 import {
   CreateInvoiceInput,
+  UpdateInvoiceInput,
   UpdateInvoiceStatusInput,
 } from '#shared/contracts/invoices.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 import { sequencesService } from '../sequences/sequences.service.js';
 import { InvoiceReconciler, InvoiceStatus } from './invoices.reconciler.js';
 import { ActivityLogger } from '../../lib/activity-logger.js';
+import type { ActivityAction } from '#shared/config/activity-actions.config.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -191,6 +193,17 @@ export class InvoicesService extends BaseService<typeof invoices> {
         await PostingService.postInvoice(invoice.id, organizationId, tx);
       }
 
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        entityType: 'invoice',
+        entityId: invoice.id,
+        entityDisplayId: invoice.documentNumber,
+        entityLabel: 'Invoice',
+        action: 'INVOICE_CREATED',
+        reason: 'New invoice generated',
+        userId,
+      });
+
       return await this.getInvoiceById(organizationId, invoice.id, tx);
     };
 
@@ -264,6 +277,90 @@ export class InvoicesService extends BaseService<typeof invoices> {
     });
   }
 
+  async updateInvoice(
+    organizationId: string,
+    userId: string,
+    id: string,
+    data: UpdateInvoiceInput,
+  ) {
+    return await db.transaction(async (tx) => {
+      const existingInvoice = await this.getInvoiceById(organizationId, id, tx);
+      if (!existingInvoice) {
+        throw new Error('Invoice not found');
+      }
+
+      if (existingInvoice.status !== 'draft') {
+        throw new Error('Only draft invoices can be modified');
+      }
+
+      const totalAmount =
+        data.lines?.reduce((acc, line) => acc + Number(line.lineTotal), 0) ??
+        Number(existingInvoice.totalAmount);
+      const taxAmount =
+        data.lines?.reduce((acc, line) => acc + Number(line.taxAmount), 0) ??
+        Number(existingInvoice.taxAmount);
+
+      const updateData = {
+        totalAmount: totalAmount.toString(),
+        balanceDue: totalAmount.toString(),
+        taxAmount: taxAmount.toString(),
+        notes: data.notes,
+        ...(data.customerId && { customerId: data.customerId }),
+        ...(data.issueDate && { issueDate: data.issueDate }),
+        ...(data.dueDate && { dueDate: data.dueDate }),
+      };
+
+      await tx
+        .update(invoices)
+        .set(this.withAudit(updateData, userId, true))
+        .where(and(eq(invoices.id, id), eq(invoices.organizationId, organizationId)));
+
+      if (data.lines) {
+        await tx
+          .delete(invoiceLines)
+          .where(
+            and(eq(invoiceLines.invoiceId, id), eq(invoiceLines.organizationId, organizationId)),
+          );
+
+        for (const line of data.lines) {
+          await tx.insert(invoiceLines).values(
+            this.withAudit(
+              {
+                organizationId,
+                invoiceId: id,
+                productId: line.productId,
+                quantity: line.quantity,
+                unitPrice: line.unitPrice,
+                taxRateAtOrder: line.taxRateAtOrder,
+                taxAmount: line.taxAmount,
+                lineTotal: line.lineTotal,
+              },
+              userId,
+            ),
+          );
+        }
+      }
+
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          entityType: 'invoice',
+          entityId: id,
+          entityDisplayId: existingInvoice.documentNumber,
+          entityLabel: 'Invoice',
+          action: 'UPDATED',
+          reason: 'Invoice record modified',
+          userId,
+        },
+        existingInvoice,
+        updateData,
+      );
+
+      return await this.getInvoiceById(organizationId, id, tx);
+    });
+  }
+
   async updateInvoiceStatus(
     organizationId: string,
     userId: string,
@@ -276,8 +373,8 @@ export class InvoicesService extends BaseService<typeof invoices> {
         userId,
         id,
         data.status as InvoiceStatus,
-        'STATUS_CHANGED',
-        'Manual status update',
+        data.action as ActivityAction,
+        data.reason,
         tx as Transaction,
       );
 

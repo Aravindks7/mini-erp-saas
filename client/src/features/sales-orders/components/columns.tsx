@@ -15,6 +15,9 @@ export const salesOrderStatusMap: StatusMap<string> = {
   cancelled: { label: 'Cancelled', tone: 'danger' },
 };
 
+import * as React from 'react';
+import { useCurrency } from '@/features/currencies/hooks/use-currency';
+
 export const salesOrderStatusOptions = Object.entries(salesOrderStatusMap).map(
   ([value, config]) => ({
     label: config.label,
@@ -22,81 +25,85 @@ export const salesOrderStatusOptions = Object.entries(salesOrderStatusMap).map(
   }),
 );
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-});
-
 interface GetColumnsProps {
   onFulfill: (so: SalesOrderResponse) => void;
 }
 
-export const getColumns = ({ onFulfill }: GetColumnsProps): ColumnDef<SalesOrderResponse>[] => [
-  {
-    id: 'select',
-    header: ({ table }) => (
-      <Checkbox
-        checked={table.getIsAllPageRowsSelected()}
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-    enableGlobalFilter: false,
-  },
-  {
-    accessorKey: 'documentNumber',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="SO Number" />,
-    meta: { variant: 'title', label: 'SO Number' },
-    enableGlobalFilter: true,
-  },
-  {
-    accessorKey: 'createdAt',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Order Date" />,
-    cell: ({ row }) => formatDate(row.getValue('createdAt')),
-    meta: { variant: 'field', label: 'Order Date' },
-  },
-  {
-    accessorKey: 'customer.companyName',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Customer" />,
-    cell: ({ row }) => row.original.customer.companyName,
-    meta: { variant: 'subtitle', label: 'Customer' },
-    enableGlobalFilter: true,
-  },
-  {
-    accessorKey: 'totalAmount',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Total Amount" />,
-    cell: ({ row }) => currencyFormatter.format(Number(row.getValue('totalAmount'))),
-    meta: { variant: 'field', label: 'Total' },
-  },
-  {
-    accessorKey: 'status',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
-    filterFn: (row, id, value) => {
-      const rowValue = row.getValue(id) as string;
-      const selectedValues = typeof value === 'string' ? value.split(',') : value;
-      return Array.isArray(selectedValues) ? selectedValues.includes(rowValue) : false;
-    },
-    cell: ({ row }) => {
-      return (
-        <StatusBadge value={row.getValue('status') as string} statusMap={salesOrderStatusMap} />
-      );
-    },
-    meta: { variant: 'field', label: 'Status' },
-  },
+export function useSalesOrderColumns({
+  onFulfill,
+}: GetColumnsProps): ColumnDef<SalesOrderResponse>[] {
+  const { format: formatCurrency } = useCurrency();
 
-  {
-    id: 'actions',
-    cell: ({ row }) => <SalesOrderRowActions row={row} onFulfill={onFulfill} />,
-    meta: { variant: 'actions' },
-    enableGlobalFilter: false,
-  },
-];
+  return React.useMemo(
+    () => [
+      {
+        id: 'select',
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Select all"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select row"
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+        enableGlobalFilter: false,
+      },
+      {
+        accessorKey: 'documentNumber',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="SO Number" />,
+        meta: { variant: 'title', label: 'SO Number' },
+        enableGlobalFilter: true,
+      },
+      {
+        accessorKey: 'createdAt',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Order Date" />,
+        cell: ({ row }) => formatDate(row.getValue('createdAt')),
+        meta: { variant: 'field', label: 'Order Date' },
+      },
+      {
+        accessorKey: 'customer.companyName',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Customer" />,
+        cell: ({ row }) => row.original.customer.companyName,
+        meta: { variant: 'subtitle', label: 'Customer' },
+        enableGlobalFilter: true,
+      },
+      {
+        accessorKey: 'totalAmount',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Total Amount" />,
+        cell: ({ row }) => formatCurrency(Number(row.getValue('totalAmount'))),
+        meta: { variant: 'field', label: 'Total' },
+      },
+      {
+        accessorKey: 'status',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+        filterFn: (row, id, value) => {
+          const rowValue = row.getValue(id) as string;
+          const selectedValues = typeof value === 'string' ? value.split(',') : value;
+          return Array.isArray(selectedValues) ? selectedValues.includes(rowValue) : false;
+        },
+        cell: ({ row }) => {
+          return (
+            <StatusBadge value={row.getValue('status') as string} statusMap={salesOrderStatusMap} />
+          );
+        },
+        meta: { variant: 'field', label: 'Status' },
+      },
+
+      {
+        id: 'actions',
+        cell: ({ row }) => <SalesOrderRowActions row={row} onFulfill={onFulfill} />,
+        meta: { variant: 'actions' },
+        enableGlobalFilter: false,
+      },
+    ],
+    [onFulfill, formatCurrency],
+  );
+}

@@ -1,61 +1,60 @@
 import * as React from 'react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useCurrency } from '@/features/currencies/hooks/use-currency';
 
 interface AmountInputProps {
   value: number | string | undefined;
   onChange: (value: string) => void;
-  currency: string;
+  currency?: string; // Optional: overrides the default tenant currency
   placeholder?: string;
   disabled?: boolean;
   className?: string;
 }
 
-function formatCurrency(val: number | string | undefined, curr: string) {
-  if (val === undefined || val === '') return '';
-
-  const numericValue = typeof val === 'string' ? parseFloat(val) : val;
-  if (isNaN(numericValue)) return '';
-
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: curr || 'USD',
-    }).format(numericValue);
-  } catch {
-    console.warn(`Invalid currency "${curr}" passed to AmountInput, falling back to USD`);
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(numericValue);
-  }
-}
-
 /**
  * Standard Amount Input for ERP SaaS.
  * Supports string/number values and returns string via onChange for contract compatibility.
+ * Axiom: Dynamically resolves formatting based on organization locale if no currency prop is provided.
  */
 export function AmountInput({
   value,
   onChange,
-  currency,
+  currency: currencyProp,
   placeholder,
   disabled,
   className,
 }: AmountInputProps) {
+  const { format: tenantFormat } = useCurrency();
+
+  const format = React.useMemo(() => {
+    if (currencyProp) {
+      return (val: number | string | undefined) => {
+        if (val === undefined || val === '') return '';
+        const num = typeof val === 'string' ? parseFloat(val) : val;
+        if (isNaN(num)) return '';
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: currencyProp,
+        }).format(num);
+      };
+    }
+    return tenantFormat;
+  }, [currencyProp, tenantFormat]);
+
   const [isFocused, setIsFocused] = React.useState(false);
-  const [displayValue, setDisplayValue] = React.useState<string>(formatCurrency(value, currency));
+  const [displayValue, setDisplayValue] = React.useState<string>(format(value));
 
   // Sync with external value changes (e.g., form resets)
   React.useEffect(() => {
     // Only sync from prop if NOT focused to avoid fighting the user during typing
     if (!isFocused) {
-      const formatted = formatCurrency(value, currency);
+      const formatted = format(value);
       if (formatted !== displayValue) {
         setDisplayValue(formatted);
       }
     }
-  }, [value, currency, displayValue, isFocused]);
+  }, [value, format, displayValue, isFocused]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
@@ -72,7 +71,7 @@ export function AmountInput({
 
   const handleBlur = () => {
     setIsFocused(false);
-    setDisplayValue(formatCurrency(value, currency));
+    setDisplayValue(format(value));
   };
 
   const handleFocus = () => {
@@ -91,7 +90,7 @@ export function AmountInput({
         onChange={handleChange}
         onBlur={handleBlur}
         onFocus={handleFocus}
-        placeholder={placeholder || formatCurrency(0, currency)}
+        placeholder={placeholder || format(0)}
         disabled={disabled}
         className={cn('font-mono text-right pr-4', className)}
       />

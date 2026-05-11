@@ -19,6 +19,12 @@ router.post(
   shipmentsController.createShipment,
 );
 
+router.patch(
+  '/:id',
+  requirePermission(PERMISSIONS.SHIPMENTS.CREATE),
+  shipmentsController.updateShipment,
+);
+
 router.delete(
   '/',
   requirePermission(PERMISSIONS.SHIPMENTS.DELETE),

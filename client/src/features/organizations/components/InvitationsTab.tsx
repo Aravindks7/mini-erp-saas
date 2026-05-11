@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useTenant } from '@/contexts/TenantContext';
-import { useInvitations, useResendInvite, useCancelInvite } from '../hooks/organizations.hooks';
+import {
+  useInvitationsQuery,
+  useInvitationsActions,
+  useResendInvite,
+  useCancelInvite,
+} from '../hooks/organizations.hooks';
 import type { OrganizationInvite } from '../api/organizations.api';
 import { EntityTable } from '@/components/shared/data-table/EntityTable';
 import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
@@ -10,6 +15,7 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { RefreshCw, XCircle, UserPlus, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ErrorState } from '@/components/shared/ErrorState';
 import { InviteMemberDialog } from './InviteMemberDialog';
 
 const inviteStatusMap: StatusMap<'pending' | 'accepted' | 'revoked'> = {
@@ -20,7 +26,8 @@ const inviteStatusMap: StatusMap<'pending' | 'accepted' | 'revoked'> = {
 
 export function InvitationsTab() {
   const { activeOrganizationId } = useTenant();
-  const { data: invitations, isLoading } = useInvitations(activeOrganizationId || '');
+  const { data: invitations, isLoading, isError } = useInvitationsQuery(activeOrganizationId || '');
+  const { invalidateInvitations } = useInvitationsActions(activeOrganizationId || '');
   const resendInvite = useResendInvite(activeOrganizationId || '');
   const cancelInvite = useCancelInvite(activeOrganizationId || '');
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
@@ -71,6 +78,16 @@ export function InvitationsTab() {
       cell: ({ row }) => formatDate(row.original.expiresAt),
     },
   ];
+
+  if (isError) {
+    return (
+      <ErrorState
+        title="Failed to load invitations"
+        description="We couldn't retrieve the list of pending invites. Please try again."
+        onRetry={invalidateInvitations}
+      />
+    );
+  }
 
   return (
     <>

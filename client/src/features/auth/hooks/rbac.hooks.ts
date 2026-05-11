@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
 import { rbacApi } from '../api/rbac.api';
 import { useTenant } from '@/contexts/TenantContext';
 import type {
@@ -10,59 +10,125 @@ import type {
 
 export const rbacKeys = {
   all: ['rbac'] as const,
-  myPermissions: (orgId: string | null) => [...rbacKeys.all, 'my-permissions', orgId] as const,
-  allPermissions: () => [...rbacKeys.all, 'all-permissions'] as const,
-  sets: (orgId: string | null) => [...rbacKeys.all, 'sets', orgId] as const,
-  set: (id: string) => [...rbacKeys.all, 'set', id] as const,
-  roles: (orgId: string | null) => [...rbacKeys.all, 'roles', orgId] as const,
-  role: (id: string) => [...rbacKeys.all, 'role', id] as const,
+  permissions: {
+    all: () => [...rbacKeys.all, 'permissions'] as const,
+    mine: (orgId: string | null) => [...rbacKeys.permissions.all(), 'mine', orgId] as const,
+    available: () => [...rbacKeys.permissions.all(), 'available'] as const,
+  },
+  sets: {
+    all: () => [...rbacKeys.all, 'sets'] as const,
+    lists: (orgId: string | null) => [...rbacKeys.sets.all(), 'list', orgId] as const,
+    details: () => [...rbacKeys.sets.all(), 'detail'] as const,
+    detail: (id: string) => [...rbacKeys.sets.details(), id] as const,
+  },
+  roles: {
+    all: () => [...rbacKeys.all, 'roles'] as const,
+    lists: (orgId: string | null) => [...rbacKeys.roles.all(), 'list', orgId] as const,
+    details: () => [...rbacKeys.roles.all(), 'detail'] as const,
+    detail: (id: string) => [...rbacKeys.roles.details(), id] as const,
+  },
 };
 
-export function useMyPermissions() {
-  const { activeOrganizationId } = useTenant();
+// --- Permission Queries ---
 
-  return useQuery({
-    queryKey: rbacKeys.myPermissions(activeOrganizationId),
+export const myPermissionsQuery = (orgId: string | null) =>
+  queryOptions({
+    queryKey: rbacKeys.permissions.mine(orgId),
     queryFn: async () => {
-      if (!activeOrganizationId) return [];
       const response = await rbacApi.fetchMyPermissions();
-      // apiFetch throws on !response.ok, so response is the successful data object
       return response.permissions;
     },
-    enabled: !!activeOrganizationId,
+    enabled: !!orgId,
     staleTime: 5 * 60 * 1000,
   });
-}
 
-export function useAllPermissions() {
-  return useQuery({
-    queryKey: rbacKeys.allPermissions(),
-    queryFn: async () => {
-      return rbacApi.fetchAllPermissions();
-    },
+export const allPermissionsQuery = () =>
+  queryOptions({
+    queryKey: rbacKeys.permissions.available(),
+    queryFn: () => rbacApi.fetchAllPermissions(),
   });
-}
 
-export function usePermissionSets() {
-  const { activeOrganizationId } = useTenant();
+// --- Permission Set Queries ---
 
-  return useQuery({
-    queryKey: rbacKeys.sets(activeOrganizationId),
-    queryFn: async () => {
-      if (!activeOrganizationId) return [];
-      return rbacApi.fetchPermissionSets();
-    },
-    enabled: !!activeOrganizationId,
+export const permissionSetsQuery = (orgId: string | null) =>
+  queryOptions({
+    queryKey: rbacKeys.sets.lists(orgId),
+    queryFn: () => rbacApi.fetchPermissionSets(),
+    enabled: !!orgId,
   });
-}
 
-export function usePermissionSet(id: string) {
-  return useQuery({
-    queryKey: rbacKeys.set(id),
+export const permissionSetDetailQuery = (id: string) =>
+  queryOptions({
+    queryKey: rbacKeys.sets.detail(id),
     queryFn: () => rbacApi.fetchPermissionSet(id),
+  });
+
+// --- Role Queries ---
+
+export const rolesListQuery = (orgId: string | null) =>
+  queryOptions({
+    queryKey: rbacKeys.roles.lists(orgId),
+    queryFn: () => rbacApi.fetchRoles(),
+    enabled: !!orgId,
+  });
+
+export const roleDetailQuery = (id: string) =>
+  queryOptions({
+    queryKey: rbacKeys.roles.detail(id),
+    queryFn: () => rbacApi.fetchRole(id),
+  });
+
+// --- Hooks ---
+
+export function useMyPermissionsQuery() {
+  const { activeOrganizationId } = useTenant();
+  return useQuery(myPermissionsQuery(activeOrganizationId));
+}
+
+export function useAllPermissionsQuery() {
+  return useQuery(allPermissionsQuery());
+}
+
+export function usePermissionSetsQuery() {
+  const { activeOrganizationId } = useTenant();
+  return useQuery(permissionSetsQuery(activeOrganizationId));
+}
+
+export function usePermissionSet(id: string | undefined) {
+  return useQuery({
+    ...permissionSetDetailQuery(id || ''),
     enabled: !!id,
   });
 }
+
+export function useRolesQuery() {
+  const { activeOrganizationId } = useTenant();
+  return useQuery(rolesListQuery(activeOrganizationId));
+}
+
+export function useRbacActions() {
+  const queryClient = useQueryClient();
+  const { activeOrganizationId } = useTenant();
+
+  return {
+    invalidateAll: () => queryClient.invalidateQueries({ queryKey: rbacKeys.all }),
+    invalidatePermissions: () =>
+      queryClient.invalidateQueries({ queryKey: rbacKeys.permissions.all() }),
+    invalidateSets: () =>
+      queryClient.invalidateQueries({ queryKey: rbacKeys.sets.lists(activeOrganizationId) }),
+    invalidateRoles: () =>
+      queryClient.invalidateQueries({ queryKey: rbacKeys.roles.lists(activeOrganizationId) }),
+  };
+}
+
+export function useRole(id: string | undefined) {
+  return useQuery({
+    ...roleDetailQuery(id || ''),
+    enabled: !!id,
+  });
+}
+
+// --- Mutations ---
 
 export function useCreatePermissionSet() {
   const queryClient = useQueryClient();
@@ -71,7 +137,7 @@ export function useCreatePermissionSet() {
   return useMutation({
     mutationFn: (data: CreatePermissionSetInput) => rbacApi.createPermissionSet(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: rbacKeys.sets(activeOrganizationId) });
+      queryClient.invalidateQueries({ queryKey: rbacKeys.sets.lists(activeOrganizationId) });
     },
   });
 }
@@ -83,8 +149,8 @@ export function useUpdatePermissionSet(id: string) {
   return useMutation({
     mutationFn: (data: UpdatePermissionSetInput) => rbacApi.updatePermissionSet(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: rbacKeys.sets(activeOrganizationId) });
-      queryClient.invalidateQueries({ queryKey: rbacKeys.set(id) });
+      queryClient.invalidateQueries({ queryKey: rbacKeys.sets.lists(activeOrganizationId) });
+      queryClient.invalidateQueries({ queryKey: rbacKeys.sets.detail(id) });
     },
   });
 }
@@ -96,30 +162,9 @@ export function useDeletePermissionSet() {
   return useMutation({
     mutationFn: (id: string) => rbacApi.deletePermissionSet(id),
     onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: rbacKeys.sets(activeOrganizationId) });
-      queryClient.invalidateQueries({ queryKey: rbacKeys.set(id) });
+      queryClient.invalidateQueries({ queryKey: rbacKeys.sets.lists(activeOrganizationId) });
+      queryClient.invalidateQueries({ queryKey: rbacKeys.sets.detail(id) });
     },
-  });
-}
-
-export function useRoles() {
-  const { activeOrganizationId } = useTenant();
-
-  return useQuery({
-    queryKey: rbacKeys.roles(activeOrganizationId),
-    queryFn: async () => {
-      if (!activeOrganizationId) return [];
-      return rbacApi.fetchRoles();
-    },
-    enabled: !!activeOrganizationId,
-  });
-}
-
-export function useRole(id: string) {
-  return useQuery({
-    queryKey: rbacKeys.role(id),
-    queryFn: () => rbacApi.fetchRole(id),
-    enabled: !!id,
   });
 }
 
@@ -130,7 +175,7 @@ export function useCreateRole() {
   return useMutation({
     mutationFn: (data: CreateRoleInput) => rbacApi.createRole(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: rbacKeys.roles(activeOrganizationId) });
+      queryClient.invalidateQueries({ queryKey: rbacKeys.roles.lists(activeOrganizationId) });
     },
   });
 }
@@ -142,8 +187,8 @@ export function useUpdateRole(id: string) {
   return useMutation({
     mutationFn: (data: UpdateRoleInput) => rbacApi.updateRole(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: rbacKeys.roles(activeOrganizationId) });
-      queryClient.invalidateQueries({ queryKey: rbacKeys.role(id) });
+      queryClient.invalidateQueries({ queryKey: rbacKeys.roles.lists(activeOrganizationId) });
+      queryClient.invalidateQueries({ queryKey: rbacKeys.roles.detail(id) });
     },
   });
 }
@@ -155,8 +200,9 @@ export function useDeleteRole() {
   return useMutation({
     mutationFn: (id: string) => rbacApi.deleteRole(id),
     onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: rbacKeys.roles(activeOrganizationId) });
-      queryClient.invalidateQueries({ queryKey: rbacKeys.role(id) });
+      queryClient.invalidateQueries({ queryKey: rbacKeys.roles.lists(activeOrganizationId) });
+      queryClient.invalidateQueries({ queryKey: rbacKeys.roles.detail(id) });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }

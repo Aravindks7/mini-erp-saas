@@ -133,3 +133,23 @@ export function buildSidebarTree(
 
   return tree;
 }
+
+/**
+ * Resets all sidebar-related local storage state.
+ * Used during login/logout to ensure a fresh UI state for the user.
+ */
+export function resetSidebarState() {
+  localStorage.removeItem('mini-erp-sidebar-collapsed');
+
+  // Clear all group expansion states
+  // We collect keys first to avoid issues with removing items while iterating
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith('sidebar-group-')) {
+      keysToRemove.push(key);
+    }
+  }
+
+  keysToRemove.forEach((key) => localStorage.removeItem(key));
+}

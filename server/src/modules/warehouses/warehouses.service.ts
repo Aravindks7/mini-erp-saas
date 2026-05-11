@@ -8,6 +8,7 @@ import {
 } from '#shared/contracts/warehouses.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 import { parseCsv } from '../../utils/csv.js';
+import { ActivityLogger } from '../../lib/activity-logger.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type WarehouseWithRelations = Awaited<ReturnType<WarehousesService['getWarehouseById']>>;
@@ -136,6 +137,17 @@ export class WarehousesService extends BaseService<typeof warehouses> {
         }
       }
 
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        userId,
+        entityType: 'warehouse',
+        entityId: newWarehouse.id,
+        entityDisplayId: newWarehouse.code,
+        entityLabel: 'Warehouse',
+        action: 'CREATED',
+        reason: `Warehouse ${newWarehouse.name} (${newWarehouse.code}) created.`,
+      });
+
       return await this.getWarehouseById(organizationId, newWarehouse.id, tx);
     });
   }
@@ -147,6 +159,11 @@ export class WarehousesService extends BaseService<typeof warehouses> {
     data: UpdateWarehouseInput,
   ) {
     return await db.transaction(async (tx) => {
+      const existingWarehouse = await this.getWarehouseById(organizationId, id, tx);
+      if (!existingWarehouse) {
+        throw new Error('Warehouse not found');
+      }
+
       const { addresses: addressData, bins: binData, ...warehouseData } = data;
 
       // 1. Update Warehouse Base
@@ -271,12 +288,31 @@ export class WarehousesService extends BaseService<typeof warehouses> {
         }
       }
 
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          userId,
+          entityType: 'warehouse',
+          entityId: id,
+          entityDisplayId: existingWarehouse.code,
+          entityLabel: 'Warehouse',
+          action: 'UPDATED',
+          reason: 'Warehouse master data modified',
+        },
+        existingWarehouse,
+        data,
+      );
+
       return await this.getWarehouseById(organizationId, id, tx);
     });
   }
 
   async deleteWarehouse(organizationId: string, userId: string, id: string) {
     return await db.transaction(async (tx) => {
+      const existingWarehouse = await this.getWarehouseById(organizationId, id, tx);
+      if (!existingWarehouse) throw new Error('Warehouse not found');
+
       const [deleted] = await tx
         .update(warehouses)
         .set(this.withAudit({ deletedAt: new Date() }, userId, true))
@@ -289,6 +325,17 @@ export class WarehousesService extends BaseService<typeof warehouses> {
           .update(bins)
           .set(this.withAudit({ deletedAt: new Date() }, userId, true))
           .where(and(eq(bins.warehouseId, id), sql`${bins.deletedAt} IS NULL`));
+
+        await ActivityLogger.record(tx as Transaction, {
+          organizationId,
+          userId,
+          entityType: 'warehouse',
+          entityId: id,
+          entityDisplayId: existingWarehouse.code,
+          entityLabel: 'Warehouse',
+          action: 'DELETED',
+          reason: 'Warehouse record soft-deleted',
+        });
       }
 
       return deleted;
@@ -299,6 +346,10 @@ export class WarehousesService extends BaseService<typeof warehouses> {
     if (ids.length === 0) return [];
 
     return await db.transaction(async (tx) => {
+      const warehousesToDelete = await tx.query.warehouses.findMany({
+        where: and(eq(warehouses.organizationId, organizationId), inArray(warehouses.id, ids)),
+      });
+
       const deleted = await tx
         .update(warehouses)
         .set(this.withAudit({ deletedAt: new Date() }, userId, true))
@@ -310,6 +361,19 @@ export class WarehousesService extends BaseService<typeof warehouses> {
           .update(bins)
           .set(this.withAudit({ deletedAt: new Date() }, userId, true))
           .where(and(inArray(bins.warehouseId, ids), sql`${bins.deletedAt} IS NULL`));
+
+        for (const w of warehousesToDelete) {
+          await ActivityLogger.record(tx as Transaction, {
+            organizationId,
+            userId,
+            entityType: 'warehouse',
+            entityId: w.id,
+            entityDisplayId: w.code,
+            entityLabel: 'Warehouse',
+            action: 'DELETED',
+            reason: 'Warehouse record soft-deleted via bulk action',
+          });
+        }
       }
 
       return deleted;

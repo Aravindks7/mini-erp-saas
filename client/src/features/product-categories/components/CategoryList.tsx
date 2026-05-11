@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { z } from 'zod';
-import { useQueryClient } from '@tanstack/react-query';
 import { Layers } from 'lucide-react';
 
 import { EntityTable } from '@/components/shared/data-table/EntityTable';
@@ -12,9 +11,14 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Can } from '@/components/shared/Can';
+import { usePermissionsStatus } from '@/hooks/usePermission';
+import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { getColumns } from './columns';
-import { useProductCategories } from '../hooks/product-categories.hooks';
+import {
+  useProductCategoriesQuery,
+  useProductCategoriesActions,
+} from '../hooks/product-categories.hooks';
 import type { ProductCategoryResponse } from '../api/product-categories.api';
 import { CategoryFormSheet } from './CategoryFormSheet';
 
@@ -24,8 +28,9 @@ const searchSchema = z.object({
 });
 
 export function CategoryList() {
-  const queryClient = useQueryClient();
-  const { data: categories, isLoading, isError } = useProductCategories();
+  const { data: categories, isLoading: isDataLoading, isError } = useProductCategoriesQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateCategories } = useProductCategoriesActions();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
   const [formSheetState, setFormSheetState] = React.useState<{
@@ -50,17 +55,13 @@ export function CategoryList() {
       <ErrorState
         title="Failed to load categories"
         description="We encountered an error while fetching the product categories. Please check your network or try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['product-categories'] })}
+        onRetry={invalidateCategories}
       />
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
+  if (isDataLoading || isPermissionsLoading) {
+    return <DataTableSkeleton columnCount={5} rowCount={8} />;
   }
 
   // Map parent names for the table
@@ -106,7 +107,7 @@ export function CategoryList() {
         enableGlobalSearch
         data={categoriesWithParent}
         columns={columns}
-        isLoading={isLoading}
+        isLoading={isDataLoading}
         onAddClick={handleAddClick}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

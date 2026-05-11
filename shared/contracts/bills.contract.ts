@@ -27,6 +27,8 @@ export const updateBillSchema = createBillSchema.partial();
 
 export const updateBillStatusSchema = z.object({
   status: billStatusEnumSchema,
+  action: z.string().min(1, 'Action is required'),
+  reason: z.string().min(1, 'Reason is required'),
 });
 
 export type BillStatus = z.infer<typeof billStatusEnumSchema>;

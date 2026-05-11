@@ -12,7 +12,7 @@ import {
 import { toast } from 'sonner';
 
 import { useSalesOrder, useUpdateSalesOrderStatus } from '../hooks/sales-orders.hooks';
-import { useShipments } from '@/features/shipments/hooks/shipments.hooks';
+import { useShipmentsQuery } from '@/features/shipments/hooks/shipments.hooks';
 import { useEntityActivity } from '@/features/activity/hooks/activity.hooks';
 import { useCreateInvoiceFromSO } from '@/features/invoices/hooks/invoices.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -39,10 +39,13 @@ import {
 } from '@/components/ui/table';
 import React from 'react';
 
+import { useCurrency } from '@/features/currencies/hooks/use-currency';
+
 export default function SalesOrderDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
+  const { format: formatCurrency } = useCurrency();
   const { data: so, isLoading, isError } = useSalesOrder(id);
   const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateSalesOrderStatus();
   const { mutate: generateInvoice, isPending: isGeneratingInvoice } = useCreateInvoiceFromSO();
@@ -81,7 +84,7 @@ export default function SalesOrderDetailsPage() {
   if (isLoading) {
     return (
       <PageContainer>
-        <SkeletonLoader variant="form" rows={3} />
+        <SkeletonLoader variant="details" />
       </PageContainer>
     );
   }
@@ -107,11 +110,6 @@ export default function SalesOrderDetailsPage() {
       </PageContainer>
     );
   }
-
-  const currencyFormatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  });
 
   const canShip = so.status === 'approved' || so.status === 'partially_shipped';
   const canEdit = so.status === 'draft';
@@ -217,20 +215,18 @@ export default function SalesOrderDetailsPage() {
               lines={[
                 {
                   label: 'Subtotal',
-                  value: currencyFormatter.format(
+                  value: formatCurrency(
                     so.lines.reduce((acc, l) => acc + Number(l.quantity) * Number(l.unitPrice), 0),
                   ),
                   isSubtotal: true,
                 },
                 {
                   label: 'Total Tax',
-                  value: currencyFormatter.format(
-                    so.lines.reduce((acc, l) => acc + Number(l.taxAmount), 0),
-                  ),
+                  value: formatCurrency(so.lines.reduce((acc, l) => acc + Number(l.taxAmount), 0)),
                 },
                 {
                   label: 'Order Total',
-                  value: currencyFormatter.format(Number(so.totalAmount)),
+                  value: formatCurrency(Number(so.totalAmount)),
                   isTotal: true,
                 },
               ]}
@@ -290,10 +286,10 @@ export default function SalesOrderDetailsPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {currencyFormatter.format(Number(line.unitPrice))}
+                          {formatCurrency(Number(line.unitPrice))}
                         </TableCell>
                         <TableCell className="text-right font-semibold pr-6 text-primary">
-                          {currencyFormatter.format(lineTotal)}
+                          {formatCurrency(lineTotal)}
                         </TableCell>
                       </TableRow>
                     );
@@ -305,7 +301,7 @@ export default function SalesOrderDetailsPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
                     <span>
-                      {currencyFormatter.format(
+                      {formatCurrency(
                         so.lines.reduce(
                           (acc, l) => acc + Number(l.quantity) * Number(l.unitPrice),
                           0,
@@ -316,14 +312,12 @@ export default function SalesOrderDetailsPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Total Tax</span>
                     <span>
-                      {currencyFormatter.format(
-                        so.lines.reduce((acc, l) => acc + Number(l.taxAmount), 0),
-                      )}
+                      {formatCurrency(so.lines.reduce((acc, l) => acc + Number(l.taxAmount), 0))}
                     </span>
                   </div>
                   <div className="flex justify-between pt-2 border-t font-bold text-lg text-primary">
                     <span>Order Total</span>
-                    <span>{currencyFormatter.format(Number(so.totalAmount))}</span>
+                    <span>{formatCurrency(Number(so.totalAmount))}</span>
                   </div>
                 </div>
               </div>
@@ -364,7 +358,7 @@ export default function SalesOrderDetailsPage() {
 }
 
 function ShipmentsHistory({ soId }: { soId: string }) {
-  const { data: allShipments, isLoading } = useShipments();
+  const { data: allShipments, isLoading } = useShipmentsQuery();
   const shipments = React.useMemo(
     () => allShipments?.filter((s) => s.salesOrderId === soId) || [],
     [allShipments, soId],

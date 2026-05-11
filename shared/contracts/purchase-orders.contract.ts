@@ -35,3 +35,17 @@ export const createPurchaseOrderSchema = z.object({
 
 export type PurchaseOrderLineInput = z.infer<typeof purchaseOrderLineInputSchema>;
 export type CreatePurchaseOrderInput = z.infer<typeof createPurchaseOrderSchema>;
+
+export const updatePurchaseOrderSchema = createPurchaseOrderSchema.extend({
+  reason: z.string().optional(),
+});
+
+export type UpdatePurchaseOrderInput = z.infer<typeof updatePurchaseOrderSchema>;
+
+export const updatePurchaseOrderStatusSchema = z.object({
+  status: purchaseOrderStatusEnumSchema,
+  action: z.string().min(1, 'Action is required'),
+  reason: z.string().min(1, 'Reason is required'),
+});
+
+export type UpdatePurchaseOrderStatusInput = z.infer<typeof updatePurchaseOrderStatusSchema>;

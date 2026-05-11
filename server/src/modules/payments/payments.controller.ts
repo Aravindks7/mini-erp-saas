@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { paymentsService } from './payments.service.js';
-import { createPaymentSchema } from '#shared/contracts/payments.contract.js';
+import { createPaymentSchema, updatePaymentSchema } from '#shared/contracts/payments.contract.js';
 import { logger } from '../../utils/logger.js';
 import { db } from '../../db/index.js';
 import { and, eq, desc } from 'drizzle-orm';
@@ -69,6 +69,33 @@ export async function deletePayment(req: Request, res: Response) {
     res.status(204).end();
   } catch (error) {
     logger.error({ error, organizationId, userId, id }, 'Failed to delete payment');
+    throw error;
+  }
+}
+
+export async function updatePayment(req: Request, res: Response) {
+  const { id } = req.params;
+  const parseResult = updatePaymentSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    const updated = await paymentsService.updatePayment(
+      organizationId,
+      userId,
+      id as string,
+      parseResult.data,
+    );
+    if (!updated) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+    res.json(updated);
+  } catch (error) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to update payment');
     throw error;
   }
 }

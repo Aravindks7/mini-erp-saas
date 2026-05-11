@@ -12,10 +12,12 @@ export const activityApi = {
   /**
    * Fetches activity logs for a specific entity (e.g., a single Sales Order).
    */
-  fetchEntityActivity: (entityType: string, entityId: string) =>
-    apiFetch<ActivityLogResponse[]>(
-      `${API_ENDPOINTS.activityLogs.base}?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}`,
-    ),
+  fetchEntityActivity: (entityType: string, entityId: string) => {
+    const params = new URLSearchParams({ entityType, entityId });
+    return apiFetch<ActivityLogResponse[]>(
+      `${API_ENDPOINTS.activityLogs.base}?${params.toString()}`,
+    );
+  },
 
   /**
    * Fetches organization-wide activity with cursor-based pagination.

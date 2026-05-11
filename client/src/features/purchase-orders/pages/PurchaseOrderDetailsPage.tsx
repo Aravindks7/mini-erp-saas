@@ -3,7 +3,7 @@ import { ShoppingCart, FileEdit, AlertCircle, Package, Receipt, Truck } from 'lu
 import * as React from 'react';
 
 import { usePurchaseOrder } from '../hooks/purchase-orders.hooks';
-import { useReceipts } from '@/features/receipts/hooks/receipts.hooks';
+import { useReceiptsQuery } from '@/features/receipts/hooks/receipts.hooks';
 import { useEntityActivity } from '@/features/activity/hooks/activity.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -28,10 +28,13 @@ import {
 import { DetailView } from '@/components/shared/DetailView';
 import { ActivityTimeline } from '@/components/shared/ActivityTimeline';
 
+import { useCurrency } from '@/features/currencies/hooks/use-currency';
+
 export default function PurchaseOrderDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
+  const { format: formatCurrency } = useCurrency();
   const { data: po, isLoading, isError } = usePurchaseOrder(id);
 
   const [isReceiveSheetOpen, setIsReceiveSheetOpen] = React.useState(false);
@@ -69,11 +72,6 @@ export default function PurchaseOrderDetailsPage() {
       </PageContainer>
     );
   }
-
-  const currencyFormatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  });
 
   const canReceive =
     po.status === 'draft' || po.status === 'sent' || po.status === 'partially_received';
@@ -164,20 +162,18 @@ export default function PurchaseOrderDetailsPage() {
               lines={[
                 {
                   label: 'Subtotal',
-                  value: currencyFormatter.format(
+                  value: formatCurrency(
                     po.lines.reduce((acc, l) => acc + Number(l.quantity) * Number(l.unitPrice), 0),
                   ),
                   isSubtotal: true,
                 },
                 {
                   label: 'Total Tax',
-                  value: currencyFormatter.format(
-                    po.lines.reduce((acc, l) => acc + Number(l.taxAmount), 0),
-                  ),
+                  value: formatCurrency(po.lines.reduce((acc, l) => acc + Number(l.taxAmount), 0)),
                 },
                 {
                   label: 'Order Total',
-                  value: currencyFormatter.format(Number(po.totalAmount)),
+                  value: formatCurrency(Number(po.totalAmount)),
                   isTotal: true,
                 },
               ]}
@@ -217,14 +213,14 @@ export default function PurchaseOrderDetailsPage() {
                         <TableCell className="font-medium">{line.product.name}</TableCell>
                         <TableCell className="text-right">{line.quantity}</TableCell>
                         <TableCell className="text-right">
-                          {currencyFormatter.format(Number(line.unitPrice))}
+                          {formatCurrency(Number(line.unitPrice))}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
-                          {currencyFormatter.format(Number(line.taxAmount))}
+                          {formatCurrency(Number(line.taxAmount))}
                           <span className="text-[10px] ml-1">({line.taxRateAtOrder}%)</span>
                         </TableCell>
                         <TableCell className="text-right font-semibold pr-6 text-primary">
-                          {currencyFormatter.format(lineTotal)}
+                          {formatCurrency(lineTotal)}
                         </TableCell>
                       </TableRow>
                     );
@@ -236,7 +232,7 @@ export default function PurchaseOrderDetailsPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
                     <span>
-                      {currencyFormatter.format(
+                      {formatCurrency(
                         po.lines.reduce(
                           (acc, l) => acc + Number(l.quantity) * Number(l.unitPrice),
                           0,
@@ -247,14 +243,12 @@ export default function PurchaseOrderDetailsPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Total Tax</span>
                     <span>
-                      {currencyFormatter.format(
-                        po.lines.reduce((acc, l) => acc + Number(l.taxAmount), 0),
-                      )}
+                      {formatCurrency(po.lines.reduce((acc, l) => acc + Number(l.taxAmount), 0))}
                     </span>
                   </div>
                   <div className="flex justify-between pt-2 border-t font-bold text-lg text-primary">
                     <span>Order Total</span>
-                    <span>{currencyFormatter.format(Number(po.totalAmount))}</span>
+                    <span>{formatCurrency(Number(po.totalAmount))}</span>
                   </div>
                 </div>
               </div>
@@ -295,7 +289,7 @@ export default function PurchaseOrderDetailsPage() {
 }
 
 function ReceiptsHistory({ poId }: { poId: string }) {
-  const { data: allReceipts, isLoading } = useReceipts();
+  const { data: allReceipts, isLoading } = useReceiptsQuery();
   const receipts = React.useMemo(
     () => allReceipts?.filter((r) => r.purchaseOrderId === poId) || [],
     [allReceipts, poId],

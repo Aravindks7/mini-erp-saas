@@ -11,9 +11,9 @@ import { AmountInput } from '@/components/shared/form/AmountInput';
 
 import type { CreateProductInput } from '@shared/contracts/products.contract';
 import { createProductSchema } from '@shared/contracts/products.contract';
-import { useUoms } from '@/features/uom/hooks/uoms.hooks';
-import { useTaxes } from '@/features/taxes/hooks/taxes.hooks';
-import { useProductCategories } from '@/features/product-categories/hooks/product-categories.hooks';
+import { useUomsQuery } from '@/features/uom/hooks/uoms.hooks';
+import { useTaxesQuery } from '@/features/taxes/hooks/taxes.hooks';
+import { useProductCategoriesQuery } from '@/features/product-categories/hooks/product-categories.hooks';
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect';
 
 interface ProductFormProps {
@@ -24,9 +24,9 @@ interface ProductFormProps {
 }
 
 export function ProductForm({ form, onSubmit, formId, isEdit = false }: ProductFormProps) {
-  const { data: uoms = [] } = useUoms();
-  const { data: taxes = [] } = useTaxes();
-  const { data: categories = [] } = useProductCategories();
+  const { data: uoms = [] } = useUomsQuery();
+  const { data: taxes = [] } = useTaxesQuery();
+  const { data: categories = [] } = useProductCategoriesQuery();
 
   const uomOptions = uoms.map((uom) => ({
     label: uom.name,
@@ -84,7 +84,7 @@ export function ProductForm({ form, onSubmit, formId, isEdit = false }: ProductF
 
               <div className="grid gap-6 sm:grid-cols-2">
                 <FormField name="basePrice" label="Base Price">
-                  {({ field }) => <AmountInput {...field} currency="USD" placeholder="0.00" />}
+                  {({ field }) => <AmountInput {...field} placeholder="0.00" />}
                 </FormField>
 
                 <FormField name="categoryId" label="Category (Optional)">

@@ -3,10 +3,12 @@ import { inventoryService } from './inventory.service.js';
 import {
   createInventoryAdjustmentSchema,
   updateAdjustmentStatusSchema,
+  updateInventoryAdjustmentSchema,
 } from '#shared/contracts/inventory-adjustments.contract.js';
 import {
   createInventoryTransferSchema,
   updateTransferStatusSchema,
+  updateInventoryTransferSchema,
 } from '#shared/contracts/inventory-transfers.contract.js';
 import { logger } from '../../utils/logger.js';
 import type { DbError } from '../../types/db.js';
@@ -67,6 +69,37 @@ export async function updateAdjustmentStatus(req: Request, res: Response) {
     res.status(400).json({ error: 'Unsupported status update' });
   } catch (error) {
     logger.error({ error, organizationId, userId, id }, 'Failed to update adjustment status');
+    throw error;
+  }
+}
+
+export async function updateAdjustment(req: Request, res: Response) {
+  const { id } = req.params;
+  const parseResult = updateInventoryAdjustmentSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    const updated = await inventoryService.updateAdjustment(
+      organizationId,
+      userId,
+      id as string,
+      parseResult.data,
+    );
+    if (!updated) {
+      return res.status(404).json({ error: 'Adjustment not found' });
+    }
+    res.json(updated);
+  } catch (error: unknown) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to update adjustment');
+    const message = error instanceof Error ? error.message : 'Failed to update adjustment';
+    if (message === 'Only draft adjustments can be modified.') {
+      return res.status(400).json({ error: message });
+    }
     throw error;
   }
 }
@@ -149,6 +182,37 @@ export async function updateTransferStatus(req: Request, res: Response) {
     res.json(result);
   } catch (error) {
     logger.error({ error, organizationId, userId, id }, 'Failed to update transfer status');
+    throw error;
+  }
+}
+
+export async function updateTransfer(req: Request, res: Response) {
+  const { id } = req.params;
+  const parseResult = updateInventoryTransferSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    const updated = await inventoryService.updateTransfer(
+      organizationId,
+      userId,
+      id as string,
+      parseResult.data,
+    );
+    if (!updated) {
+      return res.status(404).json({ error: 'Transfer not found' });
+    }
+    res.json(updated);
+  } catch (error: unknown) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to update transfer');
+    const message = error instanceof Error ? error.message : 'Failed to update transfer';
+    if (message === 'Only draft transfers can be modified.') {
+      return res.status(400).json({ error: message });
+    }
     throw error;
   }
 }

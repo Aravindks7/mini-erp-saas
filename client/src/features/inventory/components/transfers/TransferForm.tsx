@@ -13,8 +13,8 @@ import { Separator } from '@/components/ui/separator';
 
 import type { CreateInventoryTransferInput } from '@shared/contracts/inventory-transfers.contract';
 import { createInventoryTransferSchema } from '@shared/contracts/inventory-transfers.contract';
-import { useProducts } from '@/features/products/hooks/products.hooks';
-import { useWarehouses } from '@/features/warehouses/hooks/warehouses.hooks';
+import { useProductsQuery } from '@/features/products/hooks/products.hooks';
+import { useWarehousesQuery } from '@/features/warehouses/hooks/warehouses.hooks';
 
 interface TransferFormProps {
   form: UseFormReturn<CreateInventoryTransferInput>;
@@ -23,8 +23,8 @@ interface TransferFormProps {
 }
 
 export function TransferForm({ form, onSubmit, formId }: TransferFormProps) {
-  const { data: products = [] } = useProducts();
-  const { data: warehouses = [] } = useWarehouses();
+  const { data: products = [] } = useProductsQuery();
+  const { data: warehouses = [] } = useWarehousesQuery();
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,

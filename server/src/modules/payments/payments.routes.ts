@@ -49,4 +49,10 @@ router.delete(
   paymentsController.deletePayment,
 );
 
+router.patch(
+  '/:id',
+  requirePermission(PERMISSIONS.PAYMENTS.UPDATE),
+  paymentsController.updatePayment,
+);
+
 export default router;

@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { Package, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -18,9 +17,15 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
+import { usePermissionsStatus } from '@/hooks/usePermission';
+import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
-import { columns, productStatusOptions } from './columns';
-import { useProducts, useBulkDeleteProducts } from '../hooks/products.hooks';
+import { useProductColumns, productStatusOptions } from './columns';
+import {
+  useProductsQuery,
+  useBulkDeleteProducts,
+  useProductsActions,
+} from '../hooks/products.hooks';
 import type { ProductResponse } from '../api/products.api';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { APP_PATHS } from '@/lib/paths';
@@ -35,13 +40,15 @@ const searchSchema = z.object({
 export function ProductList() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
-  const { data: products, isLoading, isError } = useProducts();
+  const { data: products, isLoading: isDataLoading, isError } = useProductsQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateProducts } = useProductsActions();
   const bulkDeleteMutation = useBulkDeleteProducts();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
+  const columns = useProductColumns();
 
   const handleImportSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ['products'] });
+    invalidateProducts();
   };
 
   const importColumns = [
@@ -67,7 +74,7 @@ export function ProductList() {
       <ErrorState
         title="Failed to load products"
         description="We encountered an error while fetching the product catalog. Please check your network or try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['products'] })}
+        onRetry={invalidateProducts}
       />
     );
   }
@@ -85,12 +92,8 @@ export function ProductList() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
+  if (isDataLoading || isPermissionsLoading) {
+    return <DataTableSkeleton columnCount={5} rowCount={8} />;
   }
 
   if (!products || products.length === 0) {
@@ -138,7 +141,7 @@ export function ProductList() {
         enableGlobalSearch
         data={products || []}
         columns={columns}
-        isLoading={isLoading}
+        isLoading={isDataLoading}
         onAddClick={handleAddClick}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

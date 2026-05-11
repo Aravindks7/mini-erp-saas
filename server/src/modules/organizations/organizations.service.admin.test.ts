@@ -182,7 +182,9 @@ describe('OrganizationsService - Admin Methods', () => {
               findFirst: vi.fn().mockResolvedValue({ role: 'admin' }),
             },
             organizations: {
-              findFirst: vi.fn().mockResolvedValue(null),
+              findFirst: vi
+                .fn()
+                .mockResolvedValue({ id: orgId, name: 'Old Name', slug: 'old-name' }),
             },
           },
           update: mockUpdate,

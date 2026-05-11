@@ -40,5 +40,13 @@ export const updatePaymentStatusSchema = z.object({
   status: paymentStatusEnumSchema,
 });
 
+export const updatePaymentSchema = z.object({
+  notes: z.string().max(500).optional().nullable(),
+  referenceNumber: z.string().max(100).optional().nullable(),
+  paymentDate: z.coerce.date().optional(),
+  reason: z.string().max(500).optional().nullable(),
+});
+
 export type CreatePaymentInput = z.infer<typeof createPaymentSchema>;
 export type UpdatePaymentStatusInput = z.infer<typeof updatePaymentStatusSchema>;
+export type UpdatePaymentInput = z.infer<typeof updatePaymentSchema>;

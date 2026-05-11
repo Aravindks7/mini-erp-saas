@@ -120,6 +120,9 @@ export const APP_PATHS = {
   },
   setup: {
     index: () => '/setup',
+    currencies: {
+      list: () => '/setup/currencies',
+    },
     productCategories: {
       list: () => '/setup/product-categories',
     },

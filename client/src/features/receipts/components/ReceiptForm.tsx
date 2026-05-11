@@ -13,10 +13,10 @@ import { Separator } from '@/components/ui/separator';
 
 import type { CreateReceiptInput } from '@shared/contracts/receipts.contract';
 import { createReceiptSchema } from '@shared/contracts/receipts.contract';
-import { useProducts } from '@/features/products/hooks/products.hooks';
-import { useWarehouses } from '@/features/warehouses/hooks/warehouses.hooks';
+import { useProductsQuery } from '@/features/products/hooks/products.hooks';
+import { useWarehousesQuery } from '@/features/warehouses/hooks/warehouses.hooks';
 import {
-  usePurchaseOrders,
+  usePurchaseOrdersQuery,
   usePurchaseOrder,
 } from '@/features/purchase-orders/hooks/purchase-orders.hooks';
 
@@ -27,9 +27,9 @@ interface ReceiptFormProps {
 }
 
 export function ReceiptForm({ form, onSubmit, formId }: ReceiptFormProps) {
-  const { data: products = [] } = useProducts();
-  const { data: warehouses = [] } = useWarehouses();
-  const { data: purchaseOrders = [] } = usePurchaseOrders();
+  const { data: products = [] } = useProductsQuery();
+  const { data: warehouses = [] } = useWarehousesQuery();
+  const { data: purchaseOrders = [] } = usePurchaseOrdersQuery();
 
   const selectedPoId = form.watch('purchaseOrderId');
   const { data: selectedPo } = usePurchaseOrder(selectedPoId ?? undefined);

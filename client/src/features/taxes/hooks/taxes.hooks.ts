@@ -16,12 +16,23 @@ export const taxDetailQuery = (id: string) =>
     queryFn: () => taxesApi.fetchTax(id),
   });
 
-export function useTaxes() {
-  return useQuery({
+export const taxListQuery = () =>
+  queryOptions({
     queryKey: taxKeys.lists(),
     queryFn: taxesApi.fetchTaxes,
     staleTime: 5000,
   });
+
+export function useTaxesQuery() {
+  return useQuery(taxListQuery());
+}
+
+export function useTaxesActions() {
+  const queryClient = useQueryClient();
+
+  return {
+    invalidateTaxes: () => queryClient.invalidateQueries({ queryKey: taxKeys.lists() }),
+  };
 }
 
 export function useTax(id: string | undefined) {
@@ -73,6 +84,7 @@ export function useBulkDeleteTaxes() {
     mutationFn: (ids: string[]) => taxesApi.bulkDeleteTaxes(ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: taxKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }

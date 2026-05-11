@@ -6,12 +6,13 @@ import { FormField } from '@/components/shared/form/FormField';
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect';
 import { FormSection } from '@/components/shared/form/FormSection';
 import { LineItemsSection } from '@/components/shared/domain/LineItemsSection';
+import { useCurrency } from '@/features/currencies/hooks/use-currency';
 
 import {
   createSalesOrderSchema,
   type CreateSalesOrderInput,
 } from '@shared/contracts/sales-orders.contract';
-import { useCustomers } from '@/features/customers/hooks/customers.hooks';
+import { useCustomersQuery } from '@/features/customers/hooks/customers.hooks';
 import { CustomerFormSheet } from '@/features/customers/components/CustomerFormSheet';
 
 interface SalesOrderFormProps {
@@ -22,7 +23,7 @@ interface SalesOrderFormProps {
 
 export function SalesOrderForm({ form, onSubmit, formId }: SalesOrderFormProps) {
   const [isCustomerSheetOpen, setIsCustomerSheetOpen] = useState(false);
-  const { data: customers } = useCustomers();
+  const { data: customers } = useCustomersQuery();
 
   const lines = useWatch({
     control: form.control,
@@ -34,6 +35,8 @@ export function SalesOrderForm({ form, onSubmit, formId }: SalesOrderFormProps) 
     value: c.id,
   }));
 
+  const { format: formatCurrency } = useCurrency();
+
   const orderTotal = useMemo(() => {
     return (lines || []).reduce((acc, line) => {
       const lineTotal =
@@ -41,11 +44,6 @@ export function SalesOrderForm({ form, onSubmit, formId }: SalesOrderFormProps) 
       return acc + lineTotal;
     }, 0);
   }, [lines]);
-
-  const currencyFormatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  });
 
   return (
     <>
@@ -84,7 +82,7 @@ export function SalesOrderForm({ form, onSubmit, formId }: SalesOrderFormProps) 
                   Order Total
                 </p>
                 <p className="text-3xl font-bold tracking-tight text-primary">
-                  {currencyFormatter.format(orderTotal)}
+                  {formatCurrency(orderTotal)}
                 </p>
               </div>
             </div>

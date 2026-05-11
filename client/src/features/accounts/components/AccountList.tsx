@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { z } from 'zod';
-import { useQueryClient } from '@tanstack/react-query';
 import { LayoutGrid, Plus } from 'lucide-react';
 
 import { EntityTable } from '@/components/shared/data-table/EntityTable';
@@ -12,9 +11,11 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Can } from '@/components/shared/Can';
+import { usePermissionsStatus } from '@/hooks/usePermission';
+import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { columns as getColumns } from './columns';
-import { useAccounts } from '../hooks/accounts.hooks';
+import { useAccountsQuery, useAccountsActions } from '../hooks/accounts.hooks';
 import type { AccountResponse } from '../api/accounts.api';
 import { AccountForm } from './AccountForm';
 
@@ -23,8 +24,9 @@ const searchSchema = z.object({
 });
 
 export function AccountList() {
-  const queryClient = useQueryClient();
-  const { data: accounts, isLoading, isError } = useAccounts();
+  const { data: accounts, isLoading: isDataLoading, isError } = useAccountsQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateAccounts } = useAccountsActions();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
   const [formState, setFormState] = React.useState<{
@@ -49,17 +51,13 @@ export function AccountList() {
       <ErrorState
         title="Failed to load accounts"
         description="We encountered an error while fetching the Chart of Accounts. Please try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['accounts'] })}
+        onRetry={invalidateAccounts}
       />
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
+  if (isDataLoading || isPermissionsLoading) {
+    return <DataTableSkeleton columnCount={5} rowCount={8} />;
   }
 
   if (!accounts || accounts.length === 0) {
@@ -99,7 +97,7 @@ export function AccountList() {
         enableGlobalSearch
         data={accounts || []}
         columns={columns}
-        isLoading={isLoading}
+        isLoading={isDataLoading}
         onAddClick={handleAdd}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

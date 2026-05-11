@@ -3,6 +3,17 @@ import { Boxes, ClipboardList, History, ArrowLeftRight } from 'lucide-react';
 import type { AppRoute } from '@/lib/types/navigation';
 import InventoryModulePage from './pages/InventoryModulePage';
 import { productRoutes } from '../products/routes';
+import { queryClient } from '@/lib/query-client';
+import {
+  inventoryLevelDetailQuery,
+  inventoryAdjustmentDetailQuery,
+  inventoryTransferDetailQuery,
+} from './hooks/inventory.hooks';
+import type {
+  InventoryLevelResponse,
+  InventoryAdjustmentResponse,
+  InventoryTransferResponse,
+} from './api/inventory.api';
 
 const InventoryLevelsPage = lazy(() => import('./pages/InventoryLevelsPage'));
 const InventoryLevelDetailsPage = lazy(() => import('./pages/InventoryLevelDetailsPage'));
@@ -50,7 +61,13 @@ export const inventoryRoutes: AppRoute[] = [
           {
             path: ':id',
             element: <InventoryLevelDetailsPage />,
-            handle: { crumb: 'Level Details' },
+            loader: async ({ params }) => {
+              if (!params.id) throw new Error('No id provided');
+              return queryClient.ensureQueryData(inventoryLevelDetailQuery(params.id));
+            },
+            handle: {
+              crumb: (data: InventoryLevelResponse) => data?.product?.name || 'Level Details',
+            },
           },
         ],
       },
@@ -89,8 +106,12 @@ export const inventoryRoutes: AppRoute[] = [
           {
             path: ':id',
             element: <AdjustmentDetailsPage />,
+            loader: async ({ params }) => {
+              if (!params.id) throw new Error('No id provided');
+              return queryClient.ensureQueryData(inventoryAdjustmentDetailQuery(params.id));
+            },
             handle: {
-              crumb: 'Adjustment Details',
+              crumb: (data: InventoryAdjustmentResponse) => data?.reference || 'Adjustment Details',
             },
           },
         ],
@@ -120,8 +141,12 @@ export const inventoryRoutes: AppRoute[] = [
           {
             path: ':id',
             element: <TransferDetailsPage />,
+            loader: async ({ params }) => {
+              if (!params.id) throw new Error('No id provided');
+              return queryClient.ensureQueryData(inventoryTransferDetailQuery(params.id));
+            },
             handle: {
-              crumb: 'Transfer Details',
+              crumb: (data: InventoryTransferResponse) => data?.reference || 'Transfer Details',
             },
           },
         ],

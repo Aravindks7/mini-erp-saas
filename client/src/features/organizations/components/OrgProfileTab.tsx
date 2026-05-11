@@ -4,7 +4,11 @@ import { PageContainer } from '@/components/shared/PageContainer';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { UpdateOrganizationForm } from './UpdateOrganizationForm';
 import { useTenant } from '@/contexts/TenantContext';
-import { useMembers, useInvitations, useDeleteOrganization } from '../hooks/organizations.hooks';
+import {
+  useMembersQuery,
+  useInvitationsQuery,
+  useDeleteOrganization,
+} from '../hooks/organizations.hooks';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
@@ -18,8 +22,10 @@ export function OrgProfileTab() {
   const { activeOrganization, activeOrganizationId, syncActiveOrganizationId } = useTenant();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  const { data: members, isLoading: isLoadingMembers } = useMembers(activeOrganizationId || '');
-  const { data: invitations, isLoading: isLoadingInvites } = useInvitations(
+  const { data: members, isLoading: isLoadingMembers } = useMembersQuery(
+    activeOrganizationId || '',
+  );
+  const { data: invitations, isLoading: isLoadingInvites } = useInvitationsQuery(
     activeOrganizationId || '',
   );
 

@@ -89,6 +89,12 @@ router.post(
   inventoryController.updateAdjustmentStatus,
 );
 
+router.patch(
+  '/adjustments/:id',
+  requirePermission(PERMISSIONS.INVENTORY.ADJUST),
+  inventoryController.updateAdjustment,
+);
+
 /**
  * GET /inventory/transfers
  * Audit trail of inter-warehouse transfers.
@@ -127,6 +133,12 @@ router.post(
   '/transfers/:id/status',
   requirePermission(PERMISSIONS.INVENTORY.ADJUST),
   inventoryController.updateTransferStatus,
+);
+
+router.patch(
+  '/transfers/:id',
+  requirePermission(PERMISSIONS.INVENTORY.ADJUST),
+  inventoryController.updateTransfer,
 );
 
 export default router;

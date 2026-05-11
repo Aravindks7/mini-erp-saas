@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { Package2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -15,9 +14,15 @@ import { PERMISSIONS } from '@shared/index';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
+import { usePermissionsStatus } from '@/hooks/usePermission';
+import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { columns, receiptStatusOptions } from './columns';
-import { useReceipts, useBulkDeleteReceipts } from '../hooks/receipts.hooks';
+import {
+  useReceiptsQuery,
+  useBulkDeleteReceipts,
+  useReceiptsActions,
+} from '../hooks/receipts.hooks';
 import { PageHeader } from '@/components/shared/PageHeader';
 import type { ReceiptResponse } from '../api/receipts.api';
 import { APP_PATHS } from '@/lib/paths';
@@ -31,8 +36,9 @@ const searchSchema = z.object({
 export function ReceiptList() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
-  const { data: receipts, isLoading, isError } = useReceipts();
+  const { data: receipts, isLoading: isDataLoading, isError } = useReceiptsQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateReceipts } = useReceiptsActions();
   const bulkDeleteMutation = useBulkDeleteReceipts();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
@@ -52,17 +58,13 @@ export function ReceiptList() {
       <ErrorState
         title="Failed to load receipts"
         description="We encountered an error while fetching the receipt list. Please check your network or try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['receipts'] })}
+        onRetry={invalidateReceipts}
       />
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
+  if (isDataLoading || isPermissionsLoading) {
+    return <DataTableSkeleton columnCount={5} rowCount={8} />;
   }
 
   if (!receipts || receipts.length === 0) {
@@ -111,7 +113,7 @@ export function ReceiptList() {
         enableGlobalSearch
         data={receipts || []}
         columns={columns}
-        isLoading={isLoading}
+        isLoading={isDataLoading}
         onAddClick={handleAddClick}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

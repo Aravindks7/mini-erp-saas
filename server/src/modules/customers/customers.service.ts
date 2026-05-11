@@ -12,6 +12,7 @@ import {
 } from '#shared/contracts/customers.contract.js';
 
 import { ActivityLogger } from '../../lib/activity-logger.js';
+import { AppError } from '../../utils/AppError.js';
 import { BaseService } from '../../lib/base.service.js';
 import { parseCsv } from '../../utils/csv.js';
 
@@ -198,6 +199,10 @@ export class CustomersService extends BaseService<typeof customers> {
     data: UpdateCustomerInput,
   ) {
     return await db.transaction(async (tx) => {
+      // Forensic Audit: Capture state BEFORE update
+      const existingCustomer = await this.getCustomerById(organizationId, id, tx);
+      if (!existingCustomer) return null;
+
       const { addresses: addressData, contacts: contactData, ...customerData } = data;
 
       // 1. Update Customer Base
@@ -209,7 +214,25 @@ export class CustomersService extends BaseService<typeof customers> {
 
       if (!updatedCustomer) return null;
 
+      // Forensic Audit: Record Update
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          entityType: 'customer',
+          entityId: id,
+          entityDisplayId: existingCustomer.companyName,
+          entityLabel: 'Customer',
+          action: 'UPDATED',
+          reason: 'Customer record modified',
+          userId,
+        },
+        existingCustomer,
+        customerData,
+      );
+
       // 2. Update Addresses (Upsert & Prune)
+
       if (addressData !== undefined) {
         const existingJunctions = await tx.query.customerAddresses.findMany({
           where: eq(customerAddresses.customerId, id),
@@ -379,30 +402,59 @@ export class CustomersService extends BaseService<typeof customers> {
   }
 
   async deleteCustomer(organizationId: string, userId: string, id: string) {
-    const [deletedCustomer] = await db
-      .update(customers)
-      .set(this.withAudit({ deletedAt: new Date() }, userId, true))
-      .where(this.getTenantWhere(organizationId, id))
-      .returning();
+    return await db.transaction(async (tx) => {
+      const [deletedCustomer] = await tx
+        .update(customers)
+        .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+        .where(this.getTenantWhere(organizationId, id))
+        .returning();
 
-    // Since we don't support sharing, we could theoretically delete addresses/contacts too,
-    // but the schema uses `onDelete: cascade` for junction tables, and the audit requirements
-    // might prefer soft delete for everything.
-    // For now, only the customer record is soft-deleted.
+      if (!deletedCustomer) throw new AppError('Customer not found', 404);
 
-    return deletedCustomer;
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        userId,
+        entityType: 'customer',
+        entityId: id,
+        entityDisplayId: deletedCustomer.companyName,
+        entityLabel: 'Customer',
+        action: 'DELETED',
+        reason: 'Customer record soft-deleted',
+      });
+
+      return deletedCustomer;
+    });
   }
 
   async bulkDeleteCustomers(organizationId: string, userId: string, ids: string[]) {
     if (ids.length === 0) return [];
 
-    const deletedCustomers = await db
-      .update(customers)
-      .set(this.withAudit({ deletedAt: new Date() }, userId, true))
-      .where(and(eq(customers.organizationId, organizationId), inArray(customers.id, ids)))
-      .returning();
+    return await db.transaction(async (tx) => {
+      const customersToDelete = await tx.query.customers.findMany({
+        where: and(eq(customers.organizationId, organizationId), inArray(customers.id, ids)),
+      });
 
-    return deletedCustomers;
+      const deletedCustomers = await tx
+        .update(customers)
+        .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+        .where(and(eq(customers.organizationId, organizationId), inArray(customers.id, ids)))
+        .returning();
+
+      for (const c of customersToDelete) {
+        await ActivityLogger.record(tx as Transaction, {
+          organizationId,
+          userId,
+          entityType: 'customer',
+          entityId: c.id,
+          entityDisplayId: c.companyName,
+          entityLabel: 'Customer',
+          action: 'DELETED',
+          reason: 'Customer record soft-deleted via bulk action',
+        });
+      }
+
+      return deletedCustomers;
+    });
   }
 
   async exportCustomers(organizationId: string) {

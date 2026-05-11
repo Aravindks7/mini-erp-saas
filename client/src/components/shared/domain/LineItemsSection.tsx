@@ -9,8 +9,8 @@ import { FormField } from '@/components/shared/form/FormField';
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect';
 import { FormSection } from '@/components/shared/form/FormSection';
 
-import { useProducts } from '@/features/products/hooks/products.hooks';
-import { useTaxes } from '@/features/taxes/hooks/taxes.hooks';
+import { useProductsQuery } from '@/features/products/hooks/products.hooks';
+import { useTaxesQuery } from '@/features/taxes/hooks/taxes.hooks';
 
 interface LineItemsSectionProps<TFieldValues extends FieldValues> {
   control: Control<TFieldValues>;
@@ -32,8 +32,8 @@ export function LineItemsSection<TFieldValues extends FieldValues>({
   const { control, setValue } = useFormContext<TFieldValues>();
   const { fields, append, remove } = useFieldArray({ control, name });
 
-  const { data: products } = useProducts();
-  const { data: taxes } = useTaxes();
+  const { data: products } = useProductsQuery();
+  const { data: taxes } = useTaxesQuery();
 
   const lines = useWatch({
     control,

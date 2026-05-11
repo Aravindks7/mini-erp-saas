@@ -8,6 +8,8 @@ export const activityLogResponseSchema = z.object({
   id: z.string().uuid(),
   entityType: z.string(),
   entityId: z.string().uuid(),
+  entityDisplayId: z.string(),
+  entityLabel: z.string(),
   action: z.string(),
   reason: z.string().nullable(),
   snapshot: z.record(z.string(), z.unknown()).nullable(),

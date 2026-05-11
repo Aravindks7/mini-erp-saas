@@ -46,6 +46,9 @@ vi.mock('../../db/index.js', () => {
       purchaseOrderLines: {
         findMany: vi.fn().mockResolvedValue([]),
       },
+      purchaseOrders: {
+        findFirst: vi.fn().mockResolvedValue({ id: 'po-1', documentNumber: 'PO-001' }),
+      },
     },
     update: vi.fn(() => ({
       set: vi.fn().mockReturnValue({

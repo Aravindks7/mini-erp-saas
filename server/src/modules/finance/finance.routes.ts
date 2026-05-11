@@ -58,6 +58,12 @@ router.post(
   financeController.voidJournalEntry,
 );
 
+router.patch(
+  '/journal-entries/:id',
+  requirePermission(PERMISSIONS.FINANCE.UPDATE),
+  financeController.updateJournalEntry,
+);
+
 // Reports
 router.get(
   '/reports/profit-and-loss',

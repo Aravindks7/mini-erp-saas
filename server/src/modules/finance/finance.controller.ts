@@ -5,6 +5,7 @@ import {
   createAccountSchema,
   updateAccountSchema,
   createJournalEntrySchema,
+  updateJournalEntrySchema,
 } from '#shared/contracts/finance.contract.js';
 import { logger } from '../../utils/logger.js';
 import { generateCsv } from '../../utils/csv.js';
@@ -159,6 +160,40 @@ export async function voidJournalEntry(req: Request, res: Response) {
     res.json(voided);
   } catch (error) {
     logger.error({ error, organizationId, userId, id }, 'Failed to void journal entry');
+    throw error;
+  }
+}
+
+export async function updateJournalEntry(req: Request, res: Response) {
+  const { id } = req.params;
+  const parseResult = updateJournalEntrySchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    const updated = await journalEntriesService.updateJournalEntry(
+      organizationId,
+      userId,
+      id as string,
+      parseResult.data,
+    );
+    if (!updated) {
+      return res.status(404).json({ error: 'Journal entry not found' });
+    }
+    res.json(updated);
+  } catch (error: unknown) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to update journal entry');
+    const message = error instanceof Error ? error.message : 'Failed to update journal entry';
+    if (
+      message === 'Journal entry is not balanced.' ||
+      message === 'Only draft journal entries can be modified.'
+    ) {
+      return res.status(400).json({ error: message });
+    }
     throw error;
   }
 }

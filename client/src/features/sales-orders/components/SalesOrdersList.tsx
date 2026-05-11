@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { z } from 'zod';
-import { useQueryClient } from '@tanstack/react-query';
 import { LayoutList, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -16,10 +15,16 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Can } from '@/components/shared/Can';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { usePermissionsStatus } from '@/hooks/usePermission';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
+import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
-import { getColumns, salesOrderStatusOptions } from './columns';
-import { useSalesOrders, useBulkDeleteSalesOrders } from '../hooks/sales-orders.hooks';
+import { useSalesOrderColumns, salesOrderStatusOptions } from './columns';
+import {
+  useSalesOrdersQuery,
+  useBulkDeleteSalesOrders,
+  useSalesOrdersActions,
+} from '../hooks/sales-orders.hooks';
 import type { SalesOrderResponse } from '../api/sales-orders.api';
 import { FulfillSalesOrderSheet } from './FulfillSalesOrderSheet';
 import { APP_PATHS } from '@/lib/paths';
@@ -32,8 +37,9 @@ const searchSchema = z.object({
 export function SalesOrdersList() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
-  const { data: sos, isLoading, isError } = useSalesOrders();
+  const { data: sos, isLoading: isDataLoading, isError } = useSalesOrdersQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateSalesOrders } = useSalesOrdersActions();
   const bulkDeleteMutation = useBulkDeleteSalesOrders();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
@@ -77,24 +83,20 @@ export function SalesOrdersList() {
     }
   };
 
-  const columns = React.useMemo(() => getColumns({ onFulfill: handleFulfill }), [handleFulfill]);
+  const columns = useSalesOrderColumns({ onFulfill: handleFulfill });
 
   if (isError) {
     return (
       <ErrorState
         title="Failed to load sales orders"
         description="We encountered an error while fetching the sales orders. Please check your network or try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['sales-orders'] })}
+        onRetry={invalidateSalesOrders}
       />
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
+  if (isDataLoading || isPermissionsLoading) {
+    return <DataTableSkeleton columnCount={5} rowCount={8} />;
   }
 
   if (!sos || sos.length === 0) {
@@ -126,7 +128,7 @@ export function SalesOrdersList() {
         enableGlobalSearch
         data={sos || []}
         columns={columns}
-        isLoading={isLoading}
+        isLoading={isDataLoading}
         onAddClick={handleAdd}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

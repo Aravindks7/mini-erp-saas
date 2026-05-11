@@ -44,10 +44,13 @@ const billStatusMap: StatusMap<string> = {
   void: { label: 'Void', tone: 'danger' },
 };
 
+import { useCurrency } from '@/features/currencies/hooks/use-currency';
+
 export default function BillDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
+  const { format: formatCurrency } = useCurrency();
   const { data: bill, isLoading, isError } = useBill(id);
   const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateBillStatus();
   const { data: activityData, isLoading: isLoadingActivity } = useEntityActivity('bill', id);
@@ -81,11 +84,6 @@ export default function BillDetailsPage() {
       </PageContainer>
     );
   }
-
-  const currencyFormatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  });
 
   const handleStatusChange = (status: 'open' | 'paid' | 'void') => {
     updateStatus(
@@ -218,18 +216,16 @@ export default function BillDetailsPage() {
               lines={[
                 {
                   label: 'Subtotal',
-                  value: currencyFormatter.format(
-                    Number(bill.totalAmount) - Number(bill.taxAmount),
-                  ),
+                  value: formatCurrency(Number(bill.totalAmount) - Number(bill.taxAmount)),
                   isSubtotal: true,
                 },
                 {
                   label: 'Tax',
-                  value: currencyFormatter.format(Number(bill.taxAmount)),
+                  value: formatCurrency(Number(bill.taxAmount)),
                 },
                 {
                   label: 'Total',
-                  value: currencyFormatter.format(Number(bill.totalAmount)),
+                  value: formatCurrency(Number(bill.totalAmount)),
                   isTotal: true,
                 },
               ]}
@@ -270,14 +266,14 @@ export default function BillDetailsPage() {
                       </TableCell>
                       <TableCell className="text-right">{line.quantity}</TableCell>
                       <TableCell className="text-right">
-                        {currencyFormatter.format(Number(line.unitPrice))}
+                        {formatCurrency(Number(line.unitPrice))}
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
-                        {currencyFormatter.format(Number(line.taxAmount))}
+                        {formatCurrency(Number(line.taxAmount))}
                         <span className="text-[10px] ml-1">({line.taxRateAtOrder}%)</span>
                       </TableCell>
                       <TableCell className="text-right font-semibold pr-6 text-primary">
-                        {currencyFormatter.format(Number(line.lineTotal))}
+                        {formatCurrency(Number(line.lineTotal))}
                       </TableCell>
                     </TableRow>
                   ))}

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
 import type { CreateJournalEntryInput } from '@shared/contracts/finance.contract';
 import { journalEntriesApi } from '../api/journal-entries.api';
+import { activityKeys } from '../../activity/hooks/activity.hooks';
 
 export const journalEntryKeys = {
   all: ['journal-entries'] as const,
@@ -15,12 +16,24 @@ export const journalEntryDetailQuery = (id: string) =>
     queryFn: () => journalEntriesApi.fetchJournalEntry(id),
   });
 
-export function useJournalEntries() {
-  return useQuery({
+export const journalEntryListQuery = () =>
+  queryOptions({
     queryKey: journalEntryKeys.lists(),
     queryFn: journalEntriesApi.fetchJournalEntries,
     staleTime: 1000 * 60, // 1 minute
   });
+
+export function useJournalEntriesQuery() {
+  return useQuery(journalEntryListQuery());
+}
+
+export function useJournalEntriesActions() {
+  const queryClient = useQueryClient();
+
+  return {
+    invalidateJournalEntries: () =>
+      queryClient.invalidateQueries({ queryKey: journalEntryKeys.lists() }),
+  };
 }
 
 export function useJournalEntry(id: string | undefined) {
@@ -37,6 +50,7 @@ export function useCreateJournalEntry() {
     mutationFn: (data: CreateJournalEntryInput) => journalEntriesApi.createJournalEntry(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: journalEntryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }
@@ -49,6 +63,7 @@ export function useVoidJournalEntry() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: journalEntryKeys.lists() });
       queryClient.invalidateQueries({ queryKey: journalEntryKeys.detail(data.id) });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }

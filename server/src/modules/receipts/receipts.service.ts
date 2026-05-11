@@ -4,12 +4,14 @@ import {
   receiptLines,
   inventoryLevels,
   inventoryLedgers,
+  purchaseOrders,
 } from '../../db/schema/index.js';
 import { sequencesService } from '../sequences/sequences.service.js';
 import { PurchaseOrderReconciler } from '../purchase-orders/purchase-orders.reconciler.js';
 import { sql, desc, and, eq } from 'drizzle-orm';
-import { CreateReceiptInput } from '#shared/contracts/receipts.contract.js';
+import { CreateReceiptInput, UpdateReceiptInput } from '#shared/contracts/receipts.contract.js';
 import { BaseService } from '../../lib/base.service.js';
+import { ActivityLogger } from '../../lib/activity-logger.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -52,7 +54,7 @@ export class ReceiptsService extends BaseService<typeof receipts> {
               receiptNumber,
               receivedDate: data.receivedDate ? new Date(data.receivedDate) : new Date(),
               reference: data.reference,
-              status: 'received',
+              status: data.status || 'received',
             },
             userId,
           ),
@@ -137,7 +139,42 @@ export class ReceiptsService extends BaseService<typeof receipts> {
         );
       }
 
-      return receipt;
+      // 5. Activity Logging
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        entityType: 'receipt',
+        entityId: receipt.id,
+        entityDisplayId: receiptNumber,
+        entityLabel: 'Receipt',
+        action: 'GOODS_RECEIVED',
+        reason: data.reference || 'New goods receipt recorded',
+        userId,
+      });
+
+      if (data.purchaseOrderId) {
+        const po = await tx.query.purchaseOrders.findFirst({
+          where: and(
+            eq(purchaseOrders.id, data.purchaseOrderId),
+            eq(purchaseOrders.organizationId, organizationId),
+          ),
+        });
+
+        if (po) {
+          await ActivityLogger.record(tx as Transaction, {
+            organizationId,
+            entityType: 'purchase_order',
+            entityId: po.id,
+            entityDisplayId: po.documentNumber,
+            entityLabel: 'Purchase Order',
+            action: 'PO_RECEIVED',
+            reason: `Items received via Receipt ${receiptNumber}`,
+            snapshot: { receiptId: receipt.id, receiptNumber: receiptNumber },
+            userId,
+          });
+        }
+      }
+
+      return await this.getReceiptById(organizationId, receipt.id, tx);
     };
 
     if (txIn) {
@@ -146,6 +183,81 @@ export class ReceiptsService extends BaseService<typeof receipts> {
 
     return await db.transaction(async (tx) => {
       return await operation(tx);
+    });
+  }
+
+  async updateReceipt(
+    organizationId: string,
+    userId: string,
+    id: string,
+    data: UpdateReceiptInput,
+  ) {
+    return await db.transaction(async (tx) => {
+      const existing = await this.getReceiptById(organizationId, id, tx);
+      if (!existing) throw new Error('Receipt not found');
+
+      if (existing.status !== 'draft') {
+        throw new Error('Only draft receipts can be modified.');
+      }
+
+      const { lines, ...headerData } = data;
+
+      // Update Header
+      if (Object.keys(headerData).length > 0) {
+        const headerToUpdate = {
+          ...headerData,
+          receivedDate: headerData.receivedDate ? new Date(headerData.receivedDate) : undefined,
+        };
+
+        await tx
+          .update(receipts)
+          .set(this.withAudit(headerToUpdate, userId, true))
+          .where(and(eq(receipts.id, id), eq(receipts.organizationId, organizationId)));
+      }
+
+      // Replace Lines if provided
+      if (lines) {
+        await tx
+          .delete(receiptLines)
+          .where(
+            and(eq(receiptLines.receiptId, id), eq(receiptLines.organizationId, organizationId)),
+          );
+
+        for (const line of lines) {
+          await tx.insert(receiptLines).values(
+            this.withAudit(
+              {
+                organizationId,
+                receiptId: id,
+                productId: line.productId,
+                warehouseId: line.warehouseId,
+                binId: line.binId,
+                purchaseOrderLineId: line.purchaseOrderLineId,
+                quantityReceived: line.quantityReceived,
+              },
+              userId,
+            ),
+          );
+        }
+      }
+
+      // Record Update
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          userId,
+          entityType: 'receipt',
+          entityId: id,
+          entityDisplayId: existing.receiptNumber,
+          entityLabel: 'Receipt',
+          action: 'UPDATED',
+        },
+        existing,
+        data as Record<string, unknown>,
+      );
+
+      return await this.getReceiptById(organizationId, id, tx);
     });
   }
 
@@ -163,12 +275,26 @@ export class ReceiptsService extends BaseService<typeof receipts> {
 
       if (receipt.status === 'draft') {
         // 1. Draft Path: Soft-delete only
-        await tx
+        const [updated] = await tx
           .update(receipts)
           .set(this.withAudit({ deletedAt: new Date() }, userId, true))
-          .where(and(eq(receipts.id, id), eq(receipts.organizationId, organizationId)));
+          .where(and(eq(receipts.id, id), eq(receipts.organizationId, organizationId)))
+          .returning();
 
-        return { action: 'deleted' };
+        if (updated) {
+          await ActivityLogger.record(tx as Transaction, {
+            organizationId,
+            entityType: 'receipt',
+            entityId: id,
+            entityDisplayId: receipt.receiptNumber,
+            entityLabel: 'Receipt',
+            action: 'DELETED',
+            reason: 'Draft receipt manually deleted',
+            userId,
+          });
+        }
+
+        return updated;
       } else {
         // 2. Committed Path: Inventory Reversal + Status Void
 
@@ -223,7 +349,18 @@ export class ReceiptsService extends BaseService<typeof receipts> {
           );
         }
 
-        return { action: 'voided' };
+        await ActivityLogger.record(tx as Transaction, {
+          organizationId,
+          entityType: 'receipt',
+          entityId: id,
+          entityDisplayId: receipt.receiptNumber,
+          entityLabel: 'Receipt',
+          action: 'VOIDED',
+          reason: 'Receipt manually voided (stock reversed)',
+          userId,
+        });
+
+        return await this.getReceiptById(organizationId, id, tx);
       }
     });
   }

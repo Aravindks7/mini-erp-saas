@@ -26,6 +26,8 @@ export const updateInvoiceSchema = createInvoiceSchema.partial();
 
 export const updateInvoiceStatusSchema = z.object({
   status: invoiceStatusEnumSchema,
+  action: z.string().min(1, 'Action is required'),
+  reason: z.string().min(1, 'Reason is required'),
 });
 
 export type InvoiceStatus = z.infer<typeof invoiceStatusEnumSchema>;

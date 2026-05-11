@@ -10,7 +10,7 @@ import {
 import { sequencesService } from '../sequences/sequences.service.js';
 import { salesOrdersService } from '../sales-orders/sales-orders.service.js';
 import { sql, desc, and, eq } from 'drizzle-orm';
-import { CreateShipmentInput } from '#shared/contracts/shipments.contract.js';
+import { CreateShipmentInput, UpdateShipmentInput } from '#shared/contracts/shipments.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 import { ActivityLogger } from '../../lib/activity-logger.js';
 
@@ -55,7 +55,7 @@ export class ShipmentsService extends BaseService<typeof shipments> {
               shipmentNumber,
               shipmentDate: data.shipmentDate ? new Date(data.shipmentDate) : new Date(),
               reference: data.reference,
-              status: 'shipped',
+              status: data.status || 'shipped',
             },
             userId,
           ),
@@ -165,6 +165,18 @@ export class ShipmentsService extends BaseService<typeof shipments> {
         );
       }
 
+      // 5. Activity Logging (Shipment Entity)
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        entityType: 'shipment',
+        entityId: shipment.id,
+        entityDisplayId: shipmentNumber,
+        entityLabel: 'Shipment',
+        action: 'SHIPMENT_CREATED',
+        reason: data.reason || `Shipment created for order`,
+        userId,
+      });
+
       // 4. Reconcile SO Status
       if (data.salesOrderId) {
         await this.reconcileSOStatus(
@@ -196,7 +208,7 @@ export class ShipmentsService extends BaseService<typeof shipments> {
         }
       }
 
-      return shipment;
+      return await this.getShipmentById(organizationId, shipment.id, tx);
     };
 
     if (txIn) {
@@ -205,6 +217,81 @@ export class ShipmentsService extends BaseService<typeof shipments> {
 
     return await db.transaction(async (tx) => {
       return await operation(tx);
+    });
+  }
+
+  async updateShipment(
+    organizationId: string,
+    userId: string,
+    id: string,
+    data: UpdateShipmentInput,
+  ) {
+    return await db.transaction(async (tx) => {
+      const existing = await this.getShipmentById(organizationId, id, tx);
+      if (!existing) throw new Error('Shipment not found');
+
+      if (existing.status !== 'draft') {
+        throw new Error('Only draft shipments can be modified.');
+      }
+
+      const { lines, ...headerData } = data;
+
+      // Update Header
+      if (Object.keys(headerData).length > 0) {
+        const headerToUpdate = {
+          ...headerData,
+          shipmentDate: headerData.shipmentDate ? new Date(headerData.shipmentDate) : undefined,
+        };
+
+        await tx
+          .update(shipments)
+          .set(this.withAudit(headerToUpdate, userId, true))
+          .where(and(eq(shipments.id, id), eq(shipments.organizationId, organizationId)));
+      }
+
+      // Replace Lines if provided
+      if (lines) {
+        await tx
+          .delete(shipmentLines)
+          .where(
+            and(eq(shipmentLines.shipmentId, id), eq(shipmentLines.organizationId, organizationId)),
+          );
+
+        for (const line of lines) {
+          await tx.insert(shipmentLines).values(
+            this.withAudit(
+              {
+                organizationId,
+                shipmentId: id,
+                productId: line.productId,
+                warehouseId: line.warehouseId,
+                binId: line.binId,
+                salesOrderLineId: line.salesOrderLineId,
+                quantityShipped: line.quantityShipped.toString(),
+              },
+              userId,
+            ),
+          );
+        }
+      }
+
+      // Record Update
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          userId,
+          entityType: 'shipment',
+          entityId: id,
+          entityDisplayId: existing.shipmentNumber,
+          entityLabel: 'Shipment',
+          action: 'UPDATED',
+        },
+        existing,
+        data as Record<string, unknown>,
+      );
+
+      return await this.getShipmentById(organizationId, id, tx);
     });
   }
 
@@ -222,12 +309,26 @@ export class ShipmentsService extends BaseService<typeof shipments> {
 
       if (shipment.status === 'draft') {
         // 1. Draft Path: Soft-delete only
-        await tx
+        const [updated] = await tx
           .update(shipments)
           .set(this.withAudit({ deletedAt: new Date() }, userId, true))
-          .where(and(eq(shipments.id, id), eq(shipments.organizationId, organizationId)));
+          .where(and(eq(shipments.id, id), eq(shipments.organizationId, organizationId)))
+          .returning();
 
-        return { action: 'deleted' };
+        if (updated) {
+          await ActivityLogger.record(tx as Transaction, {
+            organizationId,
+            entityType: 'shipment',
+            entityId: id,
+            entityDisplayId: shipment.shipmentNumber,
+            entityLabel: 'Shipment',
+            action: 'DELETED',
+            reason: 'Draft shipment manually deleted',
+            userId,
+          });
+        }
+
+        return updated;
       } else {
         // 2. Committed Path: Inventory Reversal + Status Void (No soft delete)
 
@@ -279,7 +380,18 @@ export class ShipmentsService extends BaseService<typeof shipments> {
           await this.reconcileSOStatus(organizationId, userId, shipment.salesOrderId, tx);
         }
 
-        return { action: 'voided' };
+        await ActivityLogger.record(tx as Transaction, {
+          organizationId,
+          entityType: 'shipment',
+          entityId: id,
+          entityDisplayId: shipment.shipmentNumber,
+          entityLabel: 'Shipment',
+          action: 'VOIDED',
+          reason: 'Shipment manually voided (stock reversed)',
+          userId,
+        });
+
+        return await this.getShipmentById(organizationId, id, tx);
       }
     });
   }

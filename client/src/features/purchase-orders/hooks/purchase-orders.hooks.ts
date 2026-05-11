@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
-import type { CreatePurchaseOrderInput } from '@shared/contracts/purchase-orders.contract';
-import { purchaseOrdersApi } from '../api/purchase-orders.api';
+import type {
+  CreatePurchaseOrderInput,
+  UpdatePurchaseOrderInput,
+} from '@shared/contracts/purchase-orders.contract';
+import { purchaseOrdersApi, type PurchaseOrderResponse } from '../api/purchase-orders.api';
+import { activityKeys } from '../../activity/hooks/activity.hooks';
 
 export const purchaseOrderKeys = {
   all: ['purchase-orders'] as const,
@@ -15,12 +19,24 @@ export const purchaseOrderDetailQuery = (id: string) =>
     queryFn: () => purchaseOrdersApi.fetchPurchaseOrder(id),
   });
 
-export function usePurchaseOrders() {
-  return useQuery({
+export const purchaseOrderListQuery = () =>
+  queryOptions({
     queryKey: purchaseOrderKeys.lists(),
     queryFn: purchaseOrdersApi.fetchPurchaseOrders,
     staleTime: 5000,
   });
+
+export function usePurchaseOrdersQuery() {
+  return useQuery(purchaseOrderListQuery());
+}
+
+export function usePurchaseOrdersActions() {
+  const queryClient = useQueryClient();
+
+  return {
+    invalidatePurchaseOrders: () =>
+      queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.lists() }),
+  };
 }
 
 export function usePurchaseOrder(id: string | undefined) {
@@ -35,8 +51,10 @@ export function useCreatePurchaseOrder() {
 
   return useMutation({
     mutationFn: (data: CreatePurchaseOrderInput) => purchaseOrdersApi.createPurchaseOrder(data),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(purchaseOrderKeys.detail(data.id), data);
       queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }
@@ -45,11 +63,13 @@ export function useUpdatePurchaseOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: CreatePurchaseOrderInput }) =>
+    mutationFn: ({ id, data }: { id: string; data: UpdatePurchaseOrderInput }) =>
       purchaseOrdersApi.updatePurchaseOrder(id, data),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.lists() });
+      queryClient.setQueryData(purchaseOrderKeys.detail(data.id), data);
       queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.detail(data.id) });
+      queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }
@@ -61,6 +81,7 @@ export function useDeletePurchaseOrder() {
     mutationFn: (id: string) => purchaseOrdersApi.deletePurchaseOrder(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }
@@ -72,6 +93,30 @@ export function useBulkDeletePurchaseOrders() {
     mutationFn: (ids: string[]) => purchaseOrdersApi.bulkDeletePurchaseOrders(ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
+    },
+  });
+}
+export function useUpdatePurchaseOrderStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      status,
+      action,
+      reason,
+    }: {
+      id: string;
+      status: PurchaseOrderResponse['status'];
+      action: string;
+      reason: string;
+    }) => purchaseOrdersApi.updatePurchaseOrderStatus(id, status, action, reason),
+    onSuccess: (data) => {
+      queryClient.setQueryData(purchaseOrderKeys.detail(data.id), data);
+      queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.detail(data.id) });
+      queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }

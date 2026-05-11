@@ -19,12 +19,23 @@ export const warehouseDetailQuery = (id: string) =>
     queryFn: () => warehousesApi.fetchWarehouse(id),
   });
 
-export function useWarehouses() {
-  return useQuery({
+export const warehouseListQuery = () =>
+  queryOptions({
     queryKey: warehouseKeys.lists(),
     queryFn: warehousesApi.fetchWarehouses,
     staleTime: 5000,
   });
+
+export function useWarehousesQuery() {
+  return useQuery(warehouseListQuery());
+}
+
+export function useWarehousesActions() {
+  const queryClient = useQueryClient();
+
+  return {
+    invalidateWarehouses: () => queryClient.invalidateQueries({ queryKey: warehouseKeys.lists() }),
+  };
 }
 
 export function useWarehouse(id: string | undefined) {
@@ -76,6 +87,7 @@ export function useBulkDeleteWarehouses() {
     mutationFn: (ids: string[]) => warehousesApi.bulkDeleteWarehouses(ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: warehouseKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }

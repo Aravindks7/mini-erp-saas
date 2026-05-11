@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import DashboardGrid from '@/components/shared/DashboardGrid';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { PERMISSIONS } from '@shared/index';
-import { useDashboard, useRefreshDashboard } from '../api/queries';
+import { useDashboard, useRefreshDashboard } from '../hooks/dashboard.hooks';
 import { DashboardMetricsCards } from '../components/DashboardMetricsCards';
 import { LowStockWidget } from '../components/LowStockWidget';
 import { RecentActivityWidget } from '../components/RecentActivityWidget';

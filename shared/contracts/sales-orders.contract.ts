@@ -24,6 +24,12 @@ export const createSalesOrderSchema = z.object({
 
 export type CreateSalesOrderInput = z.infer<typeof createSalesOrderSchema>;
 
+export const updateSalesOrderSchema = createSalesOrderSchema.extend({
+  reason: z.string().optional(),
+});
+
+export type UpdateSalesOrderInput = z.infer<typeof updateSalesOrderSchema>;
+
 export const fulfillSalesOrderLineSchema = z.object({
   salesOrderLineId: z.string().uuid(),
   warehouseId: z.string().uuid(),

@@ -13,6 +13,8 @@ import {
   UpdateSupplierInput,
 } from '#shared/contracts/suppliers.contract.js';
 
+import { ActivityLogger } from '../../lib/activity-logger.js';
+import { AppError } from '../../utils/AppError.js';
 import { BaseService } from '../../lib/base.service.js';
 import { parseCsv } from '../../utils/csv.js';
 import { logger } from '../../utils/logger.js';
@@ -90,6 +92,17 @@ export class SuppliersService extends BaseService<typeof suppliers> {
       if (!newSupplier) {
         throw new Error('Failed to create supplier record');
       }
+
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        userId,
+        entityType: 'supplier',
+        entityId: newSupplier.id,
+        entityDisplayId: newSupplier.name,
+        entityLabel: 'Supplier',
+        action: 'CREATED',
+        reason: `${newSupplier.name} created.`,
+      });
 
       // 2. Handle Addresses
       if (addressData && addressData.length > 0) {
@@ -189,6 +202,10 @@ export class SuppliersService extends BaseService<typeof suppliers> {
     data: UpdateSupplierInput,
   ) {
     return await db.transaction(async (tx) => {
+      // Forensic Audit: Capture state BEFORE update
+      const existingSupplier = await this.getSupplierById(organizationId, id, tx);
+      if (!existingSupplier) return null;
+
       const { addresses: addressData, contacts: contactData, ...supplierData } = data;
 
       // 1. Update Supplier Base
@@ -200,7 +217,25 @@ export class SuppliersService extends BaseService<typeof suppliers> {
 
       if (!updatedSupplier) return null;
 
+      // Forensic Audit: Record Update
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          entityType: 'supplier',
+          entityId: id,
+          entityDisplayId: existingSupplier.name,
+          entityLabel: 'Supplier',
+          action: 'UPDATED',
+          reason: 'Supplier record modified',
+          userId,
+        },
+        existingSupplier,
+        supplierData,
+      );
+
       // 2. Update Addresses (Upsert & Prune)
+
       if (addressData !== undefined) {
         const existingJunctions = await tx.query.supplierAddresses.findMany({
           where: eq(supplierAddresses.supplierId, id),
@@ -368,25 +403,59 @@ export class SuppliersService extends BaseService<typeof suppliers> {
   }
 
   async deleteSupplier(organizationId: string, userId: string, id: string) {
-    const [deletedSupplier] = await db
-      .update(suppliers)
-      .set(this.withAudit({ deletedAt: new Date() }, userId, true))
-      .where(this.getTenantWhere(organizationId, id))
-      .returning();
+    return await db.transaction(async (tx) => {
+      const [deletedSupplier] = await tx
+        .update(suppliers)
+        .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+        .where(this.getTenantWhere(organizationId, id))
+        .returning();
 
-    return deletedSupplier;
+      if (!deletedSupplier) throw new AppError('Supplier not found', 404);
+
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        userId,
+        entityType: 'supplier',
+        entityId: id,
+        entityDisplayId: deletedSupplier.name,
+        entityLabel: 'Supplier',
+        action: 'DELETED',
+        reason: 'Supplier record soft-deleted',
+      });
+
+      return deletedSupplier;
+    });
   }
 
   async bulkDeleteSuppliers(organizationId: string, userId: string, ids: string[]) {
     if (ids.length === 0) return [];
 
-    const deletedSuppliers = await db
-      .update(suppliers)
-      .set(this.withAudit({ deletedAt: new Date() }, userId, true))
-      .where(and(eq(suppliers.organizationId, organizationId), inArray(suppliers.id, ids)))
-      .returning();
+    return await db.transaction(async (tx) => {
+      const suppliersToDelete = await tx.query.suppliers.findMany({
+        where: and(eq(suppliers.organizationId, organizationId), inArray(suppliers.id, ids)),
+      });
 
-    return deletedSuppliers;
+      const deletedSuppliers = await tx
+        .update(suppliers)
+        .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+        .where(and(eq(suppliers.organizationId, organizationId), inArray(suppliers.id, ids)))
+        .returning();
+
+      for (const s of suppliersToDelete) {
+        await ActivityLogger.record(tx as Transaction, {
+          organizationId,
+          userId,
+          entityType: 'supplier',
+          entityId: s.id,
+          entityDisplayId: s.name,
+          entityLabel: 'Supplier',
+          action: 'DELETED',
+          reason: 'Supplier record soft-deleted via bulk action',
+        });
+      }
+
+      return deletedSuppliers;
+    });
   }
 
   async exportSuppliers(organizationId: string) {

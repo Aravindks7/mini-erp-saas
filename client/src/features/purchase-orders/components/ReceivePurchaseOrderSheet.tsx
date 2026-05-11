@@ -20,7 +20,7 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect';
 import { createReceiptSchema, type CreateReceiptInput } from '@shared/contracts/receipts.contract';
 import type { PurchaseOrderResponse } from '../api/purchase-orders.api';
 import { useCreateReceipt } from '@/features/receipts/hooks/receipts.hooks';
-import { useWarehouses } from '@/features/warehouses/hooks/warehouses.hooks';
+import { useWarehousesQuery } from '@/features/warehouses/hooks/warehouses.hooks';
 import type { WarehouseResponse } from '@/features/warehouses/api/warehouses.api';
 
 interface ReceivePurchaseOrderSheetProps {
@@ -126,7 +126,7 @@ function ReceiptLineItem({
 
 export function ReceivePurchaseOrderSheet({ isOpen, onClose, po }: ReceivePurchaseOrderSheetProps) {
   const { mutateAsync: createReceipt, isPending: isLoading } = useCreateReceipt();
-  const { data: warehouses } = useWarehouses();
+  const { data: warehouses } = useWarehousesQuery();
 
   const form = useForm<CreateReceiptInput>({
     resolver: zodResolver(createReceiptSchema),

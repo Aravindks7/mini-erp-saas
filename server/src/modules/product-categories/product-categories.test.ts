@@ -96,9 +96,12 @@ describe('ProductCategoriesService', () => {
   describe('createCategory', () => {
     it('should create a category successfully', async () => {
       const input = { name: 'New Cat', code: 'NEW' };
-      vi.mocked(db.query.productCategories.findFirst).mockResolvedValue(null as any); // No duplicate
-
       const mockNewCat = { id: 'new-id', ...input };
+
+      vi.mocked(db.query.productCategories.findFirst)
+        .mockResolvedValueOnce(null as any) // No duplicate check
+        .mockResolvedValueOnce(mockNewCat as any); // Re-fetch after create
+
       vi.mocked(db.insert).mockReturnValue({
         values: vi.fn().mockReturnValue({
           returning: vi.fn().mockResolvedValue([mockNewCat]),
@@ -125,7 +128,10 @@ describe('ProductCategoriesService', () => {
 
   describe('deleteCategory', () => {
     it('should soft delete successfully', async () => {
-      vi.mocked(db.query.productCategories.findFirst).mockResolvedValue(null as any); // No children
+      const mockExistingCat = { id: 'cat-1', code: 'C1', name: 'Cat 1' };
+      vi.mocked(db.query.productCategories.findFirst)
+        .mockResolvedValueOnce(mockExistingCat as any) // existence check
+        .mockResolvedValueOnce(null as any); // No children check
 
       vi.mocked(db.update).mockReturnValue({
         set: vi.fn().mockReturnValue({

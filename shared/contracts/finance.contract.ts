@@ -47,9 +47,14 @@ export const createJournalEntrySchema = z
     { message: 'Journal entry is not balanced. Total debits must equal total credits.' },
   );
 
+export const updateJournalEntrySchema = createJournalEntrySchema.extend({
+  reason: z.string().max(500).optional().nullable(),
+});
+
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;
 export type UpdateAccountInput = z.infer<typeof updateAccountSchema>;
 export type CreateJournalEntryInput = z.infer<typeof createJournalEntrySchema>;
+export type UpdateJournalEntryInput = z.infer<typeof updateJournalEntrySchema>;
 export type JournalEntryLineInput = z.infer<typeof journalEntryLineSchema>;
 
 // Reports

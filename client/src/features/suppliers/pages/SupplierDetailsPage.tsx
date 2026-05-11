@@ -1,9 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { Truck, MapPin, FileEdit, AlertCircle, Users } from 'lucide-react';
-import * as React from 'react';
 
-import { useSupplier, supplierKeys } from '../hooks/suppliers.hooks';
+import { useSupplier } from '../hooks/suppliers.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
@@ -17,7 +15,6 @@ import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { APP_PATHS } from '@/lib/paths';
-import { suppliersApi } from '../api/suppliers.api';
 
 const supplierStatusMap: StatusMap<string> = {
   active: { label: 'Active', tone: 'success' },
@@ -28,15 +25,7 @@ export default function SupplierDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
   const { data: supplier, isLoading, isError } = useSupplier(id);
-
-  React.useEffect(() => {
-    queryClient.prefetchQuery({
-      queryKey: supplierKeys.lists(),
-      queryFn: suppliersApi.fetchSuppliers,
-    });
-  }, [queryClient]);
 
   if (isLoading) {
     return (

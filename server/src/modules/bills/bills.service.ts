@@ -1,10 +1,16 @@
 import { db } from '../../db/index.js';
 import { bills, billLines, receipts, payments } from '../../db/schema/index.js';
 import { and, desc, eq, sql } from 'drizzle-orm';
-import { CreateBillInput, UpdateBillStatusInput } from '#shared/contracts/bills.contract.js';
+import {
+  CreateBillInput,
+  UpdateBillInput,
+  UpdateBillStatusInput,
+} from '#shared/contracts/bills.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 import { sequencesService } from '../sequences/sequences.service.js';
 import { BillReconciler, BillStatus } from './bills.reconciler.js';
+import { ActivityLogger } from '../../lib/activity-logger.js';
+import type { ActivityAction } from '#shared/config/activity-actions.config.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -114,6 +120,17 @@ export class BillsService extends BaseService<typeof bills> {
         await PostingService.postBill(bill.id, organizationId, tx);
       }
 
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        entityType: 'bill',
+        entityId: bill.id,
+        entityDisplayId: bill.documentNumber,
+        entityLabel: 'Bill',
+        action: 'BILL_CREATED',
+        reason: 'New bill recorded from procurement',
+        userId,
+      });
+
       return await this.getBillById(organizationId, bill.id, tx);
     };
 
@@ -177,6 +194,84 @@ export class BillsService extends BaseService<typeof bills> {
     });
   }
 
+  async updateBill(organizationId: string, userId: string, id: string, data: UpdateBillInput) {
+    return await db.transaction(async (tx) => {
+      const existingBill = await this.getBillById(organizationId, id, tx);
+      if (!existingBill) {
+        throw new Error('Bill not found');
+      }
+
+      if (existingBill.status !== 'draft') {
+        throw new Error('Only draft bills can be modified');
+      }
+
+      const totalAmount =
+        data.lines?.reduce((acc, line) => acc + Number(line.lineTotal), 0) ??
+        Number(existingBill.totalAmount);
+      const taxAmount =
+        data.lines?.reduce((acc, line) => acc + Number(line.taxAmount), 0) ??
+        Number(existingBill.taxAmount);
+
+      const updateData = {
+        totalAmount: totalAmount.toString(),
+        balanceDue: totalAmount.toString(),
+        taxAmount: taxAmount.toString(),
+        notes: data.notes,
+        ...(data.supplierId && { supplierId: data.supplierId }),
+        ...(data.issueDate && { issueDate: data.issueDate }),
+        ...(data.dueDate && { dueDate: data.dueDate }),
+        ...(data.referenceNumber && { referenceNumber: data.referenceNumber }),
+      };
+
+      await tx
+        .update(bills)
+        .set(this.withAudit(updateData, userId, true))
+        .where(and(eq(bills.id, id), eq(bills.organizationId, organizationId)));
+
+      if (data.lines) {
+        await tx
+          .delete(billLines)
+          .where(and(eq(billLines.billId, id), eq(billLines.organizationId, organizationId)));
+
+        for (const line of data.lines) {
+          await tx.insert(billLines).values(
+            this.withAudit(
+              {
+                organizationId,
+                billId: id,
+                productId: line.productId,
+                quantity: line.quantity,
+                unitPrice: line.unitPrice,
+                taxRateAtOrder: line.taxRateAtOrder,
+                taxAmount: line.taxAmount,
+                lineTotal: line.lineTotal,
+              },
+              userId,
+            ),
+          );
+        }
+      }
+
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          entityType: 'bill',
+          entityId: id,
+          entityDisplayId: existingBill.documentNumber,
+          entityLabel: 'Bill',
+          action: 'UPDATED',
+          reason: 'Bill record modified',
+          userId,
+        },
+        existingBill,
+        updateData,
+      );
+
+      return await this.getBillById(organizationId, id, tx);
+    });
+  }
+
   async updateBillStatus(
     organizationId: string,
     userId: string,
@@ -189,8 +284,8 @@ export class BillsService extends BaseService<typeof bills> {
         userId,
         id,
         data.status as BillStatus,
-        'STATUS_CHANGED',
-        'Manual status update',
+        data.action as ActivityAction,
+        data.reason,
         tx as Transaction,
       );
 

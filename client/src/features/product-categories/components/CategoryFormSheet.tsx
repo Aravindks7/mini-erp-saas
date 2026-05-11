@@ -26,7 +26,7 @@ import type { ProductCategoryResponse } from '../api/product-categories.api';
 import {
   useCreateProductCategory,
   useUpdateProductCategory,
-  useProductCategories,
+  useProductCategoriesQuery,
 } from '../hooks/product-categories.hooks';
 
 interface CategoryFormSheetProps {
@@ -37,7 +37,7 @@ interface CategoryFormSheetProps {
 
 export function CategoryFormSheet({ isOpen, onClose, category }: CategoryFormSheetProps) {
   const isEdit = !!category;
-  const { data: categories = [] } = useProductCategories();
+  const { data: categories = [] } = useProductCategoriesQuery();
   const { mutateAsync: createCategory, status: createStatus } = useCreateProductCategory();
   const { mutateAsync: updateCategory, status: updateStatus } = useUpdateProductCategory();
 

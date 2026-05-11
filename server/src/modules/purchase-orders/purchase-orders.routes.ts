@@ -28,6 +28,12 @@ router.post(
 );
 
 router.patch(
+  '/:id/status',
+  requirePermission(PERMISSIONS.PURCHASE_ORDERS.UPDATE),
+  purchaseOrdersController.updatePOStatus,
+);
+
+router.patch(
   '/:id',
   requirePermission(PERMISSIONS.PURCHASE_ORDERS.UPDATE),
   purchaseOrdersController.updatePO,

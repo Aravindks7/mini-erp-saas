@@ -29,21 +29,14 @@ vi.mock('../sequences/sequences.service.js', () => ({
   },
 }));
 
-vi.mock('../../db/index.js', () => ({
-  db: {
+vi.mock('../../db/index.js', () => {
+  const mockTx = {
     query: {
-      organizationMemberships: {
-        findFirst: vi.fn(),
-      },
-      inventoryLevels: {
-        findMany: vi.fn().mockResolvedValue([]),
-        findFirst: vi.fn(),
-      },
       inventoryAdjustments: {
-        findMany: vi.fn().mockResolvedValue([]),
+        findFirst: vi.fn().mockResolvedValue({ id: 'adj-1', lines: [] }),
       },
-      inventoryLedgers: {
-        findMany: vi.fn().mockResolvedValue([]),
+      inventoryTransfers: {
+        findFirst: vi.fn().mockResolvedValue({ id: 'trf-1', lines: [] }),
       },
     },
     insert: vi.fn(() => ({
@@ -54,21 +47,46 @@ vi.mock('../../db/index.js', () => ({
         returning: vi.fn().mockResolvedValue([{ id: 'new-id' }]),
       }),
     })),
-    transaction: vi.fn((cb) =>
-      cb({
-        insert: vi.fn(() => ({
-          values: vi.fn().mockReturnValue({
-            onConflictDoUpdate: vi.fn().mockReturnValue({
-              returning: vi.fn().mockResolvedValue([{ id: 'new-id' }]),
-            }),
+    update: vi.fn(() => ({
+      set: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: 'new-id' }]),
+        }),
+      }),
+    })),
+  };
+
+  return {
+    db: {
+      query: {
+        organizationMemberships: {
+          findFirst: vi.fn(),
+        },
+        inventoryLevels: {
+          findMany: vi.fn().mockResolvedValue([]),
+          findFirst: vi.fn(),
+        },
+        inventoryAdjustments: {
+          findMany: vi.fn().mockResolvedValue([]),
+          findFirst: vi.fn(),
+        },
+        inventoryLedgers: {
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+      },
+      insert: vi.fn(() => ({
+        values: vi.fn().mockReturnValue({
+          onConflictDoUpdate: vi.fn().mockReturnValue({
             returning: vi.fn().mockResolvedValue([{ id: 'new-id' }]),
           }),
-        })),
-      }),
-    ),
-    execute: vi.fn().mockResolvedValue({ rows: [] }),
-  },
-}));
+          returning: vi.fn().mockResolvedValue([{ id: 'new-id' }]),
+        }),
+      })),
+      transaction: vi.fn((cb) => cb(mockTx)),
+      execute: vi.fn().mockResolvedValue({ rows: [] }),
+    },
+  };
+});
 
 describe('Inventory Module', () => {
   const mockOrgId = 'org-123';

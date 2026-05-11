@@ -103,6 +103,11 @@ describe('Finance Module Integration', () => {
         type: 'asset',
       };
 
+      vi.mocked(mockTx.query.accounts.findFirst).mockResolvedValue({
+        id: 'new-id',
+        ...payload,
+      } as any);
+
       const response = await request(app)
         .post('/finance/accounts')
         .send(payload)

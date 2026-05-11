@@ -9,7 +9,7 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect';
 import { FormSection } from '@/components/shared/form/FormSection';
 import { AmountInput } from '@/components/shared/form/AmountInput';
 
-import { useAccounts } from '@/features/accounts/hooks/accounts.hooks';
+import { useAccountsQuery } from '@/features/accounts/hooks/accounts.hooks';
 import { cn } from '@/lib/utils';
 
 interface JournalLinesSectionProps<TFieldValues extends FieldValues> {
@@ -32,7 +32,7 @@ export function JournalLinesSection<TFieldValues extends FieldValues>({
   const { control, setValue } = useFormContext<TFieldValues>();
   const { fields, append, remove } = useFieldArray({ control, name });
 
-  const { data: accounts } = useAccounts();
+  const { data: accounts } = useAccountsQuery();
 
   const lines = useWatch({
     control,

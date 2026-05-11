@@ -26,6 +26,12 @@ router.patch(
   invoicesController.updateInvoiceStatus,
 );
 
+router.patch(
+  '/:id',
+  requirePermission(PERMISSIONS.INVOICES.UPDATE),
+  invoicesController.updateInvoice,
+);
+
 router.delete(
   '/',
   requirePermission(PERMISSIONS.INVOICES.DELETE),

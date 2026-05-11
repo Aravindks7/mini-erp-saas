@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { useQueryClient } from '@tanstack/react-query';
 import { BookOpen, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,9 +11,11 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Can } from '@/components/shared/Can';
+import { usePermissionsStatus } from '@/hooks/usePermission';
+import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { columns } from './columns';
-import { useJournalEntries } from '../hooks/journal-entries.hooks';
+import { useJournalEntriesQuery, useJournalEntriesActions } from '../hooks/journal-entries.hooks';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { APP_PATHS } from '@/lib/paths';
 
@@ -25,8 +26,9 @@ const searchSchema = z.object({
 export function JournalEntryList() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
-  const { data: entries, isLoading, isError } = useJournalEntries();
+  const { data: entries, isLoading: isDataLoading, isError } = useJournalEntriesQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateJournalEntries } = useJournalEntriesActions();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
   const handleAdd = () => {
@@ -38,17 +40,13 @@ export function JournalEntryList() {
       <ErrorState
         title="Failed to load ledger"
         description="We encountered an error while fetching the journal entries. Please try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['journal-entries'] })}
+        onRetry={invalidateJournalEntries}
       />
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
+  if (isDataLoading || isPermissionsLoading) {
+    return <DataTableSkeleton columnCount={5} rowCount={8} />;
   }
 
   if (!entries || entries.length === 0) {
@@ -82,7 +80,7 @@ export function JournalEntryList() {
       enableGlobalSearch
       data={entries || []}
       columns={columns}
-      isLoading={isLoading}
+      isLoading={isDataLoading}
       onAddClick={handleAdd}
       viewMode={tableState.viewMode}
       onViewModeChange={tableSetters.setViewMode}

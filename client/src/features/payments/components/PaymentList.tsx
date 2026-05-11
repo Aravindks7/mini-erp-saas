@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -17,9 +16,15 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
+import { usePermissionsStatus } from '@/hooks/usePermission';
+import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
-import { columns, paymentStatusOptions, paymentTypeOptions } from './columns';
-import { usePayments, useBulkDeletePayments } from '../hooks/payments.hooks';
+import { usePaymentColumns, paymentStatusOptions, paymentTypeOptions } from './columns';
+import {
+  usePaymentsQuery,
+  useBulkDeletePayments,
+  usePaymentsActions,
+} from '../hooks/payments.hooks';
 import type { PaymentResponse } from '../api/payments.api';
 
 const searchSchema = z.object({
@@ -31,10 +36,12 @@ const searchSchema = z.object({
 export function PaymentList() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
-  const { data: payments, isLoading, isError } = usePayments();
+  const { data: payments, isLoading: isDataLoading, isError } = usePaymentsQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidatePayments } = usePaymentsActions();
   const bulkDeleteMutation = useBulkDeletePayments();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
+  const columns = usePaymentColumns();
 
   // Bulk Delete State
   const [bulkDeleteState, setBulkDeleteState] = React.useState<{
@@ -52,7 +59,7 @@ export function PaymentList() {
       <ErrorState
         title="Failed to load payments"
         description="We encountered an error while fetching the payment history. Please check your network or try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['payments'] })}
+        onRetry={invalidatePayments}
       />
     );
   }
@@ -70,12 +77,8 @@ export function PaymentList() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
+  if (isDataLoading || isPermissionsLoading) {
+    return <DataTableSkeleton columnCount={5} rowCount={8} />;
   }
 
   if (!payments || payments.length === 0) {
@@ -111,7 +114,7 @@ export function PaymentList() {
         enableGlobalSearch
         data={payments || []}
         columns={columns}
-        isLoading={isLoading}
+        isLoading={isDataLoading}
         onAddClick={handleAddClick}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

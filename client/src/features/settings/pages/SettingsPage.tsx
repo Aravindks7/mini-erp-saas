@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Outlet, useLocation, Navigate } from 'react-router-dom';
 import { Building2, Users, Mail, ShieldCheck, KeyRound, Hash } from 'lucide-react';
 import { usePermission } from '@/hooks/usePermission';
-import { useMyPermissions } from '@/features/auth/hooks/rbac.hooks';
+import { useMyPermissionsQuery } from '@/features/auth/hooks/rbac.hooks';
 import { PERMISSIONS } from '@shared/index';
 import { APP_PATHS } from '@/lib/paths';
 import { useTenantPath } from '@/hooks/useTenantPath';
@@ -44,7 +44,7 @@ export default function SettingsPage() {
   const location = useLocation();
   const settingsBase = getPath(APP_PATHS.settings.index());
 
-  const { isLoading: isLoadingPermissions } = useMyPermissions();
+  const { isLoading: isLoadingPermissions } = useMyPermissionsQuery();
   const canManageMembers = usePermission(PERMISSIONS.ORGANIZATION.MEMBERS);
   const canManageRoles = usePermission(PERMISSIONS.ORGANIZATION.ROLES);
 

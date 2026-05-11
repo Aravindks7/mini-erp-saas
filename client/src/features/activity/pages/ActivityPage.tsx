@@ -22,6 +22,7 @@ import {
   ClipboardCheck,
   Book,
   Hash,
+  Coins,
 } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 import { useOrganizationActivity } from '../hooks/activity.hooks';
@@ -42,6 +43,7 @@ const ENTITY_OPTIONS = [
   { label: 'Purchase Orders', value: 'purchase_order', icon: Package },
   { label: 'Invoices', value: 'invoice', icon: FileText },
   { label: 'Bills', value: 'bill', icon: Receipt },
+  { label: 'Currencies', value: 'currency', icon: Coins },
   { label: 'Customers', value: 'customer', icon: Users },
   { label: 'Suppliers', value: 'supplier', icon: Truck },
   { label: 'Products', value: 'product', icon: Boxes },
@@ -78,17 +80,11 @@ export default function ActivityPage() {
   const allItems = React.useMemo(
     () =>
       data?.pages.flatMap((page) =>
-        page.items.map((item) => {
-          const snapshot = item.snapshot as Record<string, unknown> | null;
-          const documentNumber =
-            snapshot && 'documentNumber' in snapshot ? (snapshot.documentNumber as string) : null;
-
-          return {
-            ...item,
-            entityDisplayId: documentNumber || item.entityId.slice(0, 8),
-            entityLabel: item.entityType.replace(/_/g, ' ').toUpperCase(),
-          };
-        }),
+        page.items.map((item) => ({
+          ...item,
+          entityDisplayId: item.entityDisplayId || item.entityId.slice(0, 8),
+          entityLabel: item.entityLabel || item.entityType.replace(/_/g, ' ').toUpperCase(),
+        })),
       ) ?? [],
     [data],
   );

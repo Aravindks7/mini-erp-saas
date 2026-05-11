@@ -15,9 +15,10 @@ import {
   useRole,
   useCreateRole,
   useUpdateRole,
-  usePermissionSets,
+  usePermissionSetsQuery,
 } from '@/features/auth/hooks/rbac.hooks';
 import { createRoleSchema, type CreateRoleInput } from '@shared/index';
+import type { PermissionSetResponse } from '@/features/auth/api/rbac.api';
 
 import { APP_PATHS } from '@/lib/paths';
 
@@ -28,7 +29,7 @@ export default function RoleFormPage() {
   const backPath = getPath(APP_PATHS.settings.roles.list());
 
   const { data: existingRole, isLoading: isFetchingRole } = useRole(id!);
-  const { data: availableSets, isLoading: isFetchingSets } = usePermissionSets();
+  const { data: availableSets, isLoading: isFetchingSets } = usePermissionSetsQuery();
   const createMutation = useCreateRole();
   const updateMutation = useUpdateRole(id!);
 
@@ -95,7 +96,7 @@ export default function RoleFormPage() {
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   const transferItems =
-    availableSets?.map((set) => ({
+    availableSets?.map((set: PermissionSetResponse) => ({
       id: set.id,
       label: set.name,
       description: set.organizationId === null ? 'System Template' : 'Custom Set',

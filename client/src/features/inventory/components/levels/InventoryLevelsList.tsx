@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { Boxes, Plus } from 'lucide-react';
 import { z } from 'zod';
 
@@ -12,10 +11,12 @@ import { PERMISSIONS } from '@shared/index';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { usePermissionsStatus } from '@/hooks/usePermission';
+import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 import { APP_PATHS } from '@/lib/paths';
 
 import { columns } from './columns';
-import { useInventoryLevels } from '../../hooks/inventory.hooks';
+import { useInventoryLevelsQuery, useInventoryLevelsActions } from '../../hooks/inventory.hooks';
 
 const searchSchema = z.object({
   'product.name': z.string().optional(),
@@ -24,8 +25,9 @@ const searchSchema = z.object({
 export function InventoryLevelsList() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
-  const { data: levels, isLoading, isError } = useInventoryLevels();
+  const { data: levels, isLoading: isDataLoading, isError } = useInventoryLevelsQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateLevels } = useInventoryLevelsActions();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
   if (isError) {
@@ -33,17 +35,13 @@ export function InventoryLevelsList() {
       <ErrorState
         title="Failed to load inventory levels"
         description="Encountered an error while fetching the current stock status. Please try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['inventory', 'levels'] })}
+        onRetry={invalidateLevels}
       />
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
+  if (isDataLoading || isPermissionsLoading) {
+    return <DataTableSkeleton columnCount={5} rowCount={8} />;
   }
 
   if (!levels || levels.length === 0) {
@@ -76,7 +74,7 @@ export function InventoryLevelsList() {
       enableGlobalSearch
       data={levels}
       columns={columns}
-      isLoading={isLoading}
+      isLoading={isDataLoading}
       onAddClick={handleAddClick}
       viewMode={tableState.viewMode}
       onViewModeChange={tableSetters.setViewMode}

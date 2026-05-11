@@ -1,14 +1,15 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
 import { authApi } from '../api/auth.api';
 import { useTenant } from '@/contexts/TenantContext';
+import { resetSidebarState } from '@/lib/navigation-utils';
 
 export const authKeys = {
   all: ['auth'] as const,
   session: () => [...authKeys.all, 'session'] as const,
 };
 
-export function useAuthSession() {
-  return useQuery({
+export const authSessionQuery = () =>
+  queryOptions({
     queryKey: authKeys.session(),
     queryFn: async () => {
       const response = await authApi.getSession();
@@ -20,6 +21,9 @@ export function useAuthSession() {
     staleTime: 0, // Always verify with the server
     retry: false,
   });
+
+export function useAuthSession() {
+  return useQuery(authSessionQuery());
 }
 
 export function useLoginMutation() {
@@ -27,6 +31,7 @@ export function useLoginMutation() {
   return useMutation({
     mutationFn: authApi.login,
     onSuccess: () => {
+      resetSidebarState();
       return queryClient.invalidateQueries({ queryKey: authKeys.session() });
     },
   });
@@ -37,6 +42,7 @@ export function useRegisterMutation() {
   return useMutation({
     mutationFn: authApi.register,
     onSuccess: () => {
+      resetSidebarState();
       return queryClient.invalidateQueries({ queryKey: authKeys.session() });
     },
   });
@@ -47,8 +53,12 @@ export function useSignOutMutation() {
   const { setActiveOrganizationId } = useTenant();
 
   return useMutation({
+    mutationKey: ['logout'],
     mutationFn: authApi.logout,
     onSuccess: () => {
+      // CLEAR SIDEBAR STATE
+      resetSidebarState();
+
       // PREEMPTIVE TEARDOWN: Stop all in-flight queries immediately
       queryClient.cancelQueries();
 
@@ -57,8 +67,6 @@ export function useSignOutMutation() {
       queryClient.setQueryData(authKeys.session(), null);
 
       // NUCLEAR REMOVAL: Wipe all other cached data to prevent cross-tenant leakage.
-      // We use removeQueries instead of clear() to be more specific if needed,
-      // but clear() is also acceptable here as a secondary measure.
       queryClient.removeQueries();
 
       // CLEAR TENANT CONTEXT

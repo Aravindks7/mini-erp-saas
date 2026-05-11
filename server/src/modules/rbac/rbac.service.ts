@@ -17,6 +17,9 @@ import {
 } from '#shared/index.js';
 import { AppError } from '../../utils/AppError.js';
 import { rbacCacheService } from './rbac-cache.service.js';
+import { ActivityLogger } from '../../lib/activity-logger.js';
+
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export class RBACService {
   /**
@@ -123,7 +126,11 @@ export class RBACService {
   /**
    * Create a new permission set for an organization.
    */
-  async createPermissionSet(organizationId: string, data: CreatePermissionSetInput) {
+  async createPermissionSet(
+    organizationId: string,
+    userId: string,
+    data: CreatePermissionSetInput,
+  ) {
     return await db.transaction(async (tx) => {
       const [newSet] = await tx
         .insert(permissionSets)
@@ -144,6 +151,17 @@ export class RBACService {
         );
       }
 
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        userId,
+        entityType: 'permission_set',
+        entityId: newSet.id,
+        entityDisplayId: newSet.name,
+        entityLabel: 'Permission Set',
+        action: 'PERMISSION_SET_CREATED',
+        reason: `Permission set '${newSet.name}' created with ${data.permissions.length} permissions.`,
+      });
+
       return newSet;
     });
   }
@@ -152,7 +170,12 @@ export class RBACService {
    * Update a permission set.
    * If the set is Global (organizationId is NULL), copy it to the current organization (CoW).
    */
-  async updatePermissionSet(id: string, organizationId: string, data: UpdatePermissionSetInput) {
+  async updatePermissionSet(
+    id: string,
+    organizationId: string,
+    userId: string,
+    data: UpdatePermissionSetInput,
+  ) {
     const original = await this.getPermissionSet(id, organizationId);
     if (!original) throw new AppError('Permission set not found', 404);
 
@@ -170,15 +193,25 @@ export class RBACService {
         if (!newSet) throw new AppError('Failed to copy permission set', 500);
 
         const permissionsToUse = data.permissions ?? original.permissions;
-        if (permissionsToUse.length > 0) {
-          await tx.insert(permissionSetItems).values(
-            permissionsToUse.map((p) => ({
-              permissionSetId: newSet.id,
-              permissionId: p,
-            })),
-          );
-        }
+        await tx.insert(permissionSetItems).values(
+          permissionsToUse.map((p) => ({
+            permissionSetId: newSet.id,
+            permissionId: p,
+          })),
+        );
         await rbacCacheService.invalidateTenant(organizationId);
+
+        await ActivityLogger.record(tx as Transaction, {
+          organizationId,
+          userId,
+          entityType: 'permission_set',
+          entityId: newSet.id,
+          entityDisplayId: newSet.name,
+          entityLabel: 'Permission Set',
+          action: 'PERMISSION_SET_CREATED',
+          reason: `System permission set '${original.name}' customized for organization.`,
+        });
+
         return newSet;
       }
 
@@ -204,6 +237,23 @@ export class RBACService {
       }
 
       await rbacCacheService.invalidateTenant(organizationId);
+
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          userId,
+          entityType: 'permission_set',
+          entityId: id,
+          entityDisplayId: original.name,
+          entityLabel: 'Permission Set',
+          action: 'PERMISSION_SET_UPDATED',
+          reason: 'Permission set permissions modified.',
+        },
+        original,
+        data,
+      );
+
       return original;
     });
   }
@@ -211,7 +261,7 @@ export class RBACService {
   /**
    * Delete a permission set after checking usage guards.
    */
-  async deletePermissionSet(id: string, organizationId: string) {
+  async deletePermissionSet(id: string, organizationId: string, userId: string) {
     const set = await this.getPermissionSet(id, organizationId);
     if (!set) throw new AppError('Permission set not found', 404);
 
@@ -231,6 +281,17 @@ export class RBACService {
         .where(and(eq(permissionSets.id, id), eq(permissionSets.organizationId, organizationId)));
 
       await rbacCacheService.invalidateTenant(organizationId);
+
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        userId,
+        entityType: 'permission_set',
+        entityId: id,
+        entityDisplayId: set.name,
+        entityLabel: 'Permission Set',
+        action: 'PERMISSION_SET_DELETED',
+        reason: `Permission set '${set.name}' deleted.`,
+      });
     });
   }
 
@@ -286,7 +347,7 @@ export class RBACService {
   /**
    * Create a new role for an organization.
    */
-  async createRole(organizationId: string, data: CreateRoleInput) {
+  async createRole(organizationId: string, userId: string, data: CreateRoleInput) {
     return await db.transaction(async (tx) => {
       const [newRole] = await tx
         .insert(roles)
@@ -308,6 +369,17 @@ export class RBACService {
         );
       }
 
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        userId,
+        entityType: 'role',
+        entityId: newRole.id,
+        entityDisplayId: newRole.name,
+        entityLabel: 'Role',
+        action: 'ROLE_CREATED',
+        reason: `Role '${newRole.name}' created with ${data.permissionSetIds.length} permission sets.`,
+      });
+
       return newRole;
     });
   }
@@ -316,7 +388,7 @@ export class RBACService {
    * Update a role.
    * If the role is Global (organizationId is NULL), copy it to the current organization (CoW).
    */
-  async updateRole(id: string, organizationId: string, data: UpdateRoleInput) {
+  async updateRole(id: string, organizationId: string, userId: string, data: UpdateRoleInput) {
     const original = await this.getRole(id, organizationId);
     if (!original) throw new AppError('Role not found', 404);
 
@@ -344,6 +416,18 @@ export class RBACService {
           );
         }
         await rbacCacheService.invalidateTenant(organizationId);
+
+        await ActivityLogger.record(tx as Transaction, {
+          organizationId,
+          userId,
+          entityType: 'role',
+          entityId: newRole.id,
+          entityDisplayId: newRole.name,
+          entityLabel: 'Role',
+          action: 'ROLE_CREATED',
+          reason: `System role '${original.name}' customized for organization.`,
+        });
+
         return newRole;
       }
 
@@ -369,6 +453,23 @@ export class RBACService {
       }
 
       await rbacCacheService.invalidateTenant(organizationId);
+
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          userId,
+          entityType: 'role',
+          entityId: id,
+          entityDisplayId: original.name,
+          entityLabel: 'Role',
+          action: 'UPDATED',
+          reason: 'Role assignments modified.',
+        },
+        original,
+        data,
+      );
+
       return original;
     });
   }
@@ -376,7 +477,7 @@ export class RBACService {
   /**
    * Delete a role after checking usage guards.
    */
-  async deleteRole(id: string, organizationId: string) {
+  async deleteRole(id: string, organizationId: string, userId: string) {
     const role = await this.getRole(id, organizationId);
     if (!role) throw new AppError('Role not found', 404);
 
@@ -394,6 +495,17 @@ export class RBACService {
       await tx.delete(roles).where(and(eq(roles.id, id), eq(roles.organizationId, organizationId)));
 
       await rbacCacheService.invalidateTenant(organizationId);
+
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        userId,
+        entityType: 'role',
+        entityId: id,
+        entityDisplayId: role.name,
+        entityLabel: 'Role',
+        action: 'DELETED',
+        reason: `Role '${role.name}' deleted.`,
+      });
     });
   }
 

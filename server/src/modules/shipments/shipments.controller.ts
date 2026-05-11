@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { shipmentsService } from './shipments.service.js';
-import { createShipmentSchema } from '#shared/contracts/shipments.contract.js';
+import {
+  createShipmentSchema,
+  updateShipmentSchema,
+} from '#shared/contracts/shipments.contract.js';
 import { logger } from '../../utils/logger.js';
 
 export async function listShipments(req: Request, res: Response) {
@@ -57,6 +60,33 @@ export async function createShipment(req: Request, res: Response) {
   } catch (error: unknown) {
     logger.error({ error, organizationId, userId }, 'Failed to create shipment');
     res.status(400).json({ error: (error as Error).message || 'Failed to create shipment' });
+  }
+}
+
+export async function updateShipment(req: Request, res: Response) {
+  const { id } = req.params;
+  const parseResult = updateShipmentSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  const organizationId = req.organizationId!;
+  const userId = req.authSession!.user.id;
+
+  try {
+    const result = await shipmentsService.updateShipment(
+      organizationId,
+      userId,
+      id as string,
+      parseResult.data,
+    );
+    res.json(result);
+  } catch (error) {
+    logger.error(
+      { error, organizationId, userId, id, body: req.body },
+      'Failed to update shipment',
+    );
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Update failed' });
   }
 }
 

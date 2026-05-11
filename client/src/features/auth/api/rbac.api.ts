@@ -8,6 +8,16 @@ import type {
   UpdatePermissionSetInput,
   UpdateRoleInput,
 } from '@shared/index';
+
+export type {
+  Permission,
+  PermissionSetResponse,
+  RoleResponse,
+  CreatePermissionSetInput,
+  CreateRoleInput,
+  UpdatePermissionSetInput,
+  UpdateRoleInput,
+};
 import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export const rbacApi = {

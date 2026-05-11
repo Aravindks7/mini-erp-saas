@@ -1,5 +1,8 @@
 import { apiFetch } from '@/lib/api';
-import type { CreateShipmentInput } from '@shared/contracts/shipments.contract';
+import type {
+  CreateShipmentInput,
+  UpdateShipmentInput,
+} from '@shared/contracts/shipments.contract';
 import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export interface ShipmentLineResponse {
@@ -48,6 +51,11 @@ export const shipmentsApi = {
   createShipment: (data: CreateShipmentInput) =>
     apiFetch<ShipmentResponse>(API_ENDPOINTS.sales.shipments.base, {
       method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateShipment: (id: string, data: UpdateShipmentInput) =>
+    apiFetch<ShipmentResponse>(API_ENDPOINTS.sales.shipments.detail(id), {
+      method: 'PATCH',
       body: JSON.stringify(data),
     }),
   deleteShipment: (id: string) =>

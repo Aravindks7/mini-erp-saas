@@ -1,25 +1,31 @@
 import { useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SidebarGroupData } from '@/lib/navigation-utils';
+import { SidebarNavItem } from './SidebarNavItem';
 
 interface SidebarGroupProps {
   group: SidebarGroupData;
+  pathname: string;
   onItemClick?: () => void;
+  onNavigate: (path: string) => void;
   forceOpen?: boolean;
 }
 
-export function SidebarGroup({ group, onItemClick, forceOpen }: SidebarGroupProps) {
-  const { pathname } = useLocation();
-  const navigate = useNavigate();
-
+export function SidebarGroup({
+  group,
+  pathname,
+  onItemClick,
+  onNavigate,
+  forceOpen,
+}: SidebarGroupProps) {
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem(`sidebar-group-${group.id}`);
     if (saved !== null) return saved === 'true';
     return group.isActive;
   });
 
+  // Keep internal state in sync with active route changes
   const [prevIsActive, setPrevIsActive] = useState(group.isActive);
 
   if (group.isActive && !prevIsActive) {
@@ -46,14 +52,10 @@ export function SidebarGroup({ group, onItemClick, forceOpen }: SidebarGroupProp
       return;
     }
 
-    // INDUSTRY STANDARD BEHAVIOR:
-    // 1. If we are NOT on the module's landing page, navigate to it.
-    // 2. If we ARE already on the landing page, toggle the expansion state.
     if (pathname === group.indexPath) {
       toggle();
     } else {
-      navigate(group.indexPath);
-      // Ensure it's open when navigating to it
+      onNavigate(group.indexPath);
       if (!isOpen) {
         setIsOpen(true);
         localStorage.setItem(`sidebar-group-${group.id}`, 'true');
@@ -63,8 +65,6 @@ export function SidebarGroup({ group, onItemClick, forceOpen }: SidebarGroupProp
 
   const Icon = group.icon;
   const isExpanded = forceOpen || isOpen;
-
-  // Check if we are EXACTLY on the module landing page for visual highlighting
   const isExactlyOnIndex = pathname === group.indexPath;
 
   return (
@@ -109,7 +109,6 @@ export function SidebarGroup({ group, onItemClick, forceOpen }: SidebarGroupProp
         <div className="overflow-hidden">
           <div className="relative ml-3 pl-5">
             {group.items.map((item, index) => {
-              const ItemIcon = item.route.handle?.icon;
               const isLast = index === group.items.length - 1;
 
               return (
@@ -128,19 +127,13 @@ export function SidebarGroup({ group, onItemClick, forceOpen }: SidebarGroupProp
                     />
                   </svg>
 
-                  <NavLink
+                  <SidebarNavItem
                     to={item.path}
+                    icon={item.route.handle?.icon}
+                    label={item.route.handle?.title || ''}
+                    isActive={item.isActive}
                     onClick={onItemClick}
-                    className={cn(
-                      'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-all duration-200',
-                      item.isActive
-                        ? 'bg-primary/10 text-primary font-semibold'
-                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground font-medium',
-                    )}
-                  >
-                    {ItemIcon && <ItemIcon size={15} className="shrink-0 opacity-70" />}
-                    <span className="truncate">{item.route.handle?.title}</span>
-                  </NavLink>
+                  />
                 </div>
               );
             })}

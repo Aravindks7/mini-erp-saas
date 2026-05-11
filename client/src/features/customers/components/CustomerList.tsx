@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { Users, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -12,15 +11,21 @@ import { ExportButton } from '@/components/shared/data-table/ExportButton';
 import { ImportModal } from '@/components/shared/data-table/ImportModal';
 import { useDataTableState } from '@/hooks/useDataTableState';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { usePermissionsStatus } from '@/hooks/usePermission';
 import { PERMISSIONS } from '@shared/index';
 
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
+import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { columns, customerStatusOptions } from './columns';
-import { useCustomers, useBulkDeleteCustomers } from '../hooks/customers.hooks';
+import {
+  useCustomersQuery,
+  useBulkDeleteCustomers,
+  useCustomersActions,
+} from '../hooks/customers.hooks';
 import type { CustomerResponse } from '../api/customers.api';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { APP_PATHS } from '@/lib/paths';
@@ -34,8 +39,9 @@ const searchSchema = z.object({
 export function CustomerList() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
-  const { data: customers, isLoading, isError } = useCustomers();
+  const { data: customers, isLoading: isDataLoading, isError } = useCustomersQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateCustomers } = useCustomersActions();
   const bulkDeleteMutation = useBulkDeleteCustomers();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
@@ -55,13 +61,13 @@ export function CustomerList() {
       <ErrorState
         title="Failed to load customers"
         description="We encountered an error while fetching the customer directory. Please check your network or try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['customers'] })}
+        onRetry={invalidateCustomers}
       />
     );
   }
 
   const handleImportSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ['customers'] });
+    invalidateCustomers();
   };
 
   const handleBulkDeleteConfirm = async () => {
@@ -77,12 +83,8 @@ export function CustomerList() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
+  if (isDataLoading || isPermissionsLoading) {
+    return <DataTableSkeleton columnCount={5} rowCount={8} />;
   }
 
   if (!customers || customers.length === 0) {
@@ -129,7 +131,7 @@ export function CustomerList() {
         enableGlobalSearch
         data={customers || []}
         columns={columns}
-        isLoading={isLoading}
+        isLoading={isDataLoading}
         onAddClick={handleAddClick}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

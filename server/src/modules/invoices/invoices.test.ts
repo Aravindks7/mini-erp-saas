@@ -216,7 +216,7 @@ describe('Invoices Module', () => {
       const response = await request(app)
         .patch(`/invoices/${invId}/status`)
         .set('x-organization-id', mockOrgId)
-        .send({ status: 'open' });
+        .send({ status: 'open', action: 'STATUS_CHANGED', reason: 'Test reason' });
 
       expect(response.status).toBe(200);
       expect(response.body.status).toBe('open');

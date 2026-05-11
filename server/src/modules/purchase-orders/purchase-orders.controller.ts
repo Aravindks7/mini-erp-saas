@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { purchaseOrdersService } from './purchase-orders.service.js';
-import { createPurchaseOrderSchema } from '#shared/contracts/purchase-orders.contract.js';
+import {
+  createPurchaseOrderSchema,
+  updatePurchaseOrderStatusSchema,
+} from '#shared/contracts/purchase-orders.contract.js';
 import { logger } from '../../utils/logger.js';
 
 /**
@@ -114,6 +117,35 @@ export async function bulkDeletePOs(req: Request, res: Response) {
     logger.error({ error, organizationId, userId, ids }, 'Failed to bulk delete purchase orders');
     res.status(400).json({
       error: error instanceof Error ? error.message : 'Failed to bulk delete purchase orders',
+    });
+  }
+}
+
+export async function updatePOStatus(req: Request, res: Response) {
+  const { id } = req.params;
+  const parseResult = updatePurchaseOrderStatusSchema.safeParse(req.body);
+
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    const updatedPO = await purchaseOrdersService.updatePOStatus(
+      organizationId,
+      userId,
+      id as string,
+      parseResult.data.status,
+      parseResult.data.action as any,
+      parseResult.data.reason,
+    );
+    res.json(updatedPO);
+  } catch (error: unknown) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to update purchase order status');
+    res.status(400).json({
+      error: error instanceof Error ? error.message : 'Failed to update purchase order status',
     });
   }
 }

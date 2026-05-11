@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { Truck } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -16,9 +15,15 @@ import { APP_PATHS } from '@/lib/paths';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
+import { usePermissionsStatus } from '@/hooks/usePermission';
+import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { columns, shipmentStatusOptions } from './columns';
-import { useShipments, useBulkDeleteShipments } from '../hooks/shipments.hooks';
+import {
+  useShipmentsQuery,
+  useBulkDeleteShipments,
+  useShipmentsActions,
+} from '../hooks/shipments.hooks';
 import { PageHeader } from '@/components/shared/PageHeader';
 import type { ShipmentResponse } from '../api/shipments.api';
 
@@ -31,8 +36,9 @@ const searchSchema = z.object({
 export function ShipmentList() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
-  const { data: shipments, isLoading, isError } = useShipments();
+  const { data: shipments, isLoading: isDataLoading, isError } = useShipmentsQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateShipments } = useShipmentsActions();
   const bulkDeleteMutation = useBulkDeleteShipments();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
@@ -52,7 +58,7 @@ export function ShipmentList() {
       <ErrorState
         title="Failed to load shipments"
         description="We encountered an error while fetching the shipment list. Please check your network or try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['shipments'] })}
+        onRetry={invalidateShipments}
       />
     );
   }
@@ -70,12 +76,8 @@ export function ShipmentList() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
+  if (isDataLoading || isPermissionsLoading) {
+    return <DataTableSkeleton columnCount={5} rowCount={8} />;
   }
 
   if (!shipments || shipments.length === 0) {
@@ -111,7 +113,7 @@ export function ShipmentList() {
         enableGlobalSearch
         data={shipments || []}
         columns={columns}
-        isLoading={isLoading}
+        isLoading={isDataLoading}
         onAddClick={handleAddClick}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

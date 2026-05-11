@@ -18,6 +18,9 @@ export const updateAdjustmentStatusSchema = z.object({
   status: z.enum(['approved', 'cancelled']),
 });
 
+export const updateInventoryAdjustmentSchema = createInventoryAdjustmentSchema.partial();
+
 export type InventoryAdjustmentLineInput = z.infer<typeof inventoryAdjustmentLineSchema>;
 export type CreateInventoryAdjustmentInput = z.infer<typeof createInventoryAdjustmentSchema>;
 export type UpdateAdjustmentStatusInput = z.infer<typeof updateAdjustmentStatusSchema>;
+export type UpdateInventoryAdjustmentInput = z.infer<typeof updateInventoryAdjustmentSchema>;

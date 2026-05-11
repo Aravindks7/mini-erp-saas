@@ -19,12 +19,24 @@ export const productCategoryDetailQuery = (id: string) =>
     queryFn: () => productCategoriesApi.getCategory(id),
   });
 
-export function useProductCategories() {
-  return useQuery({
+export const productCategoryListQuery = () =>
+  queryOptions({
     queryKey: productCategoryKeys.lists(),
     queryFn: productCategoriesApi.listCategories,
     staleTime: 5000,
   });
+
+export function useProductCategoriesQuery() {
+  return useQuery(productCategoryListQuery());
+}
+
+export function useProductCategoriesActions() {
+  const queryClient = useQueryClient();
+
+  return {
+    invalidateCategories: () =>
+      queryClient.invalidateQueries({ queryKey: productCategoryKeys.lists() }),
+  };
 }
 
 export function useProductCategory(id: string | undefined) {
@@ -65,6 +77,7 @@ export function useDeleteProductCategory() {
     mutationFn: (id: string) => productCategoriesApi.deleteCategory(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: productCategoryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }

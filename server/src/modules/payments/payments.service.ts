@@ -1,11 +1,12 @@
 import { db } from '../../db/index.js';
 import { payments, invoices, bills, paymentIntents } from '../../db/schema/index.js';
 import { and, eq, sql, desc } from 'drizzle-orm';
-import { CreatePaymentInput } from '#shared/contracts/payments.contract.js';
+import { CreatePaymentInput, UpdatePaymentInput } from '#shared/contracts/payments.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 import { stripe } from '../../lib/stripe.js';
 import { InvoiceReconciler } from '../invoices/invoices.reconciler.js';
 import { BillReconciler } from '../bills/bills.reconciler.js';
+import { ActivityLogger } from '../../lib/activity-logger.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -114,6 +115,22 @@ export class PaymentsService extends BaseService<typeof payments> {
         .set({ status: 'succeeded', updatedAt: new Date() })
         .where(eq(paymentIntents.id, intent.id));
 
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId: intent.organizationId,
+          userId: intent.createdBy || 'system',
+          entityType: 'payment_intent',
+          entityId: intent.id,
+          entityDisplayId: intent.providerRef,
+          entityLabel: 'Payment Intent',
+          action: 'STATUS_CHANGED',
+          reason: 'Stripe webhook fulfillment',
+        },
+        intent,
+        { status: 'succeeded' },
+      );
+
       // 3. Create Realized Payment
       const [payment] = await tx
         .insert(payments)
@@ -152,7 +169,20 @@ export class PaymentsService extends BaseService<typeof payments> {
         );
       }
 
-      return payment;
+      if (payment) {
+        await ActivityLogger.record(tx as Transaction, {
+          organizationId: intent.organizationId,
+          entityType: 'payment',
+          entityId: payment.id,
+          entityDisplayId: payment.id,
+          entityLabel: 'Payment',
+          action: 'PAYMENT_REALIZED',
+          reason: 'Payment fulfilled via Stripe webhook',
+          userId: intent.createdBy || 'system',
+        });
+
+        return await this.getPaymentById(intent.organizationId, payment.id, tx);
+      }
     });
   }
 
@@ -284,6 +314,17 @@ export class PaymentsService extends BaseService<typeof payments> {
         );
       }
 
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        entityType: 'payment',
+        entityId: payment.id,
+        entityDisplayId: payment.id,
+        entityLabel: 'Payment',
+        action: 'PAYMENT_CREATED',
+        reason: 'Manual payment recorded',
+        userId,
+      });
+
       return await this.getPaymentById(organizationId, payment.id, tx);
     };
 
@@ -295,7 +336,45 @@ export class PaymentsService extends BaseService<typeof payments> {
       return await operation(tx);
     });
   }
+  async updatePayment(
+    organizationId: string,
+    userId: string,
+    id: string,
+    data: UpdatePaymentInput,
+  ) {
+    return await db.transaction(async (tx) => {
+      const existing = await this.getPaymentById(organizationId, id, tx);
+      if (!existing) throw new Error('Payment not found');
 
+      const { reason, ...updateData } = data;
+
+      const [updated] = await tx
+        .update(payments)
+        .set(this.withAudit(updateData, userId, true))
+        .where(and(eq(payments.id, id), eq(payments.organizationId, organizationId)))
+        .returning();
+
+      if (updated) {
+        await ActivityLogger.recordUpdate(
+          tx as Transaction,
+          {
+            organizationId,
+            userId,
+            entityType: 'payment',
+            entityId: id,
+            entityDisplayId: id,
+            entityLabel: 'Payment',
+            action: 'UPDATED',
+            reason: reason || 'Payment metadata updated',
+          },
+          existing,
+          updateData,
+        );
+      }
+
+      return await this.getPaymentById(organizationId, id, tx);
+    });
+  }
   async deletePayment(organizationId: string, userId: string, id: string) {
     return await db.transaction(async (tx) => {
       const payment = await this.getPaymentById(organizationId, id, tx);
@@ -326,7 +405,23 @@ export class PaymentsService extends BaseService<typeof payments> {
         );
       }
 
-      return true;
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          userId,
+          entityType: 'payment',
+          entityId: id,
+          entityDisplayId: id,
+          entityLabel: 'Payment',
+          action: 'STATUS_CHANGED',
+          reason: `Payment status transitioned to ${newStatus}`,
+        },
+        payment,
+        { status: newStatus },
+      );
+
+      return await this.getPaymentById(organizationId, id, tx);
     });
   }
 
@@ -349,6 +444,17 @@ export class PaymentsService extends BaseService<typeof payments> {
 
         if (p.invoiceId) invoiceIds.add(p.invoiceId);
         if (p.billId) billIds.add(p.billId);
+
+        await ActivityLogger.record(tx as Transaction, {
+          organizationId,
+          entityType: 'payment',
+          entityId: p.id,
+          entityDisplayId: p.id,
+          entityLabel: 'Payment',
+          action: newStatus === 'failed' ? 'PAYMENT_FAILED' : 'PAYMENT_REFUNDED',
+          reason: `Payment bulk processed as ${newStatus}`,
+          userId,
+        });
       }
 
       for (const invId of invoiceIds) {

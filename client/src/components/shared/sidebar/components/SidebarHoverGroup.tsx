@@ -1,17 +1,22 @@
 import { useState, useRef } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { SidebarGroupData } from '@/lib/navigation-utils';
+import { SidebarNavItem } from './SidebarNavItem';
 
 interface SidebarHoverGroupProps {
   group: SidebarGroupData;
+  pathname: string;
   onItemClick?: () => void;
+  onNavigate: (path: string) => void;
 }
 
-export function SidebarHoverGroup({ group, onItemClick }: SidebarHoverGroupProps) {
-  const { pathname } = useLocation();
-  const navigate = useNavigate();
+export function SidebarHoverGroup({
+  group,
+  pathname,
+  onItemClick,
+  onNavigate,
+}: SidebarHoverGroupProps) {
   const [isOpen, setIsOpen] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -31,7 +36,7 @@ export function SidebarHoverGroup({ group, onItemClick }: SidebarHoverGroupProps
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (group.indexPath && pathname !== group.indexPath) {
-      navigate(group.indexPath);
+      onNavigate(group.indexPath);
       onItemClick?.();
       setIsOpen(false);
     } else {
@@ -48,29 +53,19 @@ export function SidebarHoverGroup({ group, onItemClick }: SidebarHoverGroupProps
       onMouseLeave={handleMouseLeave}
     >
       <div className="px-3 py-2 text-sm font-bold text-foreground border-b mb-1">{group.name}</div>
-      {group.items.map((item) => {
-        const ItemIcon = item.route.handle?.icon;
-
-        return (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            onClick={() => {
-              setIsOpen(false);
-              onItemClick?.();
-            }}
-            className={cn(
-              'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all duration-200',
-              item.isActive
-                ? 'bg-primary/10 text-primary font-semibold'
-                : 'text-muted-foreground hover:bg-muted font-medium',
-            )}
-          >
-            {ItemIcon && <ItemIcon size={16} className="shrink-0" />}
-            <span className="truncate">{item.route.handle?.title}</span>
-          </NavLink>
-        );
-      })}
+      {group.items.map((item) => (
+        <SidebarNavItem
+          key={item.path}
+          to={item.path}
+          icon={item.route.handle?.icon}
+          label={item.route.handle?.title || ''}
+          isActive={item.isActive}
+          onClick={() => {
+            setIsOpen(false);
+            onItemClick?.();
+          }}
+        />
+      ))}
     </div>
   );
 

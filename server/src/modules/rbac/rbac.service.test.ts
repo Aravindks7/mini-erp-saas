@@ -185,7 +185,7 @@ describe('RBACService', () => {
     });
 
     it('should create a permission set', async () => {
-      const result = await rbacService.createPermissionSet(orgId, {
+      const result = await rbacService.createPermissionSet(orgId, 'user-1', {
         name: 'New Set',
         permissions: ['p1'],
       });
@@ -267,7 +267,7 @@ describe('RBACService', () => {
     });
 
     it('should create a role', async () => {
-      const result = await rbacService.createRole(orgId, {
+      const result = await rbacService.createRole(orgId, 'user-1', {
         name: 'New Role',
         permissionSetIds: ['ps-1'],
       });
@@ -312,7 +312,7 @@ describe('RBACService', () => {
       } as any);
       vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue(null as any);
 
-      await rbacService.deleteRole('tenant-role', orgId);
+      await rbacService.deleteRole('tenant-role', orgId, 'user-1');
       expect(redisClient.incr).toHaveBeenCalledWith(`rbac:permver:${orgId}`);
     });
   });
@@ -387,7 +387,7 @@ describe('RBACService', () => {
         organizationId: null,
         permissionSets: [],
       } as any);
-      await expect(rbacService.deleteRole('global-role', orgId)).rejects.toThrow(
+      await expect(rbacService.deleteRole('global-role', orgId, 'user-1')).rejects.toThrow(
         'Cannot delete global roles',
       );
     });
@@ -401,7 +401,7 @@ describe('RBACService', () => {
       vi.mocked(db.query.organizationMemberships.findFirst).mockResolvedValue({
         id: 'membership',
       } as any);
-      await expect(rbacService.deleteRole('tenant-role', orgId)).rejects.toThrow(
+      await expect(rbacService.deleteRole('tenant-role', orgId, 'user-1')).rejects.toThrow(
         'Cannot delete role in use',
       );
     });

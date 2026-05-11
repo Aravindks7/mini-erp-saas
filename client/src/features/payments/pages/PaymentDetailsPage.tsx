@@ -27,10 +27,13 @@ const paymentTypeMap: StatusMap<string> = {
   outbound: { label: 'Outbound', tone: 'neutral' },
 };
 
+import { useCurrency } from '@/features/currencies/hooks/use-currency';
+
 export default function PaymentDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
+  const { format: formatCurrency } = useCurrency();
   const { data: payment, isLoading, isError, refetch } = usePayment(id);
 
   if (isLoading) {
@@ -53,10 +56,7 @@ export default function PaymentDetailsPage() {
     );
   }
 
-  const amount = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(Number(payment.amount));
+  const amount = formatCurrency(Number(payment.amount));
 
   return (
     <PageContainer>
@@ -68,7 +68,7 @@ export default function PaymentDetailsPage() {
           label: 'Back to List',
         }}
       >
-        <div className="hidden sm:block ml-4 border-l pl-4 flex gap-2">
+        <div className="hidden sm:block ml-4 border-l pl-4 gap-2">
           <StatusBadge value={payment.status} statusMap={paymentStatusMap} />
           <StatusBadge value={payment.paymentType} statusMap={paymentTypeMap} />
         </div>

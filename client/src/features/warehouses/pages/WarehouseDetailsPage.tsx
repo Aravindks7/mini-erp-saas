@@ -1,9 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { Warehouse, MapPin, FileEdit, AlertCircle, Box } from 'lucide-react';
-import * as React from 'react';
 
-import { useWarehouse, warehouseKeys } from '../hooks/warehouses.hooks';
+import { useWarehouse } from '../hooks/warehouses.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -15,22 +13,13 @@ import { BinCard } from '../components/BinCard';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useTenantPath } from '@/hooks/useTenantPath';
-import { warehousesApi } from '../api/warehouses.api';
 import { APP_PATHS } from '@/lib/paths';
 
 export default function WarehouseDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
   const { data: warehouse, isLoading, isError } = useWarehouse(id);
-
-  React.useEffect(() => {
-    queryClient.prefetchQuery({
-      queryKey: warehouseKeys.lists(),
-      queryFn: warehousesApi.fetchWarehouses,
-    });
-  }, [queryClient]);
 
   if (isLoading) {
     return (

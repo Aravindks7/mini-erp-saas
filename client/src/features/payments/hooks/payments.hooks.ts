@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
 import type { CreatePaymentInput } from '@shared/contracts/payments.contract';
 import { paymentsApi } from '../api/payments.api';
+import { activityKeys } from '../../activity/hooks/activity.hooks';
+
+import { invoiceKeys } from '../../invoices/hooks/invoices.hooks';
+import { billKeys } from '../../bills/hooks/bills.hooks';
+import { customerKeys } from '../../customers/hooks/customers.hooks';
+import { supplierKeys } from '../../suppliers/hooks/suppliers.hooks';
 
 export const paymentKeys = {
   all: ['payments'] as const,
@@ -17,18 +23,32 @@ export const paymentDetailQuery = (id: string) =>
     queryFn: () => paymentsApi.getPayment(id),
   });
 
-export function usePayments() {
-  return useQuery({
+export const paymentListQuery = () =>
+  queryOptions({
     queryKey: paymentKeys.lists(),
     queryFn: paymentsApi.getPayments,
   });
-}
 
-export function usePaymentIntents(filters: { invoiceId?: string; billId?: string }) {
-  return useQuery({
+export const paymentIntentsQuery = (filters: { invoiceId?: string; billId?: string }) =>
+  queryOptions({
     queryKey: paymentKeys.intents(filters),
     queryFn: () => paymentsApi.getPaymentIntents(filters),
   });
+
+export function usePaymentsQuery() {
+  return useQuery(paymentListQuery());
+}
+
+export function usePaymentsActions() {
+  const queryClient = useQueryClient();
+
+  return {
+    invalidatePayments: () => queryClient.invalidateQueries({ queryKey: paymentKeys.lists() }),
+  };
+}
+
+export function usePaymentIntentsQuery(filters: { invoiceId?: string; billId?: string }) {
+  return useQuery(paymentIntentsQuery(filters));
 }
 
 export function usePayment(id: string | undefined) {
@@ -43,15 +63,19 @@ export function useCreatePayment() {
 
   return useMutation({
     mutationFn: (data: CreatePaymentInput) => paymentsApi.createPayment(data),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Update cache for the new payment
+      queryClient.setQueryData(paymentKeys.detail(data.id), data);
+
       // Invalidate payments list
       queryClient.invalidateQueries({ queryKey: paymentKeys.all });
 
       // Also invalidate related document queries as their status might have changed
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['bills'] });
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
-      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
+      queryClient.invalidateQueries({ queryKey: billKeys.all });
+      queryClient.invalidateQueries({ queryKey: customerKeys.all });
+      queryClient.invalidateQueries({ queryKey: supplierKeys.all });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }
@@ -69,8 +93,9 @@ export function useDeletePayment() {
     mutationFn: (id: string) => paymentsApi.deletePayment(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: paymentKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['bills'] });
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
+      queryClient.invalidateQueries({ queryKey: billKeys.all });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }
@@ -82,8 +107,9 @@ export function useBulkDeletePayments() {
     mutationFn: (ids: string[]) => paymentsApi.bulkDeletePayments(ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: paymentKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['bills'] });
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
+      queryClient.invalidateQueries({ queryKey: billKeys.all });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }

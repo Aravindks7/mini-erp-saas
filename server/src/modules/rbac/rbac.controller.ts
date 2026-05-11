@@ -68,7 +68,11 @@ export class RBACController {
     }
 
     try {
-      const newSet = await rbacService.createPermissionSet(orgId, parseResult.data);
+      const newSet = await rbacService.createPermissionSet(
+        orgId,
+        req.authSession.user.id,
+        parseResult.data,
+      );
       res.status(201).json(newSet);
     } catch (error) {
       logger.error({ error, orgId }, 'Failed to create permission set');
@@ -93,6 +97,7 @@ export class RBACController {
       const updatedSet = await rbacService.updatePermissionSet(
         id as string,
         orgId,
+        req.authSession.user.id,
         parseResult.data,
       );
       res.json(updatedSet);
@@ -114,7 +119,7 @@ export class RBACController {
     const { id } = req.params;
 
     try {
-      await rbacService.deletePermissionSet(id as string, orgId);
+      await rbacService.deletePermissionSet(id as string, orgId, req.authSession.user.id);
       res.status(204).send();
     } catch (error) {
       if (error instanceof AppError) {
@@ -162,7 +167,11 @@ export class RBACController {
     }
 
     try {
-      const newRole = await rbacService.createRole(orgId, parseResult.data);
+      const newRole = await rbacService.createRole(
+        orgId,
+        req.authSession.user.id,
+        parseResult.data,
+      );
       res.status(201).json(newRole);
     } catch (error) {
       logger.error({ error, orgId }, 'Failed to create role');
@@ -184,7 +193,12 @@ export class RBACController {
     }
 
     try {
-      const updatedRole = await rbacService.updateRole(id as string, orgId, parseResult.data);
+      const updatedRole = await rbacService.updateRole(
+        id as string,
+        orgId,
+        req.authSession.user.id,
+        parseResult.data,
+      );
       res.json(updatedRole);
     } catch (error) {
       if (error instanceof AppError) {
@@ -204,7 +218,7 @@ export class RBACController {
     const { id } = req.params;
 
     try {
-      await rbacService.deleteRole(id as string, orgId);
+      await rbacService.deleteRole(id as string, orgId, req.authSession.user.id);
       res.status(204).send();
     } catch (error) {
       if (error instanceof AppError) {

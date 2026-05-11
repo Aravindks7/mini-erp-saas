@@ -1,6 +1,9 @@
 import { lazy } from 'react';
 import { FileText } from 'lucide-react';
 import type { AppRoute } from '@/lib/types/navigation';
+import { queryClient } from '@/lib/query-client';
+import { invoiceDetailQuery } from './hooks/invoices.hooks';
+import type { InvoiceResponse } from './api/invoices.api';
 
 const InvoicesListPage = lazy(() => import('./pages/InvoicesListPage'));
 const InvoiceDetailsPage = lazy(() => import('./pages/InvoiceDetailsPage'));
@@ -32,8 +35,12 @@ export const invoiceRoutes: AppRoute[] = [
       {
         path: ':id',
         element: <InvoiceDetailsPage />,
+        loader: async ({ params }) => {
+          if (!params.id) throw new Error('No id provided');
+          return queryClient.ensureQueryData(invoiceDetailQuery(params.id));
+        },
         handle: {
-          crumb: (data: { documentNumber?: string }) => data?.documentNumber || 'Invoice Details',
+          crumb: (data: InvoiceResponse) => data?.documentNumber || 'Invoice Details',
         },
       },
     ],

@@ -1,7 +1,11 @@
 import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
-import type { CreateSalesOrderInput } from '@shared/contracts/sales-orders.contract';
+import type {
+  CreateSalesOrderInput,
+  UpdateSalesOrderInput,
+} from '@shared/contracts/sales-orders.contract';
 import type { ActivityAction } from '@shared/config/activity-actions.config';
 import { salesOrdersApi, type SOStatus } from '../api/sales-orders.api';
+import { activityKeys } from '../../activity/hooks/activity.hooks';
 
 export const salesOrderKeys = {
   all: ['sales-orders'] as const,
@@ -16,12 +20,24 @@ export const salesOrderDetailQuery = (id: string) =>
     queryFn: () => salesOrdersApi.fetchSalesOrder(id),
   });
 
-export function useSalesOrders() {
-  return useQuery({
+export const salesOrderListQuery = () =>
+  queryOptions({
     queryKey: salesOrderKeys.lists(),
     queryFn: salesOrdersApi.fetchSalesOrders,
     staleTime: 5000,
   });
+
+export function useSalesOrdersQuery() {
+  return useQuery(salesOrderListQuery());
+}
+
+export function useSalesOrdersActions() {
+  const queryClient = useQueryClient();
+
+  return {
+    invalidateSalesOrders: () =>
+      queryClient.invalidateQueries({ queryKey: salesOrderKeys.lists() }),
+  };
 }
 
 export function useSalesOrder(id: string | undefined) {
@@ -38,6 +54,7 @@ export function useCreateSalesOrder() {
     mutationFn: (data: CreateSalesOrderInput) => salesOrdersApi.createSalesOrder(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }
@@ -46,11 +63,12 @@ export function useUpdateSalesOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: CreateSalesOrderInput }) =>
+    mutationFn: ({ id, data }: { id: string; data: UpdateSalesOrderInput }) =>
       salesOrdersApi.updateSalesOrder(id, data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.lists() });
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.detail(data.id) });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }
@@ -62,6 +80,7 @@ export function useDeleteSalesOrder() {
     mutationFn: (id: string) => salesOrdersApi.deleteSalesOrder(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }
@@ -73,6 +92,7 @@ export function useBulkDeleteSalesOrders() {
     mutationFn: (ids: string[]) => salesOrdersApi.bulkDeleteSalesOrders(ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }
@@ -94,8 +114,9 @@ export function useUpdateSalesOrderStatus() {
     }) => salesOrdersApi.updateSalesOrderStatus(id, status, action, reason),
     onSuccess: (data) => {
       queryClient.setQueryData(salesOrderKeys.detail(data.id), data);
+      queryClient.invalidateQueries({ queryKey: salesOrderKeys.detail(data.id) });
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }

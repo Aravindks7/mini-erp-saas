@@ -114,17 +114,21 @@ export class SalesOrderReconciler {
     }
 
     // 3. Business Activity Log (Temporal Narrative)
-    await ActivityLogger.record(tx, {
-      organizationId,
-      entityType: 'sales_order',
-      entityId: id,
-      entityDisplayId: existing.documentNumber,
-      entityLabel: 'Sales Order',
-      action,
-      reason: reason || `Status changed from ${existing.status} to ${newStatus}`,
-      snapshot: { previousStatus: existing.status, newStatus },
-      userId,
-    });
+    await ActivityLogger.recordUpdate(
+      tx,
+      {
+        organizationId,
+        entityType: 'sales_order',
+        entityId: id,
+        entityDisplayId: existing.documentNumber,
+        entityLabel: 'Sales Order',
+        action,
+        reason: reason || `Status changed from ${existing.status} to ${newStatus}`,
+        userId,
+      },
+      existing,
+      { status: newStatus },
+    );
 
     return newStatus;
   }

@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { useTenant } from '../../contexts/TenantContext';
-import { useOrganizations } from '@/features/organizations/hooks/organizations.hooks';
+import { useOrganizationsQuery } from '@/features/organizations/hooks/organizations.hooks';
 import type { OrganizationResponse } from '@/features/organizations/api/organizations.api';
 import { APP_PATHS } from '@/lib/paths';
 import { getTenantPath } from '@/lib/path-utils';
@@ -27,8 +27,14 @@ function useSyncActiveOrg(
       return;
     }
 
-    // Only update if it's a different organization to prevent render loops
-    if (activeOrg?.id !== currentOrg.id) {
+    // Only update if it's a different organization or data changed to prevent render loops
+    const hasDataChanged =
+      activeOrg?.id !== currentOrg.id ||
+      activeOrg?.defaultCountry !== currentOrg.defaultCountry ||
+      activeOrg?.name !== currentOrg.name ||
+      activeOrg?.slug !== currentOrg.slug;
+
+    if (hasDataChanged) {
       setActiveOrg(currentOrg);
     }
   }, [organizations, activeId, activeOrg, setActiveOrg]);
@@ -45,7 +51,7 @@ export const TenantGuard = ({ children }: { children: ReactNode }) => {
   const { slug } = useParams();
   const location = useLocation();
 
-  const { data: organizations, isLoading, isFetching, isError, error } = useOrganizations();
+  const { data: organizations, isLoading, isFetching, isError, error } = useOrganizationsQuery();
 
   // Sync the full organization object to the context
   useSyncActiveOrg(organizations, activeOrganizationId, activeOrganization, setActiveOrganization);

@@ -10,6 +10,7 @@ import {
   UpdateProductInput,
 } from '#shared/contracts/products.contract.js';
 
+import { ActivityLogger } from '../../lib/activity-logger.js';
 import { BaseService } from '../../lib/base.service.js';
 import { AppError } from '../../utils/AppError.js';
 import { parseCsv } from '../../utils/csv.js';
@@ -125,16 +126,31 @@ export class ProductsService extends BaseService<typeof products> {
     await this.validateReferences(organizationId, data.baseUomId, data.categoryId, data.taxId);
 
     // 3. Create Product
-    const [newProduct] = await db
-      .insert(products)
-      .values(this.withAudit({ ...data, organizationId }, userId))
-      .returning();
+    const operation = async (tx: Transaction | typeof db) => {
+      const [newProduct] = await tx
+        .insert(products)
+        .values(this.withAudit({ ...data, organizationId }, userId))
+        .returning();
 
-    if (!newProduct) {
-      throw new AppError('Failed to create product record', 500);
-    }
+      if (!newProduct) {
+        throw new AppError('Failed to create product record', 500);
+      }
 
-    return await this.getProductById(organizationId, newProduct.id);
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        userId,
+        entityType: 'product',
+        entityId: newProduct.id,
+        entityDisplayId: newProduct.sku,
+        entityLabel: 'Product',
+        action: 'CREATED',
+        reason: `Product ${newProduct.sku} (${newProduct.name}) created.`,
+      });
+
+      return await this.getProductById(organizationId, newProduct.id, tx);
+    };
+
+    return await db.transaction(operation);
   }
 
   async updateProduct(
@@ -143,65 +159,117 @@ export class ProductsService extends BaseService<typeof products> {
     id: string,
     data: UpdateProductInput,
   ) {
-    // 1. Check if product exists and belongs to org
-    const existingProduct = await this.getProductById(organizationId, id);
-    if (!existingProduct) {
-      throw new AppError('Product not found', 404);
-    }
-
-    // 2. Duplicate SKU check if SKU is changing
-    if (data.sku && data.sku.toLowerCase() !== existingProduct.sku.toLowerCase()) {
-      const duplicate = await this.checkDuplicateSku(organizationId, data.sku, id);
-      if (duplicate) {
-        throw new AppError(`Product with SKU '${data.sku}' already exists`, 409);
+    return await db.transaction(async (tx) => {
+      // 1. Check if product exists and belongs to org
+      const existingProduct = await this.getProductById(organizationId, id, tx);
+      if (!existingProduct) {
+        throw new AppError('Product not found', 404);
       }
-    }
 
-    // 3. Reference check if UoM, Category or Tax is changing
-    const baseUomId = data.baseUomId || existingProduct.baseUomId;
-    const categoryId = data.categoryId !== undefined ? data.categoryId : existingProduct.categoryId;
-    const taxId = data.taxId !== undefined ? data.taxId : existingProduct.taxId;
+      // 2. Duplicate SKU check if SKU is changing
+      if (data.sku && data.sku.toLowerCase() !== existingProduct.sku.toLowerCase()) {
+        const duplicate = await this.checkDuplicateSku(organizationId, data.sku, id);
+        if (duplicate) {
+          throw new AppError(`Product with SKU '${data.sku}' already exists`, 409);
+        }
+      }
 
-    if (data.baseUomId || data.categoryId !== undefined || data.taxId !== undefined) {
-      await this.validateReferences(organizationId, baseUomId, categoryId, taxId);
-    }
+      // 3. Reference check if UoM, Category or Tax is changing
+      const baseUomId = data.baseUomId || existingProduct.baseUomId;
+      const categoryId =
+        data.categoryId !== undefined ? data.categoryId : existingProduct.categoryId;
+      const taxId = data.taxId !== undefined ? data.taxId : existingProduct.taxId;
 
-    // 4. Update Product
-    const [updatedProduct] = await db
-      .update(products)
-      .set(this.withAudit(data, userId))
-      .where(this.getTenantWhere(organizationId, id))
-      .returning();
+      if (data.baseUomId || data.categoryId !== undefined || data.taxId !== undefined) {
+        await this.validateReferences(organizationId, baseUomId, categoryId, taxId);
+      }
 
-    if (!updatedProduct) {
-      throw new AppError('Failed to update product record', 500);
-    }
+      // 4. Update Product
+      const [updatedProduct] = await tx
+        .update(products)
+        .set(this.withAudit(data, userId, true))
+        .where(this.getTenantWhere(organizationId, id))
+        .returning();
 
-    return await this.getProductById(organizationId, updatedProduct.id);
+      if (!updatedProduct) {
+        throw new AppError('Failed to update product record', 500);
+      }
+
+      // Forensic Audit: Record Update
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          entityType: 'product',
+          entityId: id,
+          entityDisplayId: existingProduct.sku,
+          entityLabel: 'Product',
+          action: 'UPDATED',
+          reason: 'Product master data modified',
+          userId,
+        },
+        existingProduct,
+        data,
+      );
+
+      return await this.getProductById(organizationId, updatedProduct.id, tx);
+    });
   }
 
   async deleteProduct(organizationId: string, userId: string, id: string) {
-    const [deleted] = await db
-      .update(products)
-      .set(this.withAudit({ deletedAt: new Date() }, userId))
-      .where(this.getTenantWhere(organizationId, id))
-      .returning();
+    return await db.transaction(async (tx) => {
+      const [deleted] = await tx
+        .update(products)
+        .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+        .where(this.getTenantWhere(organizationId, id))
+        .returning();
 
-    if (!deleted) {
-      throw new AppError('Product not found or delete failed', 404);
-    }
+      if (!deleted) {
+        throw new AppError('Product not found or delete failed', 404);
+      }
 
-    return deleted;
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        userId,
+        entityType: 'product',
+        entityId: id,
+        entityDisplayId: deleted.sku,
+        entityLabel: 'Product',
+        action: 'DELETED',
+        reason: 'Product record soft-deleted',
+      });
+
+      return deleted;
+    });
   }
 
   async bulkDeleteProducts(organizationId: string, userId: string, ids: string[]) {
-    const results = await db
-      .update(products)
-      .set(this.withAudit({ deletedAt: new Date() }, userId))
-      .where(and(eq(products.organizationId, organizationId), inArray(products.id, ids)))
-      .returning();
+    return await db.transaction(async (tx) => {
+      const productsToDelete = await tx.query.products.findMany({
+        where: and(eq(products.organizationId, organizationId), inArray(products.id, ids)),
+      });
 
-    return results;
+      const results = await tx
+        .update(products)
+        .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+        .where(and(eq(products.organizationId, organizationId), inArray(products.id, ids)))
+        .returning();
+
+      for (const p of productsToDelete) {
+        await ActivityLogger.record(tx as Transaction, {
+          organizationId,
+          userId,
+          entityType: 'product',
+          entityId: p.id,
+          entityDisplayId: p.sku,
+          entityLabel: 'Product',
+          action: 'DELETED',
+          reason: 'Product record soft-deleted via bulk action',
+        });
+      }
+
+      return results;
+    });
   }
 
   async exportProducts(organizationId: string) {

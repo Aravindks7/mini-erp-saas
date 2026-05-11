@@ -31,7 +31,10 @@ interface AddPaymentSheetProps {
   onClose: () => void;
 }
 
+import { useCurrency } from '@/features/currencies/hooks/use-currency';
+
 export function AddPaymentSheet({ invoice, isOpen, onClose }: AddPaymentSheetProps) {
+  const { format: formatCurrency } = useCurrency();
   const createPaymentMutation = useCreatePayment();
   const createStripeMutation = useCreateStripeSession();
 
@@ -43,15 +46,12 @@ export function AddPaymentSheet({ invoice, isOpen, onClose }: AddPaymentSheetPro
       if (amount > balanceDue) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Amount cannot exceed the balance due (${new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-          }).format(balanceDue)})`,
+          message: `Amount cannot exceed the balance due (${formatCurrency(balanceDue)})`,
           path: ['amount'],
         });
       }
     });
-  }, [balanceDue]);
+  }, [balanceDue, formatCurrency]);
 
   const form = useForm<CreatePaymentInput>({
     resolver: zodResolver(paymentSchema) as Resolver<CreatePaymentInput>,
@@ -117,11 +117,7 @@ export function AddPaymentSheet({ invoice, isOpen, onClose }: AddPaymentSheetPro
               <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">
                 Balance Due
               </p>
-              <p className="text-2xl font-bold text-primary">
-                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
-                  balanceDue,
-                )}
-              </p>
+              <p className="text-2xl font-bold text-primary">{formatCurrency(balanceDue)}</p>
             </div>
             <CheckCircle2 className="h-8 w-8 text-primary/20" />
           </div>
@@ -147,7 +143,7 @@ export function AddPaymentSheet({ invoice, isOpen, onClose }: AddPaymentSheetPro
                 {() => (
                   <>
                     <FormField name="amount" label="Payment Amount">
-                      {({ field }) => <AmountInput {...field} currency="USD" />}
+                      {({ field }) => <AmountInput {...field} />}
                     </FormField>
 
                     <FormField name="paymentMethod" label="Payment Method">
@@ -211,7 +207,6 @@ export function AddPaymentSheet({ invoice, isOpen, onClose }: AddPaymentSheetPro
                   <AmountInput
                     value={watchedAmount}
                     onChange={(val) => form.setValue('amount', val)}
-                    currency="USD"
                   />
                 </div>
 

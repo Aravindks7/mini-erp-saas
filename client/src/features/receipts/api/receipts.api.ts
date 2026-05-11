@@ -1,5 +1,5 @@
 import { apiFetch } from '@/lib/api';
-import type { CreateReceiptInput } from '@shared/contracts/receipts.contract';
+import type { CreateReceiptInput, UpdateReceiptInput } from '@shared/contracts/receipts.contract';
 import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export interface ReceiptLineResponse {
@@ -48,6 +48,11 @@ export const receiptsApi = {
   createReceipt: (data: CreateReceiptInput) =>
     apiFetch<ReceiptResponse>(API_ENDPOINTS.purchasing.receipts.base, {
       method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateReceipt: (id: string, data: UpdateReceiptInput) =>
+    apiFetch<ReceiptResponse>(API_ENDPOINTS.purchasing.receipts.detail(id), {
+      method: 'PATCH',
       body: JSON.stringify(data),
     }),
   deleteReceipt: (id: string) =>

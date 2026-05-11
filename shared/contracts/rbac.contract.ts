@@ -91,6 +91,7 @@ export const PERMISSIONS = {
   PAYMENTS: {
     READ: 'payments:read',
     CREATE: 'payments:create',
+    UPDATE: 'payments:update',
     DELETE: 'payments:delete',
   },
   DASHBOARD: {
@@ -101,6 +102,12 @@ export const PERMISSIONS = {
     CREATE: 'finance:create',
     UPDATE: 'finance:update',
     DELETE: 'finance:delete',
+  },
+  CURRENCIES: {
+    READ: 'currencies:read',
+    CREATE: 'currencies:create',
+    UPDATE: 'currencies:update',
+    DELETE: 'currencies:delete',
   },
 } as const;
 

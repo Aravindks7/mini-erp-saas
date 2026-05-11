@@ -40,7 +40,7 @@ const extendedShipmentSchema = createShipmentSchema.extend({
 type ExtendedShipmentInput = z.infer<typeof extendedShipmentSchema>;
 import type { SalesOrderResponse } from '../api/sales-orders.api';
 import { useCreateShipment } from '@/features/shipments/hooks/shipments.hooks';
-import { useWarehouses } from '@/features/warehouses/hooks/warehouses.hooks';
+import { useWarehousesQuery } from '@/features/warehouses/hooks/warehouses.hooks';
 import type { WarehouseResponse } from '@/features/warehouses/api/warehouses.api';
 
 interface FulfillSalesOrderSheetProps {
@@ -155,7 +155,7 @@ function ShipmentLineItem({
 
 export function FulfillSalesOrderSheet({ isOpen, onClose, so }: FulfillSalesOrderSheetProps) {
   const { mutateAsync: createShipment, isPending: isLoading } = useCreateShipment();
-  const { data: warehouses } = useWarehouses();
+  const { data: warehouses } = useWarehousesQuery();
 
   // Dynamically create schema with contextual validation against 'so'
   const fulfillmentSchema = React.useMemo(() => {

@@ -14,6 +14,7 @@ import { seedProducts } from '../src/db/seeds/products.seed.js';
 import { seedWarehouses } from '../src/db/seeds/warehouses.seed.js';
 import { seedInventory } from '../src/db/seeds/inventory.seed.js';
 import { seedScenarios } from '../src/db/seeds/scenarios.seed.js';
+import { seedCurrencies } from '../src/db/seeds/currencies.seed.js';
 
 async function run() {
   // 1. Production Kill-Switch
@@ -55,6 +56,7 @@ async function run() {
     // Reference Data (Requires Org/User from Auth)
     await seedTaxes();
     await seedUoms();
+    await seedCurrencies();
 
     // Operational Data (Requires Reference Data)
     await seedSuppliers();

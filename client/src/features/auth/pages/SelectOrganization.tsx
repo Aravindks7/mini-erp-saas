@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Building2, Plus, ArrowRight, Loader2, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { useOrganizations } from '@/features/organizations/hooks/organizations.hooks';
+import { useOrganizationsQuery } from '@/features/organizations/hooks/organizations.hooks';
 import { useTenant } from '@/contexts/TenantContext';
 import { APP_PATHS } from '@/lib/paths';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ import { getTenantPath } from '@/lib/path-utils';
 
 export default function SelectOrganization() {
   const navigate = useNavigate();
-  const { data: organizations, isLoading, isError } = useOrganizations();
+  const { data: organizations, isLoading, isError } = useOrganizationsQuery();
   const { syncActiveOrganizationId } = useTenant();
   const { data: session } = useAuth();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);

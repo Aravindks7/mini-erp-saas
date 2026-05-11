@@ -24,15 +24,14 @@ const ORDER_STATUS_MAP: StatusMap<string> = {
   pending: { label: 'Pending', tone: 'warning' },
 };
 
+import { useCurrency } from '@/features/currencies/hooks/use-currency';
+
 /**
  * Widget displaying chronological business events.
  * Axiom: Provides situational awareness across domain silos.
  */
 export function RecentActivityWidget({ activity }: RecentActivityWidgetProps) {
-  const currencyFormatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  });
+  const { format: formatCurrency } = useCurrency();
 
   return (
     <Card className="col-span-1 lg:col-span-2">
@@ -79,7 +78,7 @@ export function RecentActivityWidget({ activity }: RecentActivityWidgetProps) {
                     <StatusBadge value={item.status} statusMap={ORDER_STATUS_MAP} />
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    {currencyFormatter.format(Number(item.amount))}
+                    {formatCurrency(Number(item.amount))}
                   </TableCell>
                 </TableRow>
               ))}

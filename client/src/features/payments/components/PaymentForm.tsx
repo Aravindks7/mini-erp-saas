@@ -14,10 +14,10 @@ import { AmountInput } from '@/components/shared/form/AmountInput';
 
 import type { CreatePaymentInput } from '@shared/contracts/payments.contract';
 import { createPaymentSchema } from '@shared/contracts/payments.contract';
-import { useCustomers } from '@/features/customers/hooks/customers.hooks';
-import { useSuppliers } from '@/features/suppliers/hooks/suppliers.hooks';
-import { useInvoices } from '@/features/invoices/hooks/invoices.hooks';
-import { useBills } from '@/features/bills/hooks/bills.hooks';
+import { useCustomersQuery } from '@/features/customers/hooks/customers.hooks';
+import { useSuppliersQuery } from '@/features/suppliers/hooks/suppliers.hooks';
+import { useInvoicesQuery } from '@/features/invoices/hooks/invoices.hooks';
+import { useBillsQuery } from '@/features/bills/hooks/bills.hooks';
 
 interface PaymentFormProps {
   form: UseFormReturn<CreatePaymentInput, unknown>;
@@ -25,13 +25,16 @@ interface PaymentFormProps {
   formId?: string;
 }
 
+import { useCurrency } from '@/features/currencies/hooks/use-currency';
+
 export function PaymentForm({ form, onSubmit, formId }: PaymentFormProps) {
+  const { format: formatCurrency } = useCurrency();
   const paymentType = form.watch('paymentType');
 
-  const { data: customers } = useCustomers();
-  const { data: suppliers } = useSuppliers();
-  const { data: invoices } = useInvoices();
-  const { data: bills } = useBills();
+  const { data: customers } = useCustomersQuery();
+  const { data: suppliers } = useSuppliersQuery();
+  const { data: invoices } = useInvoicesQuery();
+  const { data: bills } = useBillsQuery();
 
   // Reset dependent fields when payment type changes
   React.useEffect(() => {
@@ -54,20 +57,14 @@ export function PaymentForm({ form, onSubmit, formId }: PaymentFormProps) {
   const invoiceOptions = (invoices || [])
     .filter((inv) => inv.status !== 'paid')
     .map((inv) => ({
-      label: `${inv.documentNumber} (${new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-      }).format(Number(inv.totalAmount))})`,
+      label: `${inv.documentNumber} (${formatCurrency(Number(inv.totalAmount))})`,
       value: inv.id,
     }));
 
   const billOptions = (bills || [])
     .filter((b) => b.status !== 'paid')
     .map((b) => ({
-      label: `${b.referenceNumber} (${new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-      }).format(Number(b.totalAmount))})`,
+      label: `${b.referenceNumber} (${formatCurrency(Number(b.totalAmount))})`,
       value: b.id,
     }));
 
@@ -117,7 +114,7 @@ export function PaymentForm({ form, onSubmit, formId }: PaymentFormProps) {
 
               <div className="grid gap-6 sm:grid-cols-2">
                 <FormField name="amount" label="Amount">
-                  {({ field }) => <AmountInput {...field} currency="USD" />}
+                  {({ field }) => <AmountInput {...field} />}
                 </FormField>
 
                 <FormField name="paymentDate" label="Payment Date">

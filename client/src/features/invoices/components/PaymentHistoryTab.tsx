@@ -10,8 +10,8 @@ import {
 } from '@/components/ui/table';
 import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
 import { formatDate } from '@shared/utils/date';
-import { usePayments } from '@/features/payments/hooks/payments.hooks';
-import { usePaymentIntents } from '@/features/payments/hooks/payments.hooks';
+import { usePaymentsQuery, usePaymentIntentsQuery } from '@/features/payments/hooks/payments.hooks';
+import type { PaymentResponse, PaymentIntentResponse } from '@/features/payments/api/payments.api';
 import type { InvoiceResponse } from '../api/invoices.api';
 
 interface PaymentHistoryTabProps {
@@ -32,17 +32,19 @@ const paymentMethodMap: Record<string, string> = {
   credit_card: 'Stripe / Card',
 };
 
+import { useCurrency } from '@/features/currencies/hooks/use-currency';
+
 export function PaymentHistoryTab({ invoice }: PaymentHistoryTabProps) {
-  const { data: allPayments } = usePayments();
-  const { data: intents } = usePaymentIntents({ invoiceId: invoice.id });
+  const { format: formatCurrency } = useCurrency();
+  const { data: allPayments } = usePaymentsQuery();
+  const { data: intents } = usePaymentIntentsQuery({ invoiceId: invoice.id });
 
-  const invoicePayments = (allPayments || []).filter((p) => p.invoiceId === invoice.id);
-  const pendingIntents = (intents || []).filter((i) => i.status === 'pending');
-
-  const currencyFormatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  });
+  const invoicePayments = (allPayments || []).filter(
+    (p: PaymentResponse) => p.invoiceId === invoice.id,
+  );
+  const pendingIntents = (intents || []).filter(
+    (i: PaymentIntentResponse) => i.status === 'pending',
+  );
 
   return (
     <div className="space-y-6 animate-in slide-in-from-left-2 duration-300">
@@ -72,7 +74,7 @@ export function PaymentHistoryTab({ invoice }: PaymentHistoryTabProps) {
                     <TableCell>{paymentMethodMap[p.paymentMethod] || p.paymentMethod}</TableCell>
                     <TableCell className="font-mono text-xs">{p.referenceNumber || '-'}</TableCell>
                     <TableCell className="text-right pr-6 font-bold text-emerald-600">
-                      {currencyFormatter.format(Number(p.amount))}
+                      {formatCurrency(Number(p.amount))}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -107,7 +109,7 @@ export function PaymentHistoryTab({ invoice }: PaymentHistoryTabProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pendingIntents.map((i) => (
+                {pendingIntents.map((i: PaymentIntentResponse) => (
                   <TableRow key={i.id} className="opacity-70">
                     <TableCell className="pl-6">{formatDate(i.createdAt)}</TableCell>
                     <TableCell className="capitalize">{i.provider}</TableCell>
@@ -115,7 +117,7 @@ export function PaymentHistoryTab({ invoice }: PaymentHistoryTabProps) {
                       <StatusBadge value={i.status} statusMap={intentStatusMap} />
                     </TableCell>
                     <TableCell className="text-right pr-6 font-semibold">
-                      {currencyFormatter.format(Number(i.amount))}
+                      {formatCurrency(Number(i.amount))}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -5,6 +5,7 @@ import type {
   UpdateBillStatusInput,
 } from '@shared/contracts/bills.contract';
 import { billsApi } from '../api/bills.api';
+import { activityKeys } from '../../activity/hooks/activity.hooks';
 
 export const billKeys = {
   all: ['bills'] as const,
@@ -20,12 +21,23 @@ export const billDetailQuery = (id: string) =>
     queryFn: () => billsApi.fetchBill(id),
   });
 
-export function useBills() {
-  return useQuery({
+export const billListQuery = () =>
+  queryOptions({
     queryKey: billKeys.lists(),
     queryFn: billsApi.fetchBills,
     staleTime: 5000,
   });
+
+export function useBillsQuery() {
+  return useQuery(billListQuery());
+}
+
+export function useBillsActions() {
+  const queryClient = useQueryClient();
+
+  return {
+    invalidateBills: () => queryClient.invalidateQueries({ queryKey: billKeys.lists() }),
+  };
 }
 
 export function useBill(id: string | undefined) {
@@ -40,8 +52,10 @@ export function useCreateBill() {
 
   return useMutation({
     mutationFn: (data: CreateBillInput) => billsApi.createBill(data),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(billKeys.detail(data.id), data);
       queryClient.invalidateQueries({ queryKey: billKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }
@@ -53,8 +67,9 @@ export function useUpdateBill() {
     mutationFn: ({ id, data }: { id: string; data: UpdateBillInput }) =>
       billsApi.updateBill(id, data),
     onSuccess: (data) => {
+      queryClient.setQueryData(billKeys.detail(data.id), data);
       queryClient.invalidateQueries({ queryKey: billKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: billKeys.detail(data.id) });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }
@@ -66,8 +81,9 @@ export function useUpdateBillStatus() {
     mutationFn: ({ id, data }: { id: string; data: UpdateBillStatusInput }) =>
       billsApi.updateBillStatus(id, data),
     onSuccess: (data) => {
+      queryClient.setQueryData(billKeys.detail(data.id), data);
       queryClient.invalidateQueries({ queryKey: billKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: billKeys.detail(data.id) });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }
@@ -79,6 +95,7 @@ export function useDeleteBill() {
     mutationFn: (id: string) => billsApi.deleteBill(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: billKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }
@@ -90,6 +107,7 @@ export function useBulkDeleteBills() {
     mutationFn: (ids: string[]) => billsApi.bulkDeleteBills(ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: billKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }

@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 
 import { EntityTable } from '@/components/shared/data-table/EntityTable';
@@ -11,9 +10,14 @@ import { PERMISSIONS } from '@shared/contracts/rbac.contract';
 import { APP_PATHS } from '@/lib/paths';
 
 import { ErrorState } from '@/components/shared/ErrorState';
+import { usePermissionsStatus } from '@/hooks/usePermission';
+import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { columns, transferStatusOptions } from './columns';
-import { useInventoryTransfers } from '../../hooks/inventory.hooks';
+import {
+  useInventoryTransfersQuery,
+  useInventoryTransfersActions,
+} from '../../hooks/inventory.hooks';
 
 const searchSchema = z.object({
   reference: z.string().optional(),
@@ -23,8 +27,9 @@ const searchSchema = z.object({
 export function TransfersList() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
-  const { data: transfers, isLoading, isError } = useInventoryTransfers();
+  const { data: transfers, isLoading: isDataLoading, isError } = useInventoryTransfersQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateTransfers } = useInventoryTransfersActions();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
   if (isError) {
@@ -32,9 +37,13 @@ export function TransfersList() {
       <ErrorState
         title="Failed to load transfers"
         description="Encountered an error while fetching the transfer history."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['inventory', 'transfers'] })}
+        onRetry={invalidateTransfers}
       />
     );
+  }
+
+  if (isDataLoading || isPermissionsLoading) {
+    return <DataTableSkeleton columnCount={5} rowCount={8} />;
   }
 
   const handleAddClick = () => navigate(getPath(APP_PATHS.inventory.transfers.new()));
@@ -47,7 +56,7 @@ export function TransfersList() {
       enableGlobalSearch
       data={transfers || []}
       columns={columns}
-      isLoading={isLoading}
+      isLoading={isDataLoading}
       onAddClick={handleAddClick}
       viewMode={tableState.viewMode}
       onViewModeChange={tableSetters.setViewMode}

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, KeyRound, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { usePermissionSets, useDeletePermissionSet } from '@/features/auth/hooks/rbac.hooks';
+import { usePermissionSetsQuery, useDeletePermissionSet } from '@/features/auth/hooks/rbac.hooks';
 import { EntityTable } from '@/components/shared/data-table/EntityTable';
 import { type ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +16,7 @@ import { APP_PATHS } from '@/lib/paths';
 export function PermissionSetsTab() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const { data: sets, isLoading } = usePermissionSets();
+  const { data: sets, isLoading } = usePermissionSetsQuery();
   const deleteSet = useDeletePermissionSet();
 
   const [setToDelete, setSetToDelete] = React.useState<PermissionSetResponse | null>(null);

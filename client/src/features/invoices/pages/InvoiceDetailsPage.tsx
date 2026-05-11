@@ -41,10 +41,13 @@ import { toast } from 'sonner';
 import { AddPaymentSheet } from '../components/AddPaymentSheet';
 import { PaymentHistoryTab } from '../components/PaymentHistoryTab';
 
+import { useCurrency } from '@/features/currencies/hooks/use-currency';
+
 export default function InvoiceDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
+  const { format: formatCurrency } = useCurrency();
   const { data: invoice, isLoading, isError } = useInvoice(id);
   const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateInvoiceStatus();
 
@@ -80,11 +83,6 @@ export default function InvoiceDetailsPage() {
       </PageContainer>
     );
   }
-
-  const currencyFormatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  });
 
   const totalPaid = Number(invoice.totalAmount) - Number(invoice.balanceDue ?? invoice.totalAmount);
   const balanceDue = Number(invoice.balanceDue ?? invoice.totalAmount);
@@ -238,27 +236,25 @@ export default function InvoiceDetailsPage() {
               lines={[
                 {
                   label: 'Subtotal',
-                  value: currencyFormatter.format(
-                    Number(invoice.totalAmount) - Number(invoice.taxAmount),
-                  ),
+                  value: formatCurrency(Number(invoice.totalAmount) - Number(invoice.taxAmount)),
                   isSubtotal: true,
                 },
                 {
                   label: 'Tax',
-                  value: currencyFormatter.format(Number(invoice.taxAmount)),
+                  value: formatCurrency(Number(invoice.taxAmount)),
                 },
                 {
                   label: 'Total',
-                  value: currencyFormatter.format(Number(invoice.totalAmount)),
+                  value: formatCurrency(Number(invoice.totalAmount)),
                   isTotal: true,
                 },
                 {
                   label: 'Paid to Date',
-                  value: currencyFormatter.format(totalPaid),
+                  value: formatCurrency(totalPaid),
                 },
                 {
                   label: 'Balance Due',
-                  value: currencyFormatter.format(balanceDue),
+                  value: formatCurrency(balanceDue),
                   isTotal: true,
                 },
               ]}
@@ -295,14 +291,14 @@ export default function InvoiceDetailsPage() {
                       <TableCell className="font-medium">{line.product.name}</TableCell>
                       <TableCell className="text-right">{line.quantity}</TableCell>
                       <TableCell className="text-right">
-                        {currencyFormatter.format(Number(line.unitPrice))}
+                        {formatCurrency(Number(line.unitPrice))}
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
-                        {currencyFormatter.format(Number(line.taxAmount))}
+                        {formatCurrency(Number(line.taxAmount))}
                         <span className="text-[10px] ml-1">({line.taxRateAtOrder}%)</span>
                       </TableCell>
                       <TableCell className="text-right font-semibold pr-6 text-primary">
-                        {currencyFormatter.format(Number(line.lineTotal))}
+                        {formatCurrency(Number(line.lineTotal))}
                       </TableCell>
                     </TableRow>
                   ))}

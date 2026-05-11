@@ -7,6 +7,7 @@ import {
   roles,
   rolePermissionSets,
   documentSequences,
+  currencies,
 } from '../../db/schema/index.js';
 import { and, eq, sql, ne } from 'drizzle-orm';
 import {
@@ -15,6 +16,10 @@ import {
 } from '#shared/contracts/organizations.contract.js';
 import { rbacService } from '../rbac/rbac.service.js';
 import { PERMISSIONS, type Permission } from '#shared/index.js';
+import { getCurrencyByCountry } from '#shared/utils/currency-map.js';
+import { ActivityLogger } from '../../lib/activity-logger.js';
+
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export class OrganizationsService {
   /**
@@ -92,6 +97,20 @@ export class OrganizationsService {
 
       await tx.insert(documentSequences).values(sequenceValues);
 
+      // 6. Sync default currency based on country
+      await this.syncDefaultCurrency(tx, newOrg.id, userId, newOrg.defaultCountry);
+
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId: newOrg.id,
+        userId,
+        entityType: 'organization',
+        entityId: newOrg.id,
+        entityDisplayId: newOrg.slug,
+        entityLabel: 'Organization',
+        action: 'CREATED',
+        reason: `Organization ${newOrg.name} created.`,
+      });
+
       return newOrg;
     });
   }
@@ -151,7 +170,7 @@ export class OrganizationsService {
     }
 
     // 3. Add them to the org (UPSERT for robustness)
-    await db
+    const [membership] = await db
       .insert(organizationMemberships)
       .values({
         userId: targetUser.id,
@@ -164,9 +183,21 @@ export class OrganizationsService {
           roleId: roleId,
           updatedAt: new Date(),
         },
-      });
+      })
+      .returning();
 
-    return { success: true };
+    await ActivityLogger.record(db as any, {
+      organizationId,
+      userId: adminId,
+      entityType: 'membership',
+      entityId: membership.id,
+      entityDisplayId: targetUser.email,
+      entityLabel: 'Membership',
+      action: 'MEMBER_ADDED',
+      reason: `User ${targetUser.email} added to organization.`,
+    });
+
+    return membership;
   }
 
   /**
@@ -214,11 +245,11 @@ export class OrganizationsService {
           },
         });
 
-      return { success: true };
+      return membership;
     }
 
     // 3. Create/Update invitation (UPSERT)
-    await db
+    const [invite] = await db
       .insert(organizationInvites)
       .values({
         email: userEmail,
@@ -237,7 +268,19 @@ export class OrganizationsService {
           invitedById: adminId,
           updatedAt: new Date(),
         },
-      });
+      })
+      .returning();
+
+    await ActivityLogger.record(db as any, {
+      organizationId,
+      userId: adminId,
+      entityType: 'invite',
+      entityId: invite.id,
+      entityDisplayId: userEmail,
+      entityLabel: 'Organization Invite',
+      action: 'INVITE_SENT',
+      reason: `Invitation sent to ${userEmail}.`,
+    });
 
     return { success: true, invited: true };
   }
@@ -322,12 +365,31 @@ export class OrganizationsService {
       }
 
       // 4. Update role
-      await tx
+      const [updated] = await tx
         .update(organizationMemberships)
         .set({ roleId, updatedAt: new Date() })
-        .where(eq(organizationMemberships.id, targetMembership.id));
+        .where(eq(organizationMemberships.id, targetMembership.id))
+        .returning();
 
-      return { success: true };
+      if (updated) {
+        await ActivityLogger.recordUpdate(
+          tx as Transaction,
+          {
+            organizationId,
+            userId: adminId,
+            entityType: 'membership',
+            entityId: updated.id,
+            entityDisplayId: targetUserId,
+            entityLabel: 'Membership',
+            action: 'MEMBER_ROLE_CHANGED',
+            reason: 'User role updated within organization.',
+          },
+          targetMembership,
+          { roleId },
+        );
+      }
+
+      return membership;
     });
   }
 
@@ -358,11 +420,25 @@ export class OrganizationsService {
       }
 
       // 4. Delete membership
-      await tx
+      const [deleted] = await tx
         .delete(organizationMemberships)
-        .where(eq(organizationMemberships.id, targetMembership.id));
+        .where(eq(organizationMemberships.id, targetMembership.id))
+        .returning();
 
-      return { success: true };
+      if (deleted) {
+        await ActivityLogger.record(tx as Transaction, {
+          organizationId,
+          userId: adminId,
+          entityType: 'membership',
+          entityId: targetMembership.id,
+          entityDisplayId: targetUserId,
+          entityLabel: 'Membership',
+          action: 'MEMBER_REMOVED',
+          reason: 'User removed from organization.',
+        });
+      }
+
+      return membership;
     });
   }
 
@@ -373,6 +449,11 @@ export class OrganizationsService {
     return await db.transaction(async (tx) => {
       // 1. Verify requester has permission
       await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.SETTINGS);
+
+      const existingOrg = await tx.query.organizations.findFirst({
+        where: eq(organizations.id, organizationId),
+      });
+      if (!existingOrg) throw new Error('NOT_FOUND');
 
       const updateData: UpdateOrganizationInput & { updatedAt: Date } = {
         ...data,
@@ -410,6 +491,27 @@ export class OrganizationsService {
 
       if (!updated) throw new Error('NOT_FOUND');
 
+      // 3. Sync default currency if country changed
+      if (data.defaultCountry) {
+        await this.syncDefaultCurrency(tx, organizationId, adminId, data.defaultCountry);
+      }
+
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          userId: adminId,
+          entityType: 'organization',
+          entityId: organizationId,
+          entityDisplayId: updated.slug,
+          entityLabel: 'Organization',
+          action: 'UPDATED',
+          reason: 'Organization settings modified.',
+        },
+        existingOrg,
+        data,
+      );
+
       return updated;
     });
   }
@@ -444,7 +546,18 @@ export class OrganizationsService {
         })
         .where(eq(organizationInvites.id, inviteId));
 
-      return { success: true };
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        userId: adminId,
+        entityType: 'invite',
+        entityId: inviteId,
+        entityDisplayId: invite.email,
+        entityLabel: 'Organization Invite',
+        action: 'INVITE_SENT',
+        reason: `Invitation to ${invite.email} resent.`,
+      });
+
+      return membership;
     });
   }
 
@@ -470,7 +583,18 @@ export class OrganizationsService {
 
       if (!updated) throw new Error('NOT_FOUND');
 
-      return { success: true };
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        userId: adminId,
+        entityType: 'invite',
+        entityId: inviteId,
+        entityDisplayId: updated.email,
+        entityLabel: 'Organization Invite',
+        action: 'INVITE_REVOKED',
+        reason: `Invitation to ${updated.email} revoked.`,
+      });
+
+      return membership;
     });
   }
 
@@ -513,7 +637,7 @@ export class OrganizationsService {
 
       if (!deleted) throw new Error('NOT_FOUND');
 
-      return { success: true };
+      return membership;
     });
   }
 
@@ -556,10 +680,72 @@ export class OrganizationsService {
           .update(organizationInvites)
           .set({ status: 'accepted', updatedAt: new Date() })
           .where(eq(organizationInvites.id, invite.id));
+
+        await ActivityLogger.record(tx as Transaction, {
+          organizationId: invite.organizationId,
+          userId,
+          entityType: 'invite',
+          entityId: invite.id,
+          entityDisplayId: userEmail,
+          entityLabel: 'Organization Invite',
+          action: 'INVITE_ACCEPTED',
+          reason: `User ${userEmail} joined organization via invite.`,
+        });
       }
 
       return { processedCount: pendingInvites.length };
     });
+  }
+
+  /**
+   * Synchronize the default currency based on the organization's country.
+   */
+  private async syncDefaultCurrency(
+    tx: Transaction,
+    organizationId: string,
+    userId: string,
+    countryCode: string,
+  ) {
+    const currency = getCurrencyByCountry(countryCode);
+
+    // 1. Unset any existing defaults for this organization
+    await tx
+      .update(currencies)
+      .set({ isDefault: false, updatedAt: new Date(), updatedBy: userId })
+      .where(eq(currencies.organizationId, organizationId));
+
+    // 2. Check if the currency record already exists (case-insensitive)
+    const existing = await tx.query.currencies.findFirst({
+      where: and(
+        eq(currencies.organizationId, organizationId),
+        sql`lower(${currencies.code}) = ${currency.code.toLowerCase()}`,
+      ),
+    });
+
+    if (existing) {
+      // Update existing record
+      await tx
+        .update(currencies)
+        .set({
+          isDefault: true,
+          isActive: true,
+          updatedAt: new Date(),
+          updatedBy: userId,
+        })
+        .where(eq(currencies.id, existing.id));
+    } else {
+      // Create new record
+      await tx.insert(currencies).values({
+        organizationId,
+        code: currency.code,
+        symbol: currency.symbol,
+        name: currency.name,
+        isDefault: true,
+        isActive: true,
+        createdBy: userId,
+        updatedBy: userId,
+      });
+    }
   }
 }
 

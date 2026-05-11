@@ -16,6 +16,13 @@ vi.mock('../rbac/rbac.service.js', () => ({
   },
 }));
 
+vi.mock('../../lib/activity-logger.js', () => ({
+  ActivityLogger: {
+    record: vi.fn().mockResolvedValue(undefined),
+    recordUpdate: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 vi.mock('../auth/auth.js', () => ({
   auth: {
     api: {
@@ -50,6 +57,7 @@ const mockTx = {
   query: {
     unitOfMeasures: {
       findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
     },
   },
   insert: vi.fn(() => ({ values: mockValues })),
@@ -100,7 +108,12 @@ describe('UoM Module Integration', () => {
     // Reset mockTx implementations to default to avoid leak between tests
     vi.mocked(mockTx.update).mockReturnValue({ set: mockSet });
     vi.mocked(mockTx.delete).mockReturnValue({ where: mockWhere });
-    vi.mocked(mockTx.query.unitOfMeasures.findFirst).mockResolvedValue(null);
+    // Default findFirst to return a valid object for re-fetching logic
+    vi.mocked(mockTx.query.unitOfMeasures.findFirst).mockResolvedValue({
+      id: 'uom-123',
+      code: 'KG',
+      name: 'Kilogram',
+    } as any);
   });
 
   describe('Authentication & Multi-Tenancy', () => {
@@ -242,6 +255,10 @@ describe('UoM Module Integration', () => {
     });
 
     it('should update a UoM', async () => {
+      vi.mocked(mockTx.query.unitOfMeasures.findFirst)
+        .mockResolvedValueOnce({ id: 'uom-123', code: 'KG', name: 'Kilogram' } as any) // existence check
+        .mockResolvedValueOnce({ id: 'uom-123', code: 'KG', name: 'Updated Name' } as any); // re-fetch
+
       vi.mocked(mockTx.update).mockReturnValue({
         set: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
@@ -279,13 +296,20 @@ describe('UoM Module Integration', () => {
     it('should bulk delete UoMs', async () => {
       const id1 = '123e4567-e89b-12d3-a456-426614174001';
       const id2 = '123e4567-e89b-12d3-a456-426614174002';
-      vi.mocked(db.update).mockReturnValue({
+
+      // Update the returning mock to return 2 items to match expectation
+      vi.mocked(mockTx.update).mockReturnValue({
         set: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             returning: vi.fn().mockResolvedValue([{ id: id1 }, { id: id2 }]),
           }),
         }),
       } as any);
+
+      vi.mocked(mockTx.query.unitOfMeasures.findMany).mockResolvedValue([
+        { id: id1, code: 'U1' },
+        { id: id2, code: 'U2' },
+      ] as any);
 
       const response = await request(app)
         .delete('/uom')

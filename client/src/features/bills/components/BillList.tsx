@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { ReceiptText, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -18,10 +17,12 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
+import { usePermissionsStatus } from '@/hooks/usePermission';
+import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 import { PageHeader } from '@/components/shared/PageHeader';
 
-import { billStatusOptions, getColumns } from './columns';
-import { useBills, useBulkDeleteBills } from '../hooks/bills.hooks';
+import { billStatusOptions, useBillColumns } from './columns';
+import { useBillsQuery, useBillsActions, useBulkDeleteBills } from '../hooks/bills.hooks';
 import type { BillResponse } from '../api/bills.api';
 import { PayBillSheet } from './PayBillSheet';
 import { APP_PATHS } from '@/lib/paths';
@@ -35,8 +36,9 @@ const searchSchema = z.object({
 export function BillList() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
-  const { data: bills, isLoading, isError } = useBills();
+  const { data: bills, isLoading: isDataLoading, isError } = useBillsQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateBills } = useBillsActions();
   const bulkDeleteMutation = useBulkDeleteBills();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
@@ -58,17 +60,23 @@ export function BillList() {
     clearSelection: () => {},
   });
 
+  const handlePayBill = React.useCallback((bill: BillResponse) => {
+    setPayBillState({ isOpen: true, bill });
+  }, []);
+
+  const columns = useBillColumns({ onPayBill: handlePayBill });
+
   if (isError) {
     return (
       <ErrorState
         title="Failed to load bills"
         description="We encountered an error while fetching the vendor bills. Please check your network or try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['bills'] })}
+        onRetry={invalidateBills}
       />
     );
   }
 
-  const handleImportSuccess = () => queryClient.invalidateQueries({ queryKey: ['bills'] });
+  const handleImportSuccess = () => invalidateBills();
 
   const handleBulkDeleteConfirm = async () => {
     const ids = bulkDeleteState.rows.map((r) => r.id);
@@ -82,19 +90,9 @@ export function BillList() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
+  if (isDataLoading || isPermissionsLoading) {
+    return <DataTableSkeleton columnCount={5} rowCount={8} />;
   }
-
-  const handlePayBill = (bill: BillResponse) => {
-    setPayBillState({ isOpen: true, bill });
-  };
-
-  const columns = getColumns({ onPayBill: handlePayBill });
 
   if (!bills || bills.length === 0) {
     return (
@@ -140,7 +138,7 @@ export function BillList() {
         enableGlobalSearch
         data={bills}
         columns={columns}
-        isLoading={isLoading}
+        isLoading={isDataLoading}
         onAddClick={handleAddClick}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

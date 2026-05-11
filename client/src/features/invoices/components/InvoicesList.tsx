@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { z } from 'zod';
-import { useQueryClient } from '@tanstack/react-query';
 import { LayoutList, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -15,14 +14,20 @@ import { Button } from '@/components/ui/button';
 import { Can } from '@/components/shared/Can';
 import { useTenantPath } from '@/hooks/useTenantPath';
 
-import { getColumns } from './columns';
-import { useInvoices, useBulkDeleteInvoices } from '../hooks/invoices.hooks';
+import { useInvoiceColumns } from './columns';
+import {
+  useInvoicesQuery,
+  useBulkDeleteInvoices,
+  useInvoicesActions,
+} from '../hooks/invoices.hooks';
 import { AddPaymentSheet } from './AddPaymentSheet';
 import type { InvoiceResponse } from '../api/invoices.api';
 import { Trash2 } from 'lucide-react';
 import { APP_PATHS } from '@/lib/paths';
-import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
+import { usePermissionsStatus } from '@/hooks/usePermission';
+import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 import { toast } from 'sonner';
+import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 
 const searchSchema = z.object({
   documentNumber: z.string().optional(),
@@ -31,8 +36,9 @@ const searchSchema = z.object({
 export function InvoicesList() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
-  const { data: invoices, isLoading, isError } = useInvoices();
+  const { data: invoices, isLoading: isDataLoading, isError } = useInvoicesQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateInvoices } = useInvoicesActions();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
   const { mutate: bulkDelete } = useBulkDeleteInvoices();
 
@@ -79,27 +85,20 @@ export function InvoicesList() {
     navigate(getPath(APP_PATHS.sales.invoices.new()));
   };
 
-  const columns = React.useMemo(
-    () => getColumns({ onAddPayment: handleAddPayment }),
-    [handleAddPayment],
-  );
+  const columns = useInvoiceColumns({ onAddPayment: handleAddPayment });
 
   if (isError) {
     return (
       <ErrorState
         title="Failed to load invoices"
         description="We encountered an error while fetching the invoices. Please check your network or try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['invoices'] })}
+        onRetry={invalidateInvoices}
       />
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
+  if (isDataLoading || isPermissionsLoading) {
+    return <DataTableSkeleton columnCount={5} rowCount={8} />;
   }
 
   if (!invoices || invoices.length === 0) {
@@ -131,7 +130,7 @@ export function InvoicesList() {
         enableGlobalSearch
         data={invoices || []}
         columns={columns}
-        isLoading={isLoading}
+        isLoading={isDataLoading}
         onAddClick={handleAdd}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

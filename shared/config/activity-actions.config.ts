@@ -9,6 +9,15 @@ export const ACTIVITY_ACTIONS = [
   'USER_CREATED',
   'USER_JOINED_ORGANIZATION',
   'ROLE_CREATED',
+  'MEMBER_ADDED',
+  'MEMBER_REMOVED',
+  'MEMBER_ROLE_CHANGED',
+  'INVITE_SENT',
+  'INVITE_REVOKED',
+  'INVITE_ACCEPTED',
+  'PERMISSION_SET_CREATED',
+  'PERMISSION_SET_UPDATED',
+  'PERMISSION_SET_DELETED',
 
   // Configuration
   'TAX_CONFIG_CREATED',
@@ -34,14 +43,20 @@ export const ACTIVITY_ACTIONS = [
   'STOCK_ADJUSTED',
   'GOODS_RECEIVED',
   'SHIPMENT_CREATED',
+  'INVENTORY_TRANSFER_CREATED',
 
   // Invoices & Bills
   'INVOICE_POSTED',
   'BILL_CREATED',
-  'VENDOR_BILL_POSTED',
+  'INVOICE_CREATED',
+  'PAYMENT_CREATED',
+  'PAYMENT_REALIZED',
+  'PAYMENT_FAILED',
+  'PAYMENT_REFUNDED',
   'PAYMENT_RECEIVED',
   'PAYMENT_SENT',
   'VOIDED',
+  'VENDOR_BILL_POSTED',
 
   // Finance
   'LEDGER_POSTED',
@@ -77,6 +92,12 @@ export const ENTITY_TYPES = [
   'shipment',
   'journal_entry',
   'payment_intent',
+  'currency',
+  'account',
+  'organization',
+  'permission_set',
+  'membership',
+  'invite',
 ] as const;
 
 export type EntityType = (typeof ENTITY_TYPES)[number];

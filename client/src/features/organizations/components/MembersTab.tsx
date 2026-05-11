@@ -2,8 +2,13 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useMembers, useUpdateMemberRole, useRemoveMember } from '../hooks/organizations.hooks';
-import { useRoles } from '@/features/auth/hooks/rbac.hooks';
+import {
+  useMembersQuery,
+  useUpdateMemberRole,
+  useRemoveMember,
+} from '../hooks/organizations.hooks';
+import { useRolesQuery } from '@/features/auth/hooks/rbac.hooks';
+import type { RoleResponse } from '@/features/auth/api/rbac.api';
 import type { OrganizationMember } from '../api/organizations.api';
 import { EntityTable } from '@/components/shared/data-table/EntityTable';
 import { UserDisplay } from '@/components/shared/UserDisplay';
@@ -26,8 +31,8 @@ import { usePermission } from '@/hooks/usePermission';
 export function MembersTab() {
   const { activeOrganizationId } = useTenant();
   const { data: session } = useAuth();
-  const { data: members, isLoading } = useMembers(activeOrganizationId || '');
-  const { data: roles } = useRoles();
+  const { data: members, isLoading } = useMembersQuery(activeOrganizationId || '');
+  const { data: roles } = useRolesQuery();
   const updateRole = useUpdateMemberRole(activeOrganizationId || '');
   const removeMember = useRemoveMember(activeOrganizationId || '');
   const canManageMembers = usePermission(PERMISSIONS.ORGANIZATION.MEMBERS);
@@ -123,7 +128,7 @@ export function MembersTab() {
                 </DropdownMenuSubTrigger>
                 <DropdownMenuPortal>
                   <DropdownMenuSubContent>
-                    {roles?.map((role) => (
+                    {roles?.map((role: RoleResponse) => (
                       <DropdownMenuItem
                         key={role.id}
                         disabled={role.id === member.roleId}

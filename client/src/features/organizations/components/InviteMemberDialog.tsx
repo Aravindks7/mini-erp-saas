@@ -2,7 +2,8 @@ import { toast } from 'sonner';
 import { Loader2, Shield } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useInviteMember } from '../hooks/organizations.hooks';
-import { useRoles } from '@/features/auth/hooks/rbac.hooks';
+import { useRolesQuery } from '@/features/auth/hooks/rbac.hooks';
+import type { RoleResponse } from '@/features/auth/api/rbac.api';
 import {
   inviteMemberSchema,
   type InviteMemberInput,
@@ -35,7 +36,7 @@ interface InviteMemberDialogProps {
 export function InviteMemberDialog({ isOpen, onOpenChange }: InviteMemberDialogProps) {
   const { activeOrganizationId } = useTenant();
   const inviteMember = useInviteMember(activeOrganizationId || '');
-  const { data: roles, isLoading: isLoadingRoles } = useRoles();
+  const { data: roles, isLoading: isLoadingRoles } = useRolesQuery();
 
   const handleSubmit = async (data: InviteMemberInput) => {
     try {
@@ -73,7 +74,8 @@ export function InviteMemberDialog({ isOpen, onOpenChange }: InviteMemberDialogP
             onSubmit={handleSubmit}
             defaultValues={{
               userEmail: '',
-              roleId: roles?.find((r) => r.name === 'Employee')?.id || roles?.[0]?.id || '',
+              roleId:
+                roles?.find((r: RoleResponse) => r.name === 'Employee')?.id || roles?.[0]?.id || '',
             }}
           >
             {() => (
@@ -89,7 +91,7 @@ export function InviteMemberDialog({ isOpen, onOpenChange }: InviteMemberDialogP
                         <SelectValue placeholder="Select a role" />
                       </SelectTrigger>
                       <SelectContent>
-                        {roles?.map((role) => (
+                        {roles?.map((role: RoleResponse) => (
                           <SelectItem key={role.id} value={role.id}>
                             <div className="flex items-center gap-2">
                               <Shield className="h-4 w-4 text-muted-foreground" />

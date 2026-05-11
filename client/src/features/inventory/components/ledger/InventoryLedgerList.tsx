@@ -1,4 +1,3 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { History } from 'lucide-react';
 import { z } from 'zod';
 
@@ -8,17 +7,20 @@ import { useDataTableState } from '@/hooks/useDataTableState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { usePermissionsStatus } from '@/hooks/usePermission';
+import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { columns } from './columns';
-import { useInventoryLedger } from '../../hooks/inventory.hooks';
+import { useInventoryLedgerQuery, useInventoryLedgerActions } from '../../hooks/inventory.hooks';
 
 const searchSchema = z.object({
   'product.name': z.string().optional(),
 });
 
 export function InventoryLedgerList() {
-  const queryClient = useQueryClient();
-  const { data: ledger, isLoading, isError } = useInventoryLedger();
+  const { data: ledger, isLoading: isDataLoading, isError } = useInventoryLedgerQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateLedger } = useInventoryLedgerActions();
 
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
@@ -27,17 +29,13 @@ export function InventoryLedgerList() {
       <ErrorState
         title="Failed to load inventory ledger"
         description="Encountered an error while fetching the movement history. Please try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['inventory', 'ledger'] })}
+        onRetry={invalidateLedger}
       />
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
+  if (isDataLoading || isPermissionsLoading) {
+    return <DataTableSkeleton columnCount={5} rowCount={8} />;
   }
 
   if (!ledger || ledger.length === 0) {
@@ -61,7 +59,7 @@ export function InventoryLedgerList() {
       enableGlobalSearch
       data={ledger}
       columns={columns}
-      isLoading={isLoading}
+      isLoading={isDataLoading}
       viewMode={tableState.viewMode}
       onViewModeChange={tableSetters.setViewMode}
       state={tableState}

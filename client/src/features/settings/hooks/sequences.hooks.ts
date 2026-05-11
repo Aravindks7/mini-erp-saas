@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
 import { sequencesApi } from '../api/sequences.api';
 import { toast } from 'sonner';
 import type { UpdateDocumentSequenceInput } from '@shared/contracts/sequences.contract';
@@ -8,11 +8,14 @@ export const sequenceKeys = {
   lists: () => [...sequenceKeys.all, 'list'] as const,
 };
 
-export function useSequences() {
-  return useQuery({
+export const sequenceListQuery = () =>
+  queryOptions({
     queryKey: sequenceKeys.lists(),
     queryFn: sequencesApi.fetchSequences,
   });
+
+export function useSequences() {
+  return useQuery(sequenceListQuery());
 }
 
 export function useUpdateSequence() {

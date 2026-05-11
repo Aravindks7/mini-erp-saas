@@ -1,4 +1,4 @@
-import { Settings2, LayoutGrid, Ruler, Percent, Warehouse } from 'lucide-react';
+import { Settings2, LayoutGrid, Ruler, Percent, Warehouse, Coins } from 'lucide-react';
 import ModuleLandingPage from '@/components/shared/ModuleLandingPage';
 import { APP_PATHS } from '@/lib/paths';
 
@@ -9,6 +9,13 @@ export default function SetupModulePage() {
       description="Configure your ERP system parameters, masters, and configurations."
       icon={Settings2}
       modules={[
+        {
+          title: 'Currencies',
+          description: 'Multi-currency management and exchange rates',
+          path: APP_PATHS.setup.currencies.list(),
+          icon: Coins,
+          actionLabel: 'Manage Currencies',
+        },
         {
           title: 'Product Categories',
           description: 'Classification of items and products',
