@@ -12,7 +12,6 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Can } from '@/components/shared/Can';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { columns } from './columns';
 import { useJournalEntriesQuery, useJournalEntriesActions } from '../hooks/journal-entries.hooks';
@@ -45,11 +44,9 @@ export function JournalEntryList() {
     );
   }
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!entries || entries.length === 0) {
+  if (!isLoading && (!entries || entries.length === 0)) {
     return (
       <div className="space-y-4 p-6">
         <PageHeader
@@ -80,7 +77,7 @@ export function JournalEntryList() {
       enableGlobalSearch
       data={entries || []}
       columns={columns}
-      isLoading={isDataLoading}
+      isLoading={isLoading}
       onAddClick={handleAdd}
       viewMode={tableState.viewMode}
       onViewModeChange={tableSetters.setViewMode}

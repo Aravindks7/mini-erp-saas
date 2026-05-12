@@ -13,13 +13,16 @@ export const API_ENDPOINTS = {
   organizations: {
     base: '/organizations',
     detail: (id: string) => `/organizations/${id}`,
-    members: (orgId: string) => `/organizations/${orgId}/members`,
-    memberDetail: (orgId: string, userId: string) => `/organizations/${orgId}/members/${userId}`,
-    invites: (orgId: string) => `/organizations/${orgId}/invites`,
-    inviteDetail: (orgId: string, inviteId: string) =>
-      `/organizations/${orgId}/invites/${inviteId}`,
-    resendInvite: (orgId: string, inviteId: string) =>
-      `/organizations/${orgId}/invites/${inviteId}/resend`,
+  },
+  members: {
+    base: '/members',
+    detail: (id: string) => `/members/${id}`,
+  },
+  invitations: {
+    base: '/invitations',
+    detail: (id: string) => `/invitations/${id}`,
+    resend: (id: string) => `/invitations/${id}/resend`,
+    accept: (id: string) => `/invitations/${id}/accept`,
   },
   customers: {
     base: '/customers',
@@ -101,6 +104,7 @@ export const API_ENDPOINTS = {
     bills: {
       base: '/bills',
       detail: (id: string) => `/bills/${id}`,
+      fromReceipt: (receiptId: string) => `/bills/from-receipt/${receiptId}`,
       status: (id: string) => `/bills/${id}/status`,
       import: '/bills/import',
       importTemplate: '/bills/import/template',
@@ -172,12 +176,12 @@ export const API_ENDPOINTS = {
     permissions: '/rbac/permissions',
     allPermissions: '/rbac/all-permissions',
     roles: {
-      base: '/rbac/roles',
-      detail: (id: string) => `/rbac/roles/${id}`,
+      base: '/roles',
+      detail: (id: string) => `/roles/${id}`,
     },
     permissionSets: {
-      base: '/rbac/sets',
-      detail: (id: string) => `/rbac/sets/${id}`,
+      base: '/permission-sets',
+      detail: (id: string) => `/permission-sets/${id}`,
     },
   },
 };

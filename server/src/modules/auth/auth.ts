@@ -5,7 +5,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from '../../db/index.js';
 import * as schema from '../../db/schema/index.js';
 
-import { organizationsService } from '../organizations/organizations.service.js';
+import { invitationsService } from '../invitations/invitations.service.js';
 
 /**
  * Central Better Auth instance.
@@ -30,7 +30,7 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (user) => {
-          await organizationsService.processPendingInvites(user.email, user.id);
+          await invitationsService.processPendingInvites(user.email, user.id);
         },
       },
     },

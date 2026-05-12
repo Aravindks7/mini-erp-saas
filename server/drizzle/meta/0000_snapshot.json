@@ -1,5 +1,5 @@
 {
-  "id": "ebfa77c2-7d0f-40ca-9c93-119928010c8f",
+  "id": "fe978d0e-dcb9-4676-85dc-b7ac0331f193",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -2296,6 +2296,13 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
+        },
+        "is_base_set": {
+          "name": "is_base_set",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "created_at": {
           "name": "created_at",

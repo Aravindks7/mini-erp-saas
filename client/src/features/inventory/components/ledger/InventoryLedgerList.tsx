@@ -8,7 +8,6 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { columns } from './columns';
 import { useInventoryLedgerQuery, useInventoryLedgerActions } from '../../hooks/inventory.hooks';
@@ -34,11 +33,9 @@ export function InventoryLedgerList() {
     );
   }
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!ledger || ledger.length === 0) {
+  if (!isLoading && (!ledger || ledger.length === 0)) {
     return (
       <>
         <PageHeader title="Inventory Ledger" />
@@ -57,9 +54,9 @@ export function InventoryLedgerList() {
       title="Inventory Ledger"
       description="Full audit trail of every stock addition and deduction."
       enableGlobalSearch
-      data={ledger}
+      data={ledger || []}
       columns={columns}
-      isLoading={isDataLoading}
+      isLoading={isLoading}
       viewMode={tableState.viewMode}
       onViewModeChange={tableSetters.setViewMode}
       state={tableState}

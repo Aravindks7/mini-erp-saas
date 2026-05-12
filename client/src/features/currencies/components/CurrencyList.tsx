@@ -12,7 +12,6 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Can } from '@/components/shared/Can';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { getColumns } from './columns';
 import { useCurrencies } from '../hooks/currencies.hooks';
@@ -56,11 +55,9 @@ export function CurrencyList() {
     );
   }
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={6} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!currencies || currencies.length === 0) {
+  if (!isLoading && (!currencies || currencies.length === 0)) {
     return (
       <div className="space-y-4">
         <PageHeader title="Currencies" />
@@ -94,7 +91,7 @@ export function CurrencyList() {
         enableGlobalSearch
         data={currencies || []}
         columns={columns}
-        isLoading={isDataLoading}
+        isLoading={isLoading}
         onAddClick={handleAdd}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

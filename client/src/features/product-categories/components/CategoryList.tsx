@@ -12,7 +12,6 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Can } from '@/components/shared/Can';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { getColumns } from './columns';
 import {
@@ -60,18 +59,9 @@ export function CategoryList() {
     );
   }
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  // Map parent names for the table
-  const categoriesWithParent =
-    categories?.map((cat) => ({
-      ...cat,
-      parentName: categories.find((c) => c.id === cat.parentId)?.name,
-    })) || [];
-
-  if (!categories || categories.length === 0) {
+  if (!isLoading && (!categories || categories.length === 0)) {
     return (
       <>
         <PageHeader title="Product Categories" />
@@ -98,6 +88,13 @@ export function CategoryList() {
     );
   }
 
+  // Map parent names for the table
+  const categoriesWithParent =
+    categories?.map((cat) => ({
+      ...cat,
+      parentName: categories.find((c) => c.id === cat.parentId)?.name,
+    })) || [];
+
   return (
     <>
       <EntityTable
@@ -107,7 +104,7 @@ export function CategoryList() {
         enableGlobalSearch
         data={categoriesWithParent}
         columns={columns}
-        isLoading={isDataLoading}
+        isLoading={isLoading}
         onAddClick={handleAddClick}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

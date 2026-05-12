@@ -3,15 +3,16 @@ import { Navigate } from 'react-router-dom';
 import type { AppRoute } from '@/lib/types/navigation';
 import SettingsPage from './pages/SettingsPage';
 import { OrgProfileTab } from '../organizations/components/OrgProfileTab';
-import { MembersTab } from '../organizations/components/MembersTab';
-import { InvitationsTab } from '../organizations/components/InvitationsTab';
-import { RolesTab } from '../organizations/components/RolesTab';
-import { PermissionSetsTab } from '../organizations/components/PermissionSetsTab';
-import RoleFormPage from '../organizations/pages/RoleFormPage';
-import PermissionSetFormPage from '../organizations/pages/PermissionSetFormPage';
+import { MemberList } from '../members';
+import { InvitationList } from '../invitations';
+import { RoleList, RoleFormPage, roleDetailQuery } from '../roles';
+import {
+  PermissionSetList,
+  PermissionSetFormPage,
+  permissionSetDetailQuery,
+} from '../permission-sets';
 import { SequenceSettingsTab } from './components/SequenceSettingsTab';
 import { queryClient } from '@/lib/query-client';
-import { roleDetailQuery, permissionSetDetailQuery } from '../auth/hooks/rbac.hooks';
 import type { RoleResponse, PermissionSetResponse } from '@shared/index';
 
 export const settingsRoutes: AppRoute[] = [
@@ -47,28 +48,28 @@ export const settingsRoutes: AppRoute[] = [
       },
       {
         path: 'members',
-        element: <MembersTab />,
+        element: <MemberList />,
         handle: {
           title: 'Workspace Members',
         },
       },
       {
         path: 'invites',
-        element: <InvitationsTab />,
+        element: <InvitationList />,
         handle: {
           title: 'Pending Invitations',
         },
       },
       {
         path: 'roles',
-        element: <RolesTab />,
+        element: <RoleList />,
         handle: {
           title: 'Roles',
         },
       },
       {
         path: 'permission-sets',
-        element: <PermissionSetsTab />,
+        element: <PermissionSetList />,
         handle: {
           title: 'Permission Sets',
         },

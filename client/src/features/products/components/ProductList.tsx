@@ -18,7 +18,6 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { useProductColumns, productStatusOptions } from './columns';
 import {
@@ -92,11 +91,9 @@ export function ProductList() {
     }
   };
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!products || products.length === 0) {
+  if (!isLoading && (!products || products.length === 0)) {
     return (
       <>
         <PageHeader title="Products" />
@@ -141,7 +138,7 @@ export function ProductList() {
         enableGlobalSearch
         data={products || []}
         columns={columns}
-        isLoading={isDataLoading}
+        isLoading={isLoading}
         onAddClick={handleAddClick}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

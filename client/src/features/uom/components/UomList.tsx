@@ -12,7 +12,6 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Can } from '@/components/shared/Can';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { getColumns } from './columns';
 import { useUomsQuery, useUomsActions } from '../hooks/uoms.hooks';
@@ -57,11 +56,9 @@ export function UomList() {
     );
   }
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!uoms || uoms.length === 0) {
+  if (!isLoading && (!uoms || uoms.length === 0)) {
     return (
       <div className="space-y-4">
         <PageHeader title="Units of Measure" />
@@ -95,7 +92,7 @@ export function UomList() {
         enableGlobalSearch
         data={uoms || []}
         columns={columns}
-        isLoading={isDataLoading}
+        isLoading={isLoading}
         onAddClick={handleAdd}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

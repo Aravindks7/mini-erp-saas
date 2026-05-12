@@ -1,5 +1,5 @@
 import type { Permission } from '@shared/index';
-import { useMyPermissionsQuery } from '@/features/auth/hooks/rbac.hooks';
+import { useMyPermissionsQuery } from '@/features/permission-sets';
 
 /**
  * Hook to check if the current user has a specific permission in the active tenant.

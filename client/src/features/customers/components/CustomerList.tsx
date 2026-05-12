@@ -18,7 +18,6 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { columns, customerStatusOptions } from './columns';
 import {
@@ -83,11 +82,9 @@ export function CustomerList() {
     }
   };
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!customers || customers.length === 0) {
+  if (!isLoading && (!customers || customers.length === 0)) {
     return (
       <>
         <PageHeader title="Customers" />
@@ -131,7 +128,7 @@ export function CustomerList() {
         enableGlobalSearch
         data={customers || []}
         columns={columns}
-        isLoading={isDataLoading}
+        isLoading={isLoading}
         onAddClick={handleAddClick}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

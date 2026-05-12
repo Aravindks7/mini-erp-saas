@@ -17,7 +17,6 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { columns } from './columns';
 import {
@@ -81,11 +80,9 @@ export function WarehouseList() {
     }
   };
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!warehouses || warehouses.length === 0) {
+  if (!isLoading && (!warehouses || warehouses.length === 0)) {
     return (
       <>
         <PageHeader title="Warehouses" />
@@ -129,7 +126,7 @@ export function WarehouseList() {
         enableGlobalSearch
         data={warehouses || []}
         columns={columns}
-        isLoading={isDataLoading}
+        isLoading={isLoading}
         onAddClick={handleAddClick}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

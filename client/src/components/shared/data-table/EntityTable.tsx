@@ -33,6 +33,7 @@ import { Button } from '@/components/ui/button';
 import { DataTable, type BulkAction } from './DataTable';
 import { DataTableToolbar } from './DataTableToolbar';
 import { DataTableSearch } from './DataTableSearch';
+import { DataTableSkeleton } from './DataTableSkeleton';
 import { cn } from '@/lib/utils';
 
 /**
@@ -219,6 +220,18 @@ export function EntityTable<TData, TValue>({
     getFacetedUniqueValues: getFacetedUniqueValues(),
     autoResetPageIndex: externalState?.pagination ? false : undefined,
   });
+
+  if (isLoading) {
+    return (
+      <DataTableSkeleton
+        columnCount={columns.length}
+        searchable={enableGlobalSearch || !!searchKey}
+        filterable={!!toolbarFilters}
+        showTitle={!!title}
+        className={cn(headerVariant === 'primary' ? 'mt-4' : '')}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4">

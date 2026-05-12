@@ -15,7 +15,6 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { columns, receiptStatusOptions } from './columns';
 import {
@@ -63,11 +62,9 @@ export function ReceiptList() {
     );
   }
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!receipts || receipts.length === 0) {
+  if (!isLoading && (!receipts || receipts.length === 0)) {
     return (
       <>
         <PageHeader title="Receipts" />
@@ -113,7 +110,7 @@ export function ReceiptList() {
         enableGlobalSearch
         data={receipts || []}
         columns={columns}
-        isLoading={isDataLoading}
+        isLoading={isLoading}
         onAddClick={handleAddClick}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

@@ -80,4 +80,9 @@ export const billsApi = {
         body: JSON.stringify({ ids }),
       },
     ),
+  createFromReceipt: async (receiptId: string) => {
+    return apiFetch<BillResponse>(API_ENDPOINTS.purchasing.bills.fromReceipt(receiptId), {
+      method: 'POST',
+    });
+  },
 };

@@ -17,7 +17,6 @@ import { Can } from '@/components/shared/Can';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 import { APP_PATHS } from '@/lib/paths';
 
 import { usePurchaseOrderColumns, purchaseOrderStatusOptions } from './columns';
@@ -94,11 +93,9 @@ export function PurchaseOrdersList() {
     );
   }
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!pos || pos.length === 0) {
+  if (!isLoading && (!pos || pos.length === 0)) {
     return (
       <div className="space-y-4">
         <PageHeader title="Purchase Orders" />
@@ -132,7 +129,7 @@ export function PurchaseOrdersList() {
         enableGlobalSearch
         data={pos || []}
         columns={columns}
-        isLoading={isDataLoading}
+        isLoading={isLoading}
         onAddClick={handleAdd}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

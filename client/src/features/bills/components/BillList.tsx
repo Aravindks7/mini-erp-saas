@@ -18,7 +18,6 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 import { PageHeader } from '@/components/shared/PageHeader';
 
 import { billStatusOptions, useBillColumns } from './columns';
@@ -90,11 +89,9 @@ export function BillList() {
     }
   };
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!bills || bills.length === 0) {
+  if (!isLoading && (!bills || bills.length === 0)) {
     return (
       <>
         <PageHeader title="Vendor Bills" />
@@ -136,9 +133,9 @@ export function BillList() {
         title="Vendor Bills"
         description="Track and manage invoices received from your suppliers."
         enableGlobalSearch
-        data={bills}
+        data={bills || []}
         columns={columns}
-        isLoading={isDataLoading}
+        isLoading={isLoading}
         onAddClick={handleAddClick}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

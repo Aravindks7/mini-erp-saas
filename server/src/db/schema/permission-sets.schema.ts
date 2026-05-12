@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, uuid, boolean, uniqueIndex } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import { organizations } from './organizations.schema.js';
 import { timestamps, userTracking } from './audit.schema.js';
@@ -15,6 +15,7 @@ export const permissionSets = pgTable(
     organizationId: uuid('organization_id').references(() => organizations.id, {
       onDelete: 'cascade',
     }), // NULL for global sets
+    isBaseSet: boolean('is_base_set').notNull().default(false),
     ...timestamps,
     ...userTracking,
   },

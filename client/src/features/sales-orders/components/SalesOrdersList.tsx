@@ -17,7 +17,6 @@ import { Can } from '@/components/shared/Can';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { usePermissionsStatus } from '@/hooks/usePermission';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { useSalesOrderColumns, salesOrderStatusOptions } from './columns';
 import {
@@ -95,11 +94,9 @@ export function SalesOrdersList() {
     );
   }
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!sos || sos.length === 0) {
+  if (!isLoading && (!sos || sos.length === 0)) {
     return (
       <div className="space-y-4">
         <PageHeader title="Sales Orders" />
@@ -128,7 +125,7 @@ export function SalesOrdersList() {
         enableGlobalSearch
         data={sos || []}
         columns={columns}
-        isLoading={isDataLoading}
+        isLoading={isLoading}
         onAddClick={handleAdd}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

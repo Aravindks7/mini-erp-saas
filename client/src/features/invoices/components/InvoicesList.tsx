@@ -25,7 +25,6 @@ import type { InvoiceResponse } from '../api/invoices.api';
 import { Trash2 } from 'lucide-react';
 import { APP_PATHS } from '@/lib/paths';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 import { toast } from 'sonner';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 
@@ -97,11 +96,9 @@ export function InvoicesList() {
     );
   }
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!invoices || invoices.length === 0) {
+  if (!isLoading && (!invoices || invoices.length === 0)) {
     return (
       <div className="space-y-4">
         <PageHeader title="Invoices" />
@@ -130,7 +127,7 @@ export function InvoicesList() {
         enableGlobalSearch
         data={invoices || []}
         columns={columns}
-        isLoading={isDataLoading}
+        isLoading={isLoading}
         onAddClick={handleAdd}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

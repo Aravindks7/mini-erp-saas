@@ -2,22 +2,17 @@ import { db } from '../../db/index.js';
 import {
   organizations,
   organizationMemberships,
-  user,
-  organizationInvites,
   roles,
-  rolePermissionSets,
   documentSequences,
   currencies,
 } from '../../db/schema/index.js';
 import { and, eq, sql, ne } from 'drizzle-orm';
-import {
-  CreateOrganizationInput,
-  UpdateOrganizationInput,
-} from '#shared/contracts/organizations.contract.js';
+import { type CreateOrganizationInput, type UpdateOrganizationInput } from '#shared/index.js';
 import { rbacService } from '../rbac/rbac.service.js';
 import { PERMISSIONS, type Permission } from '#shared/index.js';
 import { getCurrencyByCountry } from '#shared/utils/currency-map.js';
 import { ActivityLogger } from '../../lib/activity-logger.js';
+import { AppError } from '../../utils/AppError.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -63,7 +58,6 @@ export class OrganizationsService {
       if (!newOrg) throw new Error('Failed to create organization');
 
       // 3. Resolve the "Admin" base role (Global)
-      // NOTE: For now we assume a seed script creates a role named "Admin" with isBaseRole=true and organizationId=null.
       const adminRole = await tx.query.roles.findFirst({
         where: and(
           eq(roles.name, 'Admin'),
@@ -76,9 +70,9 @@ export class OrganizationsService {
         throw new Error('SYSTEM_ERROR: Base Admin role not found. Please seed the database.');
       }
 
-      // 4. Link the current user as an admin using the resolved roleId
+      // 4. Link the current user as an admin
       await tx.insert(organizationMemberships).values({
-        userId: userId,
+        userId,
         organizationId: newOrg.id,
         roleId: adminRole.id,
       });
@@ -97,7 +91,7 @@ export class OrganizationsService {
 
       await tx.insert(documentSequences).values(sequenceValues);
 
-      // 6. Sync default currency based on country
+      // 6. Sync default currency
       await this.syncDefaultCurrency(tx, newOrg.id, userId, newOrg.defaultCountry);
 
       await ActivityLogger.record(tx as Transaction, {
@@ -116,7 +110,7 @@ export class OrganizationsService {
   }
 
   /**
-   * Simple slug generator: lowercase and replace non-alphanumeric with hyphens.
+   * Simple slug generator.
    */
   private generateSlug(name: string): string {
     return name
@@ -147,302 +141,6 @@ export class OrganizationsService {
   }
 
   /**
-   * Add a member to an organization. Requires requester to have membership management permission.
-   */
-  async addMember(params: {
-    adminId: string;
-    organizationId: string;
-    userEmail: string;
-    roleId: string;
-  }) {
-    const { adminId, organizationId, userEmail, roleId } = params;
-
-    // 1. Verify the requester has management permission
-    await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
-
-    // 2. Find the user to add
-    const targetUser = await db.query.user.findFirst({
-      where: eq(user.email, userEmail),
-    });
-
-    if (!targetUser) {
-      throw new Error('USER_NOT_FOUND');
-    }
-
-    // 3. Add them to the org (UPSERT for robustness)
-    const [membership] = await db
-      .insert(organizationMemberships)
-      .values({
-        userId: targetUser.id,
-        organizationId: organizationId,
-        roleId: roleId,
-      })
-      .onConflictDoUpdate({
-        target: [organizationMemberships.userId, organizationMemberships.organizationId],
-        set: {
-          roleId: roleId,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-
-    await ActivityLogger.record(db as any, {
-      organizationId,
-      userId: adminId,
-      entityType: 'membership',
-      entityId: membership.id,
-      entityDisplayId: targetUser.email,
-      entityLabel: 'Membership',
-      action: 'MEMBER_ADDED',
-      reason: `User ${targetUser.email} added to organization.`,
-    });
-
-    return membership;
-  }
-
-  /**
-   * Invite a member by email.
-   */
-  async inviteMember(params: {
-    adminId: string;
-    organizationId: string;
-    userEmail: string;
-    roleId: string;
-  }) {
-    const { adminId, organizationId, userEmail, roleId } = params;
-
-    // 1. Verify requester has permission
-    await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
-
-    // 2. Check if user already exists
-    const existingUser = await db.query.user.findFirst({
-      where: eq(user.email, userEmail),
-    });
-
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
-
-    if (existingUser) {
-      await this.addMember(params);
-
-      await db
-        .insert(organizationInvites)
-        .values({
-          email: userEmail,
-          organizationId,
-          invitedById: adminId,
-          roleId: roleId,
-          status: 'accepted',
-          expiresAt,
-        })
-        .onConflictDoUpdate({
-          target: [organizationInvites.email, organizationInvites.organizationId],
-          set: {
-            status: 'accepted',
-            roleId,
-            expiresAt,
-            updatedAt: new Date(),
-          },
-        });
-
-      return membership;
-    }
-
-    // 3. Create/Update invitation (UPSERT)
-    const [invite] = await db
-      .insert(organizationInvites)
-      .values({
-        email: userEmail,
-        organizationId,
-        invitedById: adminId,
-        roleId,
-        status: 'pending',
-        expiresAt,
-      })
-      .onConflictDoUpdate({
-        target: [organizationInvites.email, organizationInvites.organizationId],
-        set: {
-          status: 'pending',
-          roleId,
-          expiresAt,
-          invitedById: adminId,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-
-    await ActivityLogger.record(db as any, {
-      organizationId,
-      userId: adminId,
-      entityType: 'invite',
-      entityId: invite.id,
-      entityDisplayId: userEmail,
-      entityLabel: 'Organization Invite',
-      action: 'INVITE_SENT',
-      reason: `Invitation sent to ${userEmail}.`,
-    });
-
-    return { success: true, invited: true };
-  }
-
-  /**
-   * List all members of an organization.
-   */
-  async listMembers(organizationId: string) {
-    const members = await db.query.organizationMemberships.findMany({
-      where: eq(organizationMemberships.organizationId, organizationId),
-      with: {
-        user: {
-          columns: {
-            name: true,
-            email: true,
-            image: true,
-          },
-        },
-        role: true,
-      },
-    });
-
-    return members.map((m) => ({
-      id: m.id,
-      userId: m.userId,
-      organizationId: m.organizationId,
-      roleId: m.roleId,
-      roleName: m.role.name,
-      joinedAt: m.createdAt.toISOString(),
-      user: m.user,
-    }));
-  }
-
-  /**
-   * Update a member's role.
-   */
-  async updateMemberRole(params: {
-    adminId: string;
-    organizationId: string;
-    targetUserId: string;
-    roleId: string;
-  }) {
-    const { adminId, organizationId, targetUserId, roleId } = params;
-
-    return await db.transaction(async (tx) => {
-      // 1. Verify requester has permission
-      await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
-
-      // 2. Get target membership
-      const targetMembership = await tx.query.organizationMemberships.findFirst({
-        where: and(
-          eq(organizationMemberships.userId, targetUserId),
-          eq(organizationMemberships.organizationId, organizationId),
-        ),
-      });
-
-      if (!targetMembership) throw new Error('NOT_FOUND');
-
-      // 3. Lockout protection using RBACService logic
-      const canDowngrade = await rbacService.canDowngrade(targetUserId, organizationId);
-      if (!canDowngrade) {
-        // We need to check if the NEW role still has management permission
-        // If it doesn't, and this was the last admin, we block it.
-        const newRolePermissions = await tx.query.rolePermissionSets.findMany({
-          where: eq(rolePermissionSets.roleId, roleId),
-          with: {
-            permissionSet: {
-              with: {
-                items: true,
-              },
-            },
-          },
-        });
-
-        const hasManagement = newRolePermissions.some((rp) =>
-          rp.permissionSet.items.some((i) => i.permissionId === PERMISSIONS.ORGANIZATION.MEMBERS),
-        );
-
-        if (!hasManagement) {
-          throw new Error('LAST_ADMIN_LOCKOUT');
-        }
-      }
-
-      // 4. Update role
-      const [updated] = await tx
-        .update(organizationMemberships)
-        .set({ roleId, updatedAt: new Date() })
-        .where(eq(organizationMemberships.id, targetMembership.id))
-        .returning();
-
-      if (updated) {
-        await ActivityLogger.recordUpdate(
-          tx as Transaction,
-          {
-            organizationId,
-            userId: adminId,
-            entityType: 'membership',
-            entityId: updated.id,
-            entityDisplayId: targetUserId,
-            entityLabel: 'Membership',
-            action: 'MEMBER_ROLE_CHANGED',
-            reason: 'User role updated within organization.',
-          },
-          targetMembership,
-          { roleId },
-        );
-      }
-
-      return membership;
-    });
-  }
-
-  /**
-   * Remove a member from the organization.
-   */
-  async removeMember(params: { adminId: string; organizationId: string; targetUserId: string }) {
-    const { adminId, organizationId, targetUserId } = params;
-
-    return await db.transaction(async (tx) => {
-      // 1. Verify requester has permission
-      await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
-
-      // 2. Get target membership
-      const targetMembership = await tx.query.organizationMemberships.findFirst({
-        where: and(
-          eq(organizationMemberships.userId, targetUserId),
-          eq(organizationMemberships.organizationId, organizationId),
-        ),
-      });
-
-      if (!targetMembership) throw new Error('NOT_FOUND');
-
-      // 3. Lockout protection
-      const canRemove = await rbacService.canDowngrade(targetUserId, organizationId);
-      if (!canRemove) {
-        throw new Error('LAST_ADMIN_LOCKOUT');
-      }
-
-      // 4. Delete membership
-      const [deleted] = await tx
-        .delete(organizationMemberships)
-        .where(eq(organizationMemberships.id, targetMembership.id))
-        .returning();
-
-      if (deleted) {
-        await ActivityLogger.record(tx as Transaction, {
-          organizationId,
-          userId: adminId,
-          entityType: 'membership',
-          entityId: targetMembership.id,
-          entityDisplayId: targetUserId,
-          entityLabel: 'Membership',
-          action: 'MEMBER_REMOVED',
-          reason: 'User removed from organization.',
-        });
-      }
-
-      return membership;
-    });
-  }
-
-  /**
    * Update organization details.
    */
   async updateOrganization(adminId: string, organizationId: string, data: UpdateOrganizationInput) {
@@ -453,7 +151,7 @@ export class OrganizationsService {
       const existingOrg = await tx.query.organizations.findFirst({
         where: eq(organizations.id, organizationId),
       });
-      if (!existingOrg) throw new Error('NOT_FOUND');
+      if (!existingOrg) throw new AppError('Organization not found', 404);
 
       const updateData: UpdateOrganizationInput & { updatedAt: Date } = {
         ...data,
@@ -489,7 +187,7 @@ export class OrganizationsService {
         .where(eq(organizations.id, organizationId))
         .returning();
 
-      if (!updated) throw new Error('NOT_FOUND');
+      if (!updated) throw new AppError('Failed to update organization', 500);
 
       // 3. Sync default currency if country changed
       if (data.defaultCountry) {
@@ -517,113 +215,6 @@ export class OrganizationsService {
   }
 
   /**
-   * Resend an invitation.
-   */
-  async resendInvite(params: { adminId: string; organizationId: string; inviteId: string }) {
-    const { adminId, organizationId, inviteId } = params;
-
-    return await db.transaction(async (tx) => {
-      await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
-
-      const invite = await tx.query.organizationInvites.findFirst({
-        where: and(
-          eq(organizationInvites.id, inviteId),
-          eq(organizationInvites.organizationId, organizationId),
-        ),
-      });
-
-      if (!invite) throw new Error('NOT_FOUND');
-
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-
-      await tx
-        .update(organizationInvites)
-        .set({
-          expiresAt,
-          status: 'pending',
-          updatedAt: new Date(),
-        })
-        .where(eq(organizationInvites.id, inviteId));
-
-      await ActivityLogger.record(tx as Transaction, {
-        organizationId,
-        userId: adminId,
-        entityType: 'invite',
-        entityId: inviteId,
-        entityDisplayId: invite.email,
-        entityLabel: 'Organization Invite',
-        action: 'INVITE_SENT',
-        reason: `Invitation to ${invite.email} resent.`,
-      });
-
-      return membership;
-    });
-  }
-
-  /**
-   * Cancel a pending invitation.
-   */
-  async cancelInvite(params: { adminId: string; organizationId: string; inviteId: string }) {
-    const { adminId, organizationId, inviteId } = params;
-
-    return await db.transaction(async (tx) => {
-      await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
-
-      const [updated] = await tx
-        .update(organizationInvites)
-        .set({ status: 'revoked', updatedAt: new Date() })
-        .where(
-          and(
-            eq(organizationInvites.id, inviteId),
-            eq(organizationInvites.organizationId, organizationId),
-          ),
-        )
-        .returning();
-
-      if (!updated) throw new Error('NOT_FOUND');
-
-      await ActivityLogger.record(tx as Transaction, {
-        organizationId,
-        userId: adminId,
-        entityType: 'invite',
-        entityId: inviteId,
-        entityDisplayId: updated.email,
-        entityLabel: 'Organization Invite',
-        action: 'INVITE_REVOKED',
-        reason: `Invitation to ${updated.email} revoked.`,
-      });
-
-      return membership;
-    });
-  }
-
-  /**
-   * List all invitations.
-   */
-  async listInvites(adminId: string, organizationId: string) {
-    await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
-
-    const invites = await db.query.organizationInvites.findMany({
-      where: eq(organizationInvites.organizationId, organizationId),
-      with: {
-        role: true,
-      },
-      orderBy: (invites, { desc }) => [desc(invites.createdAt)],
-    });
-
-    return invites.map((i) => ({
-      id: i.id,
-      email: i.email,
-      roleId: i.roleId,
-      roleName: i.role.name,
-      status: i.status,
-      expiresAt: i.expiresAt.toISOString(),
-      createdAt: i.createdAt.toISOString(),
-    }));
-  }
-
-  /**
    * Delete an organization.
    */
   async deleteOrganization(adminId: string, organizationId: string) {
@@ -635,66 +226,17 @@ export class OrganizationsService {
         .where(eq(organizations.id, organizationId))
         .returning();
 
-      if (!deleted) throw new Error('NOT_FOUND');
+      if (!deleted) throw new AppError('Organization not found', 404);
 
-      return membership;
+      return { success: true };
     });
   }
 
   private async ensurePermission(userId: string, organizationId: string, permission: string) {
     const permissions = await rbacService.getPermissions(userId, organizationId);
     if (!permissions.includes(permission as Permission)) {
-      throw new Error('FORBIDDEN');
+      throw new AppError('Forbidden', 403);
     }
-  }
-
-  /**
-   * Process any pending invites for a newly registered user.
-   */
-  async processPendingInvites(userEmail: string, userId: string) {
-    return await db.transaction(async (tx) => {
-      const pendingInvites = await tx.query.organizationInvites.findMany({
-        where: and(
-          eq(organizationInvites.email, userEmail),
-          eq(organizationInvites.status, 'pending'),
-        ),
-      });
-
-      for (const invite of pendingInvites) {
-        await tx
-          .insert(organizationMemberships)
-          .values({
-            userId: userId,
-            organizationId: invite.organizationId,
-            roleId: invite.roleId,
-          })
-          .onConflictDoUpdate({
-            target: [organizationMemberships.userId, organizationMemberships.organizationId],
-            set: {
-              roleId: invite.roleId,
-              updatedAt: new Date(),
-            },
-          });
-
-        await tx
-          .update(organizationInvites)
-          .set({ status: 'accepted', updatedAt: new Date() })
-          .where(eq(organizationInvites.id, invite.id));
-
-        await ActivityLogger.record(tx as Transaction, {
-          organizationId: invite.organizationId,
-          userId,
-          entityType: 'invite',
-          entityId: invite.id,
-          entityDisplayId: userEmail,
-          entityLabel: 'Organization Invite',
-          action: 'INVITE_ACCEPTED',
-          reason: `User ${userEmail} joined organization via invite.`,
-        });
-      }
-
-      return { processedCount: pendingInvites.length };
-    });
   }
 
   /**
@@ -708,13 +250,13 @@ export class OrganizationsService {
   ) {
     const currency = getCurrencyByCountry(countryCode);
 
-    // 1. Unset any existing defaults for this organization
+    // 1. Unset any existing defaults
     await tx
       .update(currencies)
       .set({ isDefault: false, updatedAt: new Date(), updatedBy: userId })
       .where(eq(currencies.organizationId, organizationId));
 
-    // 2. Check if the currency record already exists (case-insensitive)
+    // 2. Check if the currency record already exists
     const existing = await tx.query.currencies.findFirst({
       where: and(
         eq(currencies.organizationId, organizationId),
@@ -723,7 +265,6 @@ export class OrganizationsService {
     });
 
     if (existing) {
-      // Update existing record
       await tx
         .update(currencies)
         .set({
@@ -734,7 +275,6 @@ export class OrganizationsService {
         })
         .where(eq(currencies.id, existing.id));
     } else {
-      // Create new record
       await tx.insert(currencies).values({
         organizationId,
         code: currency.code,

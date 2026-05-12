@@ -106,7 +106,18 @@ export function useBulkDeleteBills() {
   return useMutation({
     mutationFn: (ids: string[]) => billsApi.bulkDeleteBills(ids),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: billKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: billKeys.all });
+    },
+  });
+}
+
+export function useCreateBillFromReceipt() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (receiptId: string) => billsApi.createFromReceipt(receiptId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: billKeys.all });
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });

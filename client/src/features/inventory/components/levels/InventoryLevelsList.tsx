@@ -12,7 +12,6 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 import { APP_PATHS } from '@/lib/paths';
 
 import { columns } from './columns';
@@ -40,11 +39,9 @@ export function InventoryLevelsList() {
     );
   }
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!levels || levels.length === 0) {
+  if (!isLoading && (!levels || levels.length === 0)) {
     return (
       <>
         <PageHeader title="Inventory Levels" />
@@ -72,9 +69,9 @@ export function InventoryLevelsList() {
       title="Inventory Levels"
       description="Real-time visibility of stock across all warehouses and bins."
       enableGlobalSearch
-      data={levels}
+      data={levels || []}
       columns={columns}
-      isLoading={isDataLoading}
+      isLoading={isLoading}
       onAddClick={handleAddClick}
       viewMode={tableState.viewMode}
       onViewModeChange={tableSetters.setViewMode}

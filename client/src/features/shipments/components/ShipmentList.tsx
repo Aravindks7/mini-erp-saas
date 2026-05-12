@@ -16,7 +16,6 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { columns, shipmentStatusOptions } from './columns';
 import {
@@ -76,11 +75,9 @@ export function ShipmentList() {
     }
   };
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!shipments || shipments.length === 0) {
+  if (!isLoading && (!shipments || shipments.length === 0)) {
     return (
       <>
         <PageHeader title="Shipments" />
@@ -113,7 +110,7 @@ export function ShipmentList() {
         enableGlobalSearch
         data={shipments || []}
         columns={columns}
-        isLoading={isDataLoading}
+        isLoading={isLoading}
         onAddClick={handleAddClick}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

@@ -13,7 +13,6 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 import { APP_PATHS } from '@/lib/paths';
 
 import { columns, adjustmentStatusOptions } from './columns';
@@ -45,11 +44,9 @@ export function AdjustmentsList() {
     );
   }
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!adjustments || adjustments.length === 0) {
+  if (!isLoading && (!adjustments || adjustments.length === 0)) {
     return (
       <>
         <PageHeader title="Inventory Adjustments" />
@@ -77,9 +74,9 @@ export function AdjustmentsList() {
       title="Inventory Adjustments"
       description="Audit log of all manual stock corrections and variances."
       enableGlobalSearch
-      data={adjustments}
+      data={adjustments || []}
       columns={columns}
-      isLoading={isDataLoading}
+      isLoading={isLoading}
       onAddClick={handleAddClick}
       viewMode={tableState.viewMode}
       onViewModeChange={tableSetters.setViewMode}

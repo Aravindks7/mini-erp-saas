@@ -12,7 +12,6 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Can } from '@/components/shared/Can';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { columns as getColumns } from './columns';
 import { useAccountsQuery, useAccountsActions } from '../hooks/accounts.hooks';
@@ -56,11 +55,9 @@ export function AccountList() {
     );
   }
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!accounts || accounts.length === 0) {
+  if (!isLoading && (!accounts || accounts.length === 0)) {
     return (
       <div className="space-y-4 p-6">
         <PageHeader
@@ -97,7 +94,7 @@ export function AccountList() {
         enableGlobalSearch
         data={accounts || []}
         columns={columns}
-        isLoading={isDataLoading}
+        isLoading={isLoading}
         onAddClick={handleAdd}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

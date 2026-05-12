@@ -1,6 +1,17 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { Truck, Package, AlertCircle, FileText, Ban, FileEdit, PackageSearch } from 'lucide-react';
+import {
+  Truck,
+  Package,
+  AlertCircle,
+  FileText,
+  Ban,
+  FileEdit,
+  PackageSearch,
+  Receipt,
+} from 'lucide-react';
 import { useReceipt } from '../hooks/receipts.hooks';
+import { useCreateBillFromReceipt } from '@/features/bills/hooks/bills.hooks';
+import { toast } from 'sonner';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
@@ -32,6 +43,20 @@ export default function ReceiptDetailsPage() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
   const { data: receipt, isLoading, isError } = useReceipt(id);
+  const { mutate: generateBill, isPending: isGeneratingBill } = useCreateBillFromReceipt();
+
+  const handleGenerateBill = () => {
+    if (!receipt) return;
+    generateBill(receipt.id, {
+      onSuccess: (bill) => {
+        toast.success(`Bill ${bill.referenceNumber} generated successfully`);
+        navigate(getPath(APP_PATHS.purchasing.bills.detail(bill.id)));
+      },
+      onError: (error: Error) => {
+        toast.error(error.message || 'Failed to generate bill');
+      },
+    });
+  };
 
   if (isLoading) {
     return (
@@ -84,12 +109,21 @@ export default function ReceiptDetailsPage() {
   }
 
   if (isReceived) {
-    actions.push({
-      label: 'Cancel Receipt',
-      onClick: () => {}, // TODO
-      icon: <Ban className="h-4 w-4" />,
-      variant: 'destructive' as const,
-    });
+    actions.push(
+      {
+        label: 'Generate Bill',
+        onClick: handleGenerateBill,
+        icon: <Receipt className="h-4 w-4" />,
+        variant: 'default' as const,
+        isLoading: isGeneratingBill,
+      },
+      {
+        label: 'Cancel Receipt',
+        onClick: () => {}, // TODO
+        icon: <Ban className="h-4 w-4" />,
+        variant: 'destructive' as const,
+      },
+    );
   }
 
   return (

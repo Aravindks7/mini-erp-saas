@@ -6,12 +6,21 @@ vi.mock('../../db/index.js', () => ({
   db: {
     insert: vi.fn(),
     update: vi.fn(),
+    execute: vi.fn().mockResolvedValue({ rows: [] }),
     query: {
       documentSequences: {
         findMany: vi.fn(),
+        findFirst: vi.fn(),
       },
     },
     transaction: vi.fn((cb) => cb(db)),
+  },
+}));
+
+vi.mock('../../lib/activity-logger.js', () => ({
+  ActivityLogger: {
+    recordUpdate: vi.fn(),
+    record: vi.fn(),
   },
 }));
 
@@ -33,9 +42,11 @@ describe('SequencesService', () => {
   });
 
   it('should update a sequence configuration', async () => {
-    const mockUpdate = { prefix: 'NEW-', padding: 6 };
-    const mockResult = { id: '1', ...mockUpdate };
+    const mockUpdate = { prefix: 'NEW-', padding: 6, reason: 'Testing change' };
+    const mockResult = { id: '1', type: 'INV', ...mockUpdate };
+    const oldSequence = { id: '1', type: 'INV', prefix: 'OLD-', padding: 4, nextValue: 10 };
 
+    vi.mocked(db.query.documentSequences.findFirst).mockResolvedValue(oldSequence as any);
     vi.mocked(db.update).mockReturnValue({
       set: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
@@ -49,49 +60,11 @@ describe('SequencesService', () => {
     expect(db.update).toHaveBeenCalled();
   });
 
-  it('should generate first sequence correctly (inserted)', async () => {
+  it('should generate first sequence correctly with tokens (inserted)', async () => {
     const mockSequence = {
-      prefix: 'ADJ-',
+      prefix: 'INV-[YYYY]-',
       nextValue: 2,
       padding: 4,
-    };
-
-    vi.mocked(db.insert).mockReturnValue({
-      values: vi.fn().mockReturnValue({
-        onConflictDoUpdate: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([mockSequence]),
-        }),
-      }),
-    } as any);
-
-    const result = await sequencesService.getNextSequence(mockOrgId, 'ADJ', mockUserId);
-    expect(result).toBe('ADJ-0001');
-  });
-
-  it('should generate subsequent sequences correctly (updated)', async () => {
-    const mockSequence = {
-      prefix: 'ADJ-',
-      nextValue: 11,
-      padding: 4,
-    };
-
-    vi.mocked(db.insert).mockReturnValue({
-      values: vi.fn().mockReturnValue({
-        onConflictDoUpdate: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([mockSequence]),
-        }),
-      }),
-    } as any);
-
-    const result = await sequencesService.getNextSequence(mockOrgId, 'ADJ', mockUserId);
-    expect(result).toBe('ADJ-0010');
-  });
-
-  it('should handle custom padding', async () => {
-    const mockSequence = {
-      prefix: 'INV-',
-      nextValue: 2,
-      padding: 6,
     };
 
     vi.mocked(db.insert).mockReturnValue({
@@ -103,6 +76,28 @@ describe('SequencesService', () => {
     } as any);
 
     const result = await sequencesService.getNextSequence(mockOrgId, 'INV', mockUserId);
-    expect(result).toBe('INV-000001');
+    const currentYear = new Date().getFullYear().toString();
+    expect(result).toBe(`INV-${currentYear}-0001`);
+  });
+
+  it('should resolve multiple tokens correctly', async () => {
+    const mockSequence = {
+      prefix: '[YYYY][MM][DD]-',
+      nextValue: 2,
+      padding: 3,
+    };
+
+    vi.mocked(db.insert).mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        onConflictDoUpdate: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([mockSequence]),
+        }),
+      }),
+    } as any);
+
+    const result = await sequencesService.getNextSequence(mockOrgId, 'TEST', mockUserId);
+    const now = new Date();
+    const expected = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-001`;
+    expect(result).toBe(expected);
   });
 });

@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Outlet, useLocation, Navigate } from 'react-router-dom';
 import { Building2, Users, Mail, ShieldCheck, KeyRound, Hash } from 'lucide-react';
 import { usePermission } from '@/hooks/usePermission';
-import { useMyPermissionsQuery } from '@/features/auth/hooks/rbac.hooks';
+import { useMyPermissionsQuery } from '@/features/permission-sets';
 import { PERMISSIONS } from '@shared/index';
 import { APP_PATHS } from '@/lib/paths';
 import { useTenantPath } from '@/hooks/useTenantPath';

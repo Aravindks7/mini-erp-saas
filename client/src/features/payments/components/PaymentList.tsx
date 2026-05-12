@@ -17,7 +17,6 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { usePaymentColumns, paymentStatusOptions, paymentTypeOptions } from './columns';
 import {
@@ -77,11 +76,9 @@ export function PaymentList() {
     }
   };
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!payments || payments.length === 0) {
+  if (!isLoading && (!payments || payments.length === 0)) {
     return (
       <>
         <PageHeader title="Payments" />
@@ -114,7 +111,7 @@ export function PaymentList() {
         enableGlobalSearch
         data={payments || []}
         columns={columns}
-        isLoading={isDataLoading}
+        isLoading={isLoading}
         onAddClick={handleAddClick}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

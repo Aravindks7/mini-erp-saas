@@ -18,7 +18,6 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { columns, supplierStatusOptions } from './columns';
 import {
@@ -83,11 +82,9 @@ export function SupplierList() {
     }
   };
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!suppliers || suppliers.length === 0) {
+  if (!isLoading && (!suppliers || suppliers.length === 0)) {
     return (
       <>
         <PageHeader title="Suppliers" />
@@ -131,7 +128,7 @@ export function SupplierList() {
         enableGlobalSearch
         data={suppliers || []}
         columns={columns}
-        isLoading={isDataLoading}
+        isLoading={isLoading}
         onAddClick={handleAddClick}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}

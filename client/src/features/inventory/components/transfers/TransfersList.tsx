@@ -11,7 +11,6 @@ import { APP_PATHS } from '@/lib/paths';
 
 import { ErrorState } from '@/components/shared/ErrorState';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { columns, transferStatusOptions } from './columns';
 import {
@@ -42,9 +41,7 @@ export function TransfersList() {
     );
   }
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
   const handleAddClick = () => navigate(getPath(APP_PATHS.inventory.transfers.new()));
 
@@ -56,7 +53,7 @@ export function TransfersList() {
       enableGlobalSearch
       data={transfers || []}
       columns={columns}
-      isLoading={isDataLoading}
+      isLoading={isLoading}
       onAddClick={handleAddClick}
       viewMode={tableState.viewMode}
       onViewModeChange={tableSetters.setViewMode}

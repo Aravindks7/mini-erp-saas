@@ -12,7 +12,6 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Can } from '@/components/shared/Can';
 import { usePermissionsStatus } from '@/hooks/usePermission';
-import { DataTableSkeleton } from '@/components/shared/data-table/DataTableSkeleton';
 
 import { getColumns } from './columns';
 import { useTaxesQuery, useTaxesActions } from '../hooks/taxes.hooks';
@@ -56,11 +55,9 @@ export function TaxesList() {
     );
   }
 
-  if (isDataLoading || isPermissionsLoading) {
-    return <DataTableSkeleton columnCount={5} rowCount={8} />;
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!taxes || taxes.length === 0) {
+  if (!isLoading && (!taxes || taxes.length === 0)) {
     return (
       <div className="space-y-4">
         <PageHeader title="Taxes" />
@@ -94,7 +91,7 @@ export function TaxesList() {
         enableGlobalSearch
         data={taxes || []}
         columns={columns}
-        isLoading={isDataLoading}
+        isLoading={isLoading}
         onAddClick={handleAdd}
         viewMode={tableState.viewMode}
         onViewModeChange={tableSetters.setViewMode}
