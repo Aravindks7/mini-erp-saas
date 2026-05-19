@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { z } from 'zod';
-import { useQueryClient } from '@tanstack/react-query';
 import { Percent, Plus } from 'lucide-react';
 
 import { EntityTable } from '@/components/shared/data-table/EntityTable';
@@ -12,9 +11,10 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Can } from '@/components/shared/Can';
+import { usePermissionsStatus } from '@/hooks/usePermission';
 
 import { getColumns } from './columns';
-import { useTaxes } from '../hooks/taxes.hooks';
+import { useTaxesQuery, useTaxesActions } from '../hooks/taxes.hooks';
 import type { TaxResponse } from '../api/taxes.api';
 import { TaxFormSheet } from './TaxFormSheet';
 
@@ -23,8 +23,9 @@ const searchSchema = z.object({
 });
 
 export function TaxesList() {
-  const queryClient = useQueryClient();
-  const { data: taxes, isLoading, isError } = useTaxes();
+  const { data: taxes, isLoading: isDataLoading, isError } = useTaxesQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateTaxes } = useTaxesActions();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
   const [formSheetState, setFormSheetState] = React.useState<{
@@ -49,20 +50,14 @@ export function TaxesList() {
       <ErrorState
         title="Failed to load taxes"
         description="We encountered an error while fetching the taxes. Please check your network or try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['taxes'] })}
+        onRetry={invalidateTaxes}
       />
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!taxes || taxes.length === 0) {
+  if (!isLoading && (!taxes || taxes.length === 0)) {
     return (
       <div className="space-y-4">
         <PageHeader title="Taxes" />

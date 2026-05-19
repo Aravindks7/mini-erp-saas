@@ -12,7 +12,7 @@ BEGIN
     -- Drop the physical table if it exists (conflicts with the view name)
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'dashboard_metrics' AND table_type = 'BASE TABLE') THEN
         DROP TABLE dashboard_metrics CASCADE;
-    END IF;
+  END IF;
 
     -- Drop the materialized view if it exists
     IF EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'mv_dashboard_metrics_data') THEN

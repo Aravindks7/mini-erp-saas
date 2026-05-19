@@ -1,7 +1,8 @@
+import * as React from 'react';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { Package2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { EntityTable } from '@/components/shared/data-table/EntityTable';
 import { AddButton } from '@/components/shared/data-table/AddButton';
@@ -12,10 +13,18 @@ import { PERMISSIONS } from '@shared/index';
 
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
+import { usePermissionsStatus } from '@/hooks/usePermission';
 
 import { columns, receiptStatusOptions } from './columns';
-import { useReceipts } from '../hooks/receipts.hooks';
+import {
+  useReceiptsQuery,
+  useBulkDeleteReceipts,
+  useReceiptsActions,
+} from '../hooks/receipts.hooks';
 import { PageHeader } from '@/components/shared/PageHeader';
+import type { ReceiptResponse } from '../api/receipts.api';
+import { APP_PATHS } from '@/lib/paths';
 
 const searchSchema = z.object({
   receiptNumber: z.string().optional(),
@@ -26,29 +35,36 @@ const searchSchema = z.object({
 export function ReceiptList() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
-  const { data: receipts, isLoading, isError } = useReceipts();
+  const { data: receipts, isLoading: isDataLoading, isError } = useReceiptsQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateReceipts } = useReceiptsActions();
+  const bulkDeleteMutation = useBulkDeleteReceipts();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
+
+  // Bulk Delete State
+  const [bulkDeleteState, setBulkDeleteState] = React.useState<{
+    isOpen: boolean;
+    rows: ReceiptResponse[];
+    clearSelection: () => void;
+  }>({
+    isOpen: false,
+    rows: [],
+    clearSelection: () => {},
+  });
 
   if (isError) {
     return (
       <ErrorState
         title="Failed to load receipts"
         description="We encountered an error while fetching the receipt list. Please check your network or try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['receipts'] })}
+        onRetry={invalidateReceipts}
       />
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!receipts || receipts.length === 0) {
+  if (!isLoading && (!receipts || receipts.length === 0)) {
     return (
       <>
         <PageHeader title="Receipts" />
@@ -59,7 +75,7 @@ export function ReceiptList() {
         >
           <div className="flex items-center justify-center gap-4">
             <AddButton
-              to="/receipts/new"
+              to={APP_PATHS.purchasing.receipts.new()}
               permission={PERMISSIONS.INVENTORY.RECEIVE}
               label="Create Receipt"
               className="shadow-lg shadow-primary/20"
@@ -70,38 +86,72 @@ export function ReceiptList() {
     );
   }
 
-  const handleAddClick = () => navigate(getPath('/receipts/new'));
+  const handleBulkDeleteConfirm = async () => {
+    const ids = bulkDeleteState.rows.map((r) => r.id);
+    try {
+      await bulkDeleteMutation.mutateAsync(ids);
+      toast.success(`Successfully deleted ${ids.length} receipt(s)`);
+      bulkDeleteState.clearSelection();
+      setBulkDeleteState((prev) => ({ ...prev, isOpen: false }));
+    } catch (error) {
+      toast.error('Failed to delete selected receipts');
+      console.error('Bulk delete error:', error);
+    }
+  };
+
+  const handleAddClick = () => navigate(getPath(APP_PATHS.purchasing.receipts.new()));
 
   return (
-    <EntityTable
-      headerVariant="primary"
-      title="Receipts"
-      description="Manage and track your inbound shipments and warehouse receipts."
-      enableGlobalSearch
-      data={receipts || []}
-      columns={columns}
-      isLoading={isLoading}
-      onAddClick={handleAddClick}
-      viewMode={tableState.viewMode}
-      onViewModeChange={tableSetters.setViewMode}
-      state={tableState}
-      onStateChange={tableSetters}
-      onReset={resetAll}
-      headerActions={
-        <AddButton
-          to="/receipts/new"
-          permission={PERMISSIONS.INVENTORY.RECEIVE}
-          label="Create Receipt"
-        />
-      }
-      searchKey="receiptNumber"
-      toolbarFilters={(table) => (
-        <DataTableFilter
-          column={table.getColumn('status')}
-          title="Status"
-          options={receiptStatusOptions}
-        />
-      )}
-    />
+    <>
+      <EntityTable
+        headerVariant="primary"
+        title="Receipts"
+        description="Manage and track your inbound shipments and warehouse receipts."
+        enableGlobalSearch
+        data={receipts || []}
+        columns={columns}
+        isLoading={isLoading}
+        onAddClick={handleAddClick}
+        viewMode={tableState.viewMode}
+        onViewModeChange={tableSetters.setViewMode}
+        state={tableState}
+        onStateChange={tableSetters}
+        onReset={resetAll}
+        headerActions={
+          <AddButton
+            to={APP_PATHS.purchasing.receipts.new()}
+            permission={PERMISSIONS.INVENTORY.RECEIVE}
+            label="Create Receipt"
+          />
+        }
+        bulkActions={[
+          {
+            label: 'Delete Selected',
+            onAction: (rows: ReceiptResponse[], clearSelection) => {
+              setBulkDeleteState({ isOpen: true, rows, clearSelection });
+            },
+            variant: 'destructive',
+          },
+        ]}
+        searchKey="receiptNumber"
+        toolbarFilters={(table) => (
+          <DataTableFilter
+            column={table.getColumn('status')}
+            title="Status"
+            options={receiptStatusOptions}
+          />
+        )}
+      />
+
+      <DeleteConfirmDialog
+        isOpen={bulkDeleteState.isOpen}
+        onClose={() => setBulkDeleteState((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={handleBulkDeleteConfirm}
+        title={`Delete ${bulkDeleteState.rows.length} Receipt(s)?`}
+        description={`Are you sure you want to delete ${bulkDeleteState.rows.length} selected receipt(s)? This will reverse all associated inventory movements.`}
+        confirmLabel="Delete Receipts"
+        isLoading={bulkDeleteMutation.isPending}
+      />
+    </>
   );
 }

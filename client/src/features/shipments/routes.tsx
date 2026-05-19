@@ -1,6 +1,9 @@
 import { lazy } from 'react';
 import { Truck } from 'lucide-react';
 import type { AppRoute } from '@/lib/types/navigation';
+import { queryClient } from '@/lib/query-client';
+import { shipmentDetailQuery } from './hooks/shipments.hooks';
+import type { ShipmentResponse } from './api/shipments.api';
 
 const ShipmentsListPage = lazy(() => import('./pages/ShipmentsListPage'));
 const ShipmentFormPage = lazy(() => import('./pages/ShipmentFormPage'));
@@ -33,9 +36,13 @@ export const shipmentRoutes: AppRoute[] = [
       {
         path: ':id',
         element: <ShipmentDetailsPage />,
+        loader: async ({ params }) => {
+          if (!params.id) throw new Error('No id provided');
+          return queryClient.ensureQueryData(shipmentDetailQuery(params.id));
+        },
         handle: {
           title: 'Shipment Details',
-          crumb: (data: { shipmentNumber?: string }) => data?.shipmentNumber || 'Details',
+          crumb: (data: ShipmentResponse) => data?.shipmentNumber || 'Details',
         },
       },
     ],

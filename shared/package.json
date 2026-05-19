@@ -9,6 +9,8 @@
     "test": "vitest run",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "clean": "rm -rf node_modules dist"
   },
   "dependencies": {

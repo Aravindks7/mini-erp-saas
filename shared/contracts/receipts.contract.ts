@@ -17,8 +17,14 @@ export const createReceiptSchema = z.object({
   purchaseOrderId: z.string().uuid('Invalid PO ID').optional().nullable(),
   receivedDate: z.string().optional().nullable(),
   reference: z.string().max(100).optional().nullable(),
+  status: receiptStatusEnumSchema.optional(),
   lines: z.array(receiptLineInputSchema).min(1, 'At least one line is required'),
+});
+
+export const updateReceiptSchema = createReceiptSchema.partial().extend({
+  lines: z.array(receiptLineInputSchema).optional(),
 });
 
 export type ReceiptLineInput = z.infer<typeof receiptLineInputSchema>;
 export type CreateReceiptInput = z.infer<typeof createReceiptSchema>;
+export type UpdateReceiptInput = z.infer<typeof updateReceiptSchema>;

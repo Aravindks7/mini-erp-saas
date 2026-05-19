@@ -3,15 +3,17 @@ import { ShoppingCart, FileEdit, AlertCircle, Package, Receipt, Truck } from 'lu
 import * as React from 'react';
 
 import { usePurchaseOrder } from '../hooks/purchase-orders.hooks';
+import { useReceiptsQuery } from '@/features/receipts/hooks/receipts.hooks';
+import { useEntityActivity } from '@/features/activity/hooks/activity.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { DocumentSummary } from '@/components/shared/domain/DocumentSummary';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
-import { useTenantPath } from '@/hooks/useTenantPath';
-import { purchaseOrderStatusMap } from '../components/columns';
+import { APP_PATHS } from '@/lib/paths';
 import { ReceivePurchaseOrderSheet } from '../components/ReceivePurchaseOrderSheet';
 import {
   Table,
@@ -21,14 +23,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { DetailView } from '@/components/shared/DetailView';
+import { ActivityTimeline } from '@/components/shared/ActivityTimeline';
+
+import { useCurrency } from '@/features/currencies/hooks/use-currency';
+import { useTenantPath } from '@/hooks/useTenantPath';
 
 export default function PurchaseOrderDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
+  const { format: formatCurrency } = useCurrency();
   const { data: po, isLoading, isError } = usePurchaseOrder(id);
 
   const [isReceiveSheetOpen, setIsReceiveSheetOpen] = React.useState(false);
+  const { data: activityData, isLoading: isLoadingActivity } = useEntityActivity(
+    'purchase_order',
+    id,
+  );
 
   if (isLoading) {
     return (
@@ -50,7 +62,7 @@ export default function PurchaseOrderDetailsPage() {
             The purchase order you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate(getPath('/purchase-orders'))}
+            onClick={() => navigate(getPath(APP_PATHS.purchasing.orders.list()))}
             className="text-primary font-semibold hover:underline"
           >
             Return to Procurement List
@@ -60,19 +72,19 @@ export default function PurchaseOrderDetailsPage() {
     );
   }
 
-  const currencyFormatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  });
-
-  const canReceive = po.status === 'draft' || po.status === 'sent';
+  const canReceive =
+    po.status === 'draft' || po.status === 'sent' || po.status === 'partially_received';
+  const canEdit = po.status === 'draft';
 
   return (
     <PageContainer>
       <PageHeader
         title={po.documentNumber}
         description={`Procurement document for ${po.supplier.name}.`}
-        backButton={{ href: getPath('/purchase-orders'), label: 'Back to List' }}
+        backButton={{
+          onClick: () => navigate(getPath(APP_PATHS.purchasing.orders.list())),
+          label: 'Back to List',
+        }}
         actions={[
           {
             label: 'Receive Order',
@@ -83,25 +95,31 @@ export default function PurchaseOrderDetailsPage() {
           },
           {
             label: 'Edit Order',
-            onClick: () => navigate(getPath(`/purchase-orders/${po.id}/edit`)),
+            onClick: () => navigate(getPath(APP_PATHS.purchasing.orders.edit(po.id))),
             icon: <FileEdit className="h-4 w-4" />,
             variant: 'default',
-            hidden: !canReceive,
+            hidden: !canEdit,
           },
         ]}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">
-          <StatusBadge value={po.status} statusMap={purchaseOrderStatusMap} />
+          <StatusBadge value={po.status as string} entityType="purchase_order" />
         </div>
       </PageHeader>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 lg:w-[400px] h-11 bg-muted/50 p-1">
+        <TabsList className="grid w-full grid-cols-4 lg:w-[700px] h-11 bg-muted/50 p-1">
           <TabsTrigger value="overview" className="data-[state=active]:shadow-sm">
             Overview
           </TabsTrigger>
           <TabsTrigger value="items" className="data-[state=active]:shadow-sm">
             Line Items ({po.lines?.length || 0})
+          </TabsTrigger>
+          <TabsTrigger value="receipts" className="data-[state=active]:shadow-sm">
+            Receipts History
+          </TabsTrigger>
+          <TabsTrigger value="activity" className="data-[state=active]:shadow-sm">
+            Activity
           </TabsTrigger>
         </TabsList>
 
@@ -115,45 +133,50 @@ export default function PurchaseOrderDetailsPage() {
                 </div>
               </CardHeader>
               <CardContent className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      Supplier Name
-                    </label>
-                    <p className="text-base font-semibold">{po.supplier.name}</p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      Document Number
-                    </label>
-                    <p className="text-base font-mono bg-muted/50 w-fit px-2 py-0.5 rounded border">
-                      {po.documentNumber}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
+                <DetailView
+                  columns={2}
+                  sections={[
+                    {
+                      items: [
+                        {
+                          label: 'Supplier Name',
+                          value: po.supplier.name,
+                        },
+                        {
+                          label: 'Document Number',
+                          value: po.documentNumber,
+                          valueClassName: 'font-mono bg-muted/50 w-fit px-2 py-0.5 rounded border',
+                        },
+                      ],
+                    },
+                  ]}
+                />
+              </CardContent>{' '}
             </Card>
 
-            <Card className="border-muted-foreground/20 overflow-hidden shadow-sm">
-              <CardHeader className="bg-muted/30 border-b pb-4">
-                <div className="flex items-center gap-2">
-                  <Receipt className="h-4 w-4 text-primary" />
-                  <CardTitle className="text-lg">Order Summary</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6 space-y-4">
-                <div className="flex justify-between items-center pb-2 border-b border-dashed">
-                  <span className="text-sm text-muted-foreground">Status</span>
-                  <StatusBadge value={po.status} statusMap={purchaseOrderStatusMap} />
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Total Amount</span>
-                  <span className="text-xl font-bold text-primary">
-                    {currencyFormatter.format(Number(po.totalAmount))}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+            <DocumentSummary
+              title="Order Summary"
+              status={po.status}
+              entityType="purchase_order"
+              lines={[
+                {
+                  label: 'Subtotal',
+                  value: formatCurrency(
+                    po.lines.reduce((acc, l) => acc + Number(l.quantity) * Number(l.unitPrice), 0),
+                  ),
+                  isSubtotal: true,
+                },
+                {
+                  label: 'Total Tax',
+                  value: formatCurrency(po.lines.reduce((acc, l) => acc + Number(l.taxAmount), 0)),
+                },
+                {
+                  label: 'Order Total',
+                  value: formatCurrency(Number(po.totalAmount)),
+                  isTotal: true,
+                },
+              ]}
+            />
           </div>
 
           <AuditInfo createdAt={po.createdAt} updatedAt={po.updatedAt} />
@@ -189,14 +212,14 @@ export default function PurchaseOrderDetailsPage() {
                         <TableCell className="font-medium">{line.product.name}</TableCell>
                         <TableCell className="text-right">{line.quantity}</TableCell>
                         <TableCell className="text-right">
-                          {currencyFormatter.format(Number(line.unitPrice))}
+                          {formatCurrency(Number(line.unitPrice))}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
-                          {currencyFormatter.format(Number(line.taxAmount))}
+                          {formatCurrency(Number(line.taxAmount))}
                           <span className="text-[10px] ml-1">({line.taxRateAtOrder}%)</span>
                         </TableCell>
                         <TableCell className="text-right font-semibold pr-6 text-primary">
-                          {currencyFormatter.format(lineTotal)}
+                          {formatCurrency(lineTotal)}
                         </TableCell>
                       </TableRow>
                     );
@@ -208,7 +231,7 @@ export default function PurchaseOrderDetailsPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
                     <span>
-                      {currencyFormatter.format(
+                      {formatCurrency(
                         po.lines.reduce(
                           (acc, l) => acc + Number(l.quantity) * Number(l.unitPrice),
                           0,
@@ -219,17 +242,37 @@ export default function PurchaseOrderDetailsPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Total Tax</span>
                     <span>
-                      {currencyFormatter.format(
-                        po.lines.reduce((acc, l) => acc + Number(l.taxAmount), 0),
-                      )}
+                      {formatCurrency(po.lines.reduce((acc, l) => acc + Number(l.taxAmount), 0))}
                     </span>
                   </div>
                   <div className="flex justify-between pt-2 border-t font-bold text-lg text-primary">
                     <span>Order Total</span>
-                    <span>{currencyFormatter.format(Number(po.totalAmount))}</span>
+                    <span>{formatCurrency(Number(po.totalAmount))}</span>
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent
+          value="receipts"
+          className="mt-6 space-y-6 animate-in slide-in-from-right-2 duration-300"
+        >
+          <ReceiptsHistory poId={po.id} />
+        </TabsContent>
+
+        <TabsContent value="activity" className="mt-6 animate-in fade-in-50 duration-500">
+          <Card className="border-muted-foreground/20 overflow-hidden shadow-sm">
+            <CardContent className="p-6">
+              <ActivityTimeline
+                items={
+                  (activityData ??
+                    []) as import('@/components/shared/ActivityTimeline').ActivityTimelineItem[]
+                }
+                isLoading={isLoadingActivity}
+                emptyMessage="No activity recorded for this purchase order yet."
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -241,5 +284,58 @@ export default function PurchaseOrderDetailsPage() {
         po={po}
       />
     </PageContainer>
+  );
+}
+
+function ReceiptsHistory({ poId }: { poId: string }) {
+  const { data: allReceipts, isLoading } = useReceiptsQuery();
+  const receipts = React.useMemo(
+    () => allReceipts?.filter((r) => r.purchaseOrderId === poId) || [],
+    [allReceipts, poId],
+  );
+
+  if (isLoading) return <SkeletonLoader variant="list" rows={3} />;
+
+  if (receipts.length === 0) {
+    return (
+      <Card className="border-dashed border-2">
+        <CardContent className="py-12 flex flex-col items-center justify-center text-center">
+          <Package className="h-10 w-10 text-muted-foreground/40 mb-4" />
+          <p className="text-muted-foreground">No physical receipts recorded for this order yet.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {receipts.map((receipt) => (
+        <Card key={receipt.id} className="overflow-hidden border-muted-foreground/20">
+          <CardHeader className="bg-muted/30 py-3 border-b">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Receipt className="h-4 w-4 text-primary" />
+                <span className="font-mono font-semibold">{receipt.receiptNumber}</span>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                Received: {new Date(receipt.receivedDate).toLocaleDateString()}
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {receipt.lines.map((line) => (
+                <div key={line.id} className="text-sm">
+                  <p className="text-muted-foreground text-xs uppercase tracking-tighter">
+                    {line.product?.name || 'Unknown Product'}
+                  </p>
+                  <p className="font-medium">Qty: {line.quantityReceived}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   );
 }

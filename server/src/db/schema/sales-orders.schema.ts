@@ -7,6 +7,7 @@ import { organizations } from './organizations.schema.js';
 import { customers } from './customers.schema.js';
 import { salesOrderLines } from './sales-order-lines.schema.js';
 import { shipments } from './shipments.schema.js';
+import { invoices } from './invoices.schema.js';
 
 /**
  * Sales Order Lifecycle States
@@ -14,7 +15,9 @@ import { shipments } from './shipments.schema.js';
 export const salesOrderStatusEnum = pgEnum('sales_order_status', [
   'draft',
   'approved',
+  'partially_shipped',
   'shipped',
+  'closed',
   'cancelled',
 ]);
 
@@ -57,6 +60,7 @@ export const salesOrdersRelations = relations(salesOrders, ({ one, many }) => ({
   }),
   lines: many(salesOrderLines),
   shipments: many(shipments),
+  invoices: many(invoices),
 }));
 
 export type SalesOrder = typeof salesOrders.$inferSelect;

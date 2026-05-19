@@ -6,6 +6,7 @@ import type {
 } from '@shared/contracts/warehouses.contract';
 import { addressSchema } from '@shared/contracts/common.contract';
 import { binSchema } from '@shared/contracts/warehouses.contract';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export interface RawAddressResponse {
   id: string;
@@ -54,34 +55,37 @@ function mapWarehouse(raw: RawWarehouseResponse): WarehouseResponse {
 
 export const warehousesApi = {
   fetchWarehouses: async () => {
-    const raw = await apiFetch<RawWarehouseResponse[]>('/warehouses');
+    const raw = await apiFetch<RawWarehouseResponse[]>(API_ENDPOINTS.setup.warehouses.base);
     return raw.map(mapWarehouse);
   },
   fetchWarehouse: async (id: string) => {
-    const raw = await apiFetch<RawWarehouseResponse>(`/warehouses/${id}`);
+    const raw = await apiFetch<RawWarehouseResponse>(API_ENDPOINTS.setup.warehouses.detail(id));
     return mapWarehouse(raw);
   },
   createWarehouse: async (data: CreateWarehouseInput) => {
-    const raw = await apiFetch<RawWarehouseResponse>('/warehouses', {
+    const raw = await apiFetch<RawWarehouseResponse>(API_ENDPOINTS.setup.warehouses.base, {
       method: 'POST',
       body: JSON.stringify(data),
     });
     return mapWarehouse(raw);
   },
   updateWarehouse: async (id: string, data: UpdateWarehouseInput) => {
-    const raw = await apiFetch<RawWarehouseResponse>(`/warehouses/${id}`, {
+    const raw = await apiFetch<RawWarehouseResponse>(API_ENDPOINTS.setup.warehouses.detail(id), {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
     return mapWarehouse(raw);
   },
   deleteWarehouse: (id: string) =>
-    apiFetch<{ message: string }>(`/warehouses/${id}`, {
+    apiFetch<{ message: string }>(API_ENDPOINTS.setup.warehouses.detail(id), {
       method: 'DELETE',
     }),
   bulkDeleteWarehouses: (ids: string[]) =>
-    apiFetch<{ message: string; deletedCount: number; deletedIds: string[] }>('/warehouses', {
-      method: 'DELETE',
-      body: JSON.stringify({ ids }),
-    }),
+    apiFetch<{ message: string; deletedCount: number; deletedIds: string[] }>(
+      API_ENDPOINTS.setup.warehouses.bulkDelete,
+      {
+        method: 'DELETE',
+        body: JSON.stringify({ ids }),
+      },
+    ),
 };

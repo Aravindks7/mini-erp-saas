@@ -1,0 +1,25 @@
+
+> erp-saas-app@1.0.0 lint /home/aravind/personal/mini-erp-saas
+> pnpm -r lint
+
+Scope: 3 of 4 workspace projects
+shared lint$ eslint .
+shared lint: Done
+client lint$ eslint .
+server lint$ eslint .
+server lint: /home/aravind/personal/mini-erp-saas/server/src/modules/inventory/inventory.service.ts
+server lint:   13:24  error  'asc' is defined but never used  @typescript-eslint/no-unused-vars
+server lint: /home/aravind/personal/mini-erp-saas/server/src/modules/members/members.test.ts
+server lint:   94:77  error  'opts' is defined but never used  @typescript-eslint/no-unused-vars
+server lint: /home/aravind/personal/mini-erp-saas/server/src/modules/permission-sets/permission-sets.test.ts
+server lint:   102:77  error  'opts' is defined but never used  @typescript-eslint/no-unused-vars
+server lint: /home/aravind/personal/mini-erp-saas/server/src/modules/purchase-orders/purchase-orders.controller.ts
+server lint:   141:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+server lint: /home/aravind/personal/mini-erp-saas/server/src/modules/sales-orders/sales-orders.reconciler.ts
+server lint:   3:24  error  'desc' is defined but never used  @typescript-eslint/no-unused-vars
+server lint: ✖ 5 problems (5 errors, 0 warnings)
+server lint: Failed
+/home/aravind/personal/mini-erp-saas/server:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  server@1.0.0 lint: `eslint .`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.

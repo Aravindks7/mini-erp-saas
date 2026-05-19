@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { useOrganizations, useCreateOrganization } from '../organizations.hooks';
+import { useOrganizationsQuery, useCreateOrganization } from '../organizations.hooks';
 import { organizationsApi } from '../../api/organizations.api';
 import type { CreateOrganizationInput } from '@shared/contracts/organizations.contract';
 
@@ -31,14 +31,14 @@ describe('Organizations Hooks', () => {
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 
-  describe('useOrganizations', () => {
+  describe('useOrganizationsQuery', () => {
     it('should fetch organizations successfully', async () => {
       const mockOrgs = [{ id: 'org-1', name: 'Org 1' }];
       vi.mocked(organizationsApi.fetchMyOrganizations).mockResolvedValue(
         mockOrgs as unknown as Awaited<ReturnType<typeof organizationsApi.fetchMyOrganizations>>,
       );
 
-      const { result } = renderHook(() => useOrganizations(), { wrapper });
+      const { result } = renderHook(() => useOrganizationsQuery(), { wrapper });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(result.current.data).toEqual(mockOrgs);

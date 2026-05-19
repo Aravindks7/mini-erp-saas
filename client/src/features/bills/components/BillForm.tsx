@@ -10,8 +10,8 @@ import { FormField } from '@/components/shared/form/FormField';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect';
-import { useSuppliers } from '@/features/suppliers/hooks/suppliers.hooks';
-import { useProducts } from '@/features/products/hooks/products.hooks';
+import { useSuppliersQuery } from '@/features/suppliers/hooks/suppliers.hooks';
+import { useProductsQuery } from '@/features/products/hooks/products.hooks';
 
 import type { CreateBillInput } from '@shared/contracts/bills.contract';
 import { createBillSchema } from '@shared/contracts/bills.contract';
@@ -29,8 +29,8 @@ export function BillForm({ form, onSubmit, formId, isEdit = false }: BillFormPro
     name: 'lines',
   });
 
-  const { data: suppliers, isLoading: isLoadingSuppliers } = useSuppliers();
-  const { data: products, isLoading: isLoadingProducts } = useProducts();
+  const { data: suppliers, isLoading: isLoadingSuppliers } = useSuppliersQuery();
+  const { data: products, isLoading: isLoadingProducts } = useProductsQuery();
 
   const supplierOptions = (suppliers || []).map((s) => ({
     label: s.name,

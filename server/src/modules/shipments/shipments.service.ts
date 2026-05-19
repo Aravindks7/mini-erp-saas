@@ -4,12 +4,18 @@ import {
   shipmentLines,
   inventoryLevels,
   inventoryLedgers,
+  salesOrderLines,
   salesOrders,
+  products,
+  warehouses,
+  inventoryAllocations,
 } from '../../db/schema/index.js';
 import { sequencesService } from '../sequences/sequences.service.js';
-import { sql, desc, and, eq } from 'drizzle-orm';
-import { CreateShipmentInput } from '#shared/contracts/shipments.contract.js';
+import { salesOrdersService } from '../sales-orders/sales-orders.service.js';
+import { sql, desc, and, eq, isNull } from 'drizzle-orm';
+import { CreateShipmentInput, UpdateShipmentInput } from '#shared/contracts/shipments.contract.js';
 import { BaseService } from '../../lib/base.service.js';
+import { ActivityLogger } from '../../lib/activity-logger.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -52,7 +58,7 @@ export class ShipmentsService extends BaseService<typeof shipments> {
               shipmentNumber,
               shipmentDate: data.shipmentDate ? new Date(data.shipmentDate) : new Date(),
               reference: data.reference,
-              status: 'shipped',
+              status: data.status || 'shipped',
             },
             userId,
           ),
@@ -65,6 +71,37 @@ export class ShipmentsService extends BaseService<typeof shipments> {
 
       // 3. Process each line atomically
       for (const line of data.lines) {
+        // Validate against Sales Order Line if applicable
+        if (line.salesOrderLineId) {
+          const soLine = await tx.query.salesOrderLines.findFirst({
+            where: and(
+              eq(salesOrderLines.id, line.salesOrderLineId),
+              eq(salesOrderLines.organizationId, organizationId),
+            ),
+            with: {
+              shipmentLines: {
+                where: (sl, { isNull }) => isNull(sl.deletedAt),
+                with: {
+                  shipment: true,
+                },
+              },
+            },
+          });
+
+          if (soLine) {
+            const alreadyShipped = (soLine.shipmentLines || [])
+              .filter((sl) => sl.shipment.status !== 'cancelled')
+              .reduce((acc, sl) => acc + Number(sl.quantityShipped), 0);
+            const remaining = Number(soLine.quantity) - alreadyShipped;
+
+            if (Number(line.quantityShipped) > remaining) {
+              throw new Error(
+                `Over-shipment violation: Line for product ${line.productId} has only ${remaining} remaining, but ${line.quantityShipped} was requested.`,
+              );
+            }
+          }
+        }
+
         // A. Insert Shipment Line
         await tx.insert(shipmentLines).values(
           this.withAudit(
@@ -81,7 +118,34 @@ export class ShipmentsService extends BaseService<typeof shipments> {
           ),
         );
 
-        // B. Update Inventory Level (UPSERT)
+        // B. Pre-flight Stock Validation
+        const currentLevel = await tx.query.inventoryLevels.findFirst({
+          where: and(
+            eq(inventoryLevels.organizationId, organizationId),
+            eq(inventoryLevels.productId, line.productId),
+            eq(inventoryLevels.warehouseId, line.warehouseId),
+            line.binId ? eq(inventoryLevels.binId, line.binId) : isNull(inventoryLevels.binId),
+          ),
+        });
+
+        const onHand = Number(currentLevel?.quantityOnHand || 0);
+        const requested = Number(line.quantityShipped);
+
+        if (onHand < requested) {
+          const product = await tx.query.products.findFirst({
+            where: eq(products.id, line.productId),
+          });
+          const warehouse = await tx.query.warehouses.findFirst({
+            where: eq(warehouses.id, line.warehouseId),
+          });
+          throw new Error(
+            `Insufficient stock for ${product?.sku || 'Product'}: ${onHand} available in ${
+              warehouse?.name || 'Warehouse'
+            }, but ${requested} requested.`,
+          );
+        }
+
+        // C. Update Inventory Level (UPSERT)
         // Note: For shipments, we use a negative quantity to reduce stock.
         const quantityChange = `-${line.quantityShipped}`;
 
@@ -94,7 +158,7 @@ export class ShipmentsService extends BaseService<typeof shipments> {
                 productId: line.productId,
                 warehouseId: line.warehouseId,
                 binId: line.binId,
-                quantityOnHand: quantityChange,
+                quantityOnHand: '0', // Base for addition in the update block
               },
               userId,
             ),
@@ -108,10 +172,43 @@ export class ShipmentsService extends BaseService<typeof shipments> {
             ],
             set: {
               quantityOnHand: sql`${inventoryLevels.quantityOnHand} + ${quantityChange}::numeric`,
+              quantityAllocated: sql`GREATEST(0, ${inventoryLevels.quantityAllocated} + ${quantityChange}::numeric)`,
               updatedAt: new Date(),
               updatedBy: userId,
             },
           });
+
+        // Consume dynamic decoupled inventory_allocations
+        if (line.salesOrderLineId) {
+          await tx
+            .update(inventoryAllocations)
+            .set({
+              quantityAllocated: sql`GREATEST(0, ${inventoryAllocations.quantityAllocated} - ${line.quantityShipped}::numeric)`,
+              updatedAt: new Date(),
+              updatedBy: userId,
+            })
+            .where(
+              and(
+                eq(inventoryAllocations.organizationId, organizationId),
+                eq(inventoryAllocations.salesOrderLineId, line.salesOrderLineId),
+                eq(inventoryAllocations.warehouseId, line.warehouseId),
+                line.binId
+                  ? eq(inventoryAllocations.binId, line.binId)
+                  : sql`${inventoryAllocations.binId} IS NULL`,
+              ),
+            );
+
+          // Clean up zeroed allocations to keep dynamic ledger sparse
+          await tx
+            .delete(inventoryAllocations)
+            .where(
+              and(
+                eq(inventoryAllocations.organizationId, organizationId),
+                eq(inventoryAllocations.salesOrderLineId, line.salesOrderLineId),
+                eq(inventoryAllocations.quantityAllocated, '0'),
+              ),
+            );
+        }
 
         // C. Insert Ledger Entry for Audit Trail
         await tx.insert(inventoryLedgers).values(
@@ -130,18 +227,54 @@ export class ShipmentsService extends BaseService<typeof shipments> {
         );
       }
 
-      // 4. Update Sales Order status
-      await tx
-        .update(salesOrders)
-        .set(this.withAudit({ status: 'shipped' }, userId, true))
-        .where(
-          and(
-            eq(salesOrders.id, data.salesOrderId),
-            eq(salesOrders.organizationId, organizationId),
-          ),
+      // 5. Activity Logging (Shipment Entity)
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        entityType: 'shipment',
+        entityId: shipment.id,
+        entityDisplayId: shipmentNumber,
+        entityLabel: 'Shipment',
+        action: 'SHIPMENT_CREATED',
+        reason: data.reason || `Inventory allocated and items shipped via ${shipmentNumber}.`,
+        userId,
+      });
+
+      // 4. Reconcile SO Status
+      if (data.salesOrderId) {
+        await this.reconcileSOStatus(
+          organizationId,
+          userId,
+          data.salesOrderId,
+          tx,
+          data.action,
+          data.reason,
         );
 
-      return shipment;
+        // Find the SO for the log
+        const salesOrder = await tx.query.salesOrders.findFirst({
+          where: eq(salesOrders.id, data.salesOrderId),
+        });
+
+        if (salesOrder) {
+          await ActivityLogger.record(tx as Transaction, {
+            organizationId,
+            entityType: 'sales_order',
+            entityId: salesOrder.id,
+            entityDisplayId: salesOrder.documentNumber,
+            entityLabel: 'Sales Order',
+            action: 'ORDER_SHIPPED',
+            reason: data.reason || `Items shipped via ${shipmentNumber}`,
+            snapshot: { shipmentId: shipment.id, shipmentNumber },
+            userId,
+          });
+        }
+      }
+
+      // Trigger GL Posting
+      const { PostingService } = await import('../finance/posting.service.js');
+      await PostingService.postShipment(shipment.id, organizationId, tx);
+
+      return await this.getShipmentById(organizationId, shipment.id, tx);
     };
 
     if (txIn) {
@@ -153,11 +286,246 @@ export class ShipmentsService extends BaseService<typeof shipments> {
     });
   }
 
+  async updateShipment(
+    organizationId: string,
+    userId: string,
+    id: string,
+    data: UpdateShipmentInput,
+  ) {
+    return await db.transaction(async (tx) => {
+      const existing = await this.getShipmentById(organizationId, id, tx);
+      if (!existing) throw new Error('Shipment not found');
+
+      if (existing.status !== 'draft') {
+        throw new Error('Only draft shipments can be modified.');
+      }
+
+      const { lines, ...headerData } = data;
+
+      // Update Header
+      if (Object.keys(headerData).length > 0) {
+        const headerToUpdate = {
+          ...headerData,
+          shipmentDate: headerData.shipmentDate ? new Date(headerData.shipmentDate) : undefined,
+        };
+
+        await tx
+          .update(shipments)
+          .set(this.withAudit(headerToUpdate, userId, true))
+          .where(and(eq(shipments.id, id), eq(shipments.organizationId, organizationId)));
+      }
+
+      // Replace Lines if provided
+      if (lines) {
+        await tx
+          .delete(shipmentLines)
+          .where(
+            and(eq(shipmentLines.shipmentId, id), eq(shipmentLines.organizationId, organizationId)),
+          );
+
+        for (const line of lines) {
+          await tx.insert(shipmentLines).values(
+            this.withAudit(
+              {
+                organizationId,
+                shipmentId: id,
+                productId: line.productId,
+                warehouseId: line.warehouseId,
+                binId: line.binId,
+                salesOrderLineId: line.salesOrderLineId,
+                quantityShipped: line.quantityShipped.toString(),
+              },
+              userId,
+            ),
+          );
+        }
+      }
+
+      // Record Update
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          userId,
+          entityType: 'shipment',
+          entityId: id,
+          entityDisplayId: existing.shipmentNumber,
+          entityLabel: 'Shipment',
+          action: 'UPDATED',
+        },
+        existing,
+        data as Record<string, unknown>,
+      );
+
+      return await this.getShipmentById(organizationId, id, tx);
+    });
+  }
+
+  /**
+   * Refactor deleteShipment to implement a deletion router.
+   * If 'draft': Soft-delete only.
+   * If not 'draft': Reverse inventory and transition to 'cancelled'.
+   */
+  async deleteShipment(organizationId: string, userId: string, id: string) {
+    return await db.transaction(async (tx) => {
+      const shipment = await this.getShipmentById(organizationId, id, tx);
+      if (!shipment) {
+        throw new Error('Shipment not found');
+      }
+
+      if (shipment.status === 'draft') {
+        // 1. Draft Path: Soft-delete only
+        const [updated] = await tx
+          .update(shipments)
+          .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+          .where(and(eq(shipments.id, id), eq(shipments.organizationId, organizationId)))
+          .returning();
+
+        if (updated) {
+          await ActivityLogger.record(tx as Transaction, {
+            organizationId,
+            entityType: 'shipment',
+            entityId: id,
+            entityDisplayId: shipment.shipmentNumber,
+            entityLabel: 'Shipment',
+            action: 'DELETED',
+            reason: 'Draft shipment manually deleted',
+            userId,
+          });
+        }
+
+        return updated;
+      } else {
+        // 2. Committed Path: Inventory Reversal + Status Void (No soft delete)
+
+        // Reverse Inventory Changes for each line
+        for (const line of shipment.lines) {
+          // A. Increment Inventory Level (adding back what was shipped)
+          await tx
+            .update(inventoryLevels)
+            .set({
+              quantityOnHand: sql`${inventoryLevels.quantityOnHand} + ${line.quantityShipped}::numeric`,
+              quantityAllocated: sql`${inventoryLevels.quantityAllocated} + ${line.quantityShipped}::numeric`,
+              updatedAt: new Date(),
+              updatedBy: userId,
+            })
+            .where(
+              and(
+                eq(inventoryLevels.organizationId, organizationId),
+                eq(inventoryLevels.productId, line.productId),
+                eq(inventoryLevels.warehouseId, line.warehouseId),
+                line.binId
+                  ? eq(inventoryLevels.binId, line.binId)
+                  : sql`${inventoryLevels.binId} IS NULL`,
+              ),
+            );
+
+          // B. Restore allocation entry in inventoryAllocations (UPSERT)
+          if (line.salesOrderLineId) {
+            await tx
+              .insert(inventoryAllocations)
+              .values({
+                organizationId,
+                salesOrderLineId: line.salesOrderLineId,
+                productId: line.productId,
+                warehouseId: line.warehouseId,
+                binId: line.binId,
+                quantityAllocated: line.quantityShipped,
+                createdBy: userId,
+                updatedBy: userId,
+              })
+              .onConflictDoUpdate({
+                target: [
+                  inventoryAllocations.organizationId,
+                  inventoryAllocations.salesOrderLineId,
+                  inventoryAllocations.warehouseId,
+                  inventoryAllocations.binId,
+                ],
+                set: {
+                  quantityAllocated: sql`${inventoryAllocations.quantityAllocated} + ${line.quantityShipped}::numeric`,
+                  updatedAt: new Date(),
+                  updatedBy: userId,
+                },
+              });
+          }
+
+          // B. Insert Reversal Ledger Entry
+          await tx.insert(inventoryLedgers).values(
+            this.withAudit(
+              {
+                organizationId,
+                productId: line.productId,
+                warehouseId: line.warehouseId,
+                binId: line.binId,
+                quantityChange: line.quantityShipped, // Positive change to restore stock
+                referenceType: 'so_shipment',
+                referenceId: shipment.id,
+                notes: 'Shipment Void Reversal',
+              },
+              userId,
+            ),
+          );
+        }
+
+        // Transition status to cancelled instead of soft deleting
+        await tx
+          .update(shipments)
+          .set(this.withAudit({ status: 'cancelled' }, userId, true))
+          .where(and(eq(shipments.id, id), eq(shipments.organizationId, organizationId)));
+
+        const { PostingService } = await import('../finance/posting.service.js');
+        await PostingService.postShipmentReversal(id, organizationId, tx);
+
+        // Reconcile SO Status
+        if (shipment.salesOrderId) {
+          await this.reconcileSOStatus(organizationId, userId, shipment.salesOrderId, tx);
+        }
+
+        await ActivityLogger.record(tx as Transaction, {
+          organizationId,
+          entityType: 'shipment',
+          entityId: id,
+          entityDisplayId: shipment.shipmentNumber,
+          entityLabel: 'Shipment',
+          action: 'VOIDED',
+          reason: 'Shipment manually voided (stock reversed)',
+          userId,
+        });
+
+        return await this.getShipmentById(organizationId, id, tx);
+      }
+    });
+  }
+
+  /**
+   * Bulk deletes shipments.
+   */
+  async bulkDeleteShipments(organizationId: string, userId: string, ids: string[]) {
+    for (const id of ids) {
+      await this.deleteShipment(organizationId, userId, id);
+    }
+    return true;
+  }
+
+  /**
+   * Calculates total shipped quantity vs ordered quantity and updates SO status.
+   */
+  private async reconcileSOStatus(
+    organizationId: string,
+    userId: string,
+    soId: string,
+    tx: Transaction | typeof db,
+    action?: string,
+    reason?: string,
+  ) {
+    await salesOrdersService.reconcileFulfillment(organizationId, userId, soId, tx, action, reason);
+  }
+
   /**
    * Retrieves a specific shipment by ID.
    */
-  async getShipmentById(organizationId: string, id: string) {
-    return await db.query.shipments.findFirst({
+  async getShipmentById(organizationId: string, id: string, tx: Transaction | typeof db = db) {
+    return await tx.query.shipments.findFirst({
       where: this.getTenantWhere(organizationId, id),
       with: {
         lines: {
@@ -177,7 +545,7 @@ export class ShipmentsService extends BaseService<typeof shipments> {
    */
   async listShipments(organizationId: string) {
     return await db.query.shipments.findMany({
-      where: this.getTenantWhere(organizationId),
+      where: and(this.getTenantWhere(organizationId), sql`${shipments.deletedAt} IS NULL`),
       orderBy: [desc(shipments.createdAt)],
       with: {
         lines: {

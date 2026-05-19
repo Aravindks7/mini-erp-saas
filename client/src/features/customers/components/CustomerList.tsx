@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { Users, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -12,6 +11,7 @@ import { ExportButton } from '@/components/shared/data-table/ExportButton';
 import { ImportModal } from '@/components/shared/data-table/ImportModal';
 import { useDataTableState } from '@/hooks/useDataTableState';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { usePermissionsStatus } from '@/hooks/usePermission';
 import { PERMISSIONS } from '@shared/index';
 
 import { ErrorState } from '@/components/shared/ErrorState';
@@ -20,20 +20,27 @@ import { Button } from '@/components/ui/button';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
 
 import { columns, customerStatusOptions } from './columns';
-import { useCustomers, useBulkDeleteCustomers } from '../hooks/customers.hooks';
+import {
+  useCustomersQuery,
+  useBulkDeleteCustomers,
+  useCustomersActions,
+} from '../hooks/customers.hooks';
 import type { CustomerResponse } from '../api/customers.api';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { APP_PATHS } from '@/lib/paths';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 const searchSchema = z.object({
-  companyName: z.string().optional(),
+  search: z.string().optional(),
   status: z.string().optional(),
 });
 
 export function CustomerList() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
-  const { data: customers, isLoading, isError } = useCustomers();
+  const { data: customers, isLoading: isDataLoading, isError } = useCustomersQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateCustomers } = useCustomersActions();
   const bulkDeleteMutation = useBulkDeleteCustomers();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
@@ -53,13 +60,13 @@ export function CustomerList() {
       <ErrorState
         title="Failed to load customers"
         description="We encountered an error while fetching the customer directory. Please check your network or try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['customers'] })}
+        onRetry={invalidateCustomers}
       />
     );
   }
 
   const handleImportSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ['customers'] });
+    invalidateCustomers();
   };
 
   const handleBulkDeleteConfirm = async () => {
@@ -75,15 +82,9 @@ export function CustomerList() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!customers || customers.length === 0) {
+  if (!isLoading && (!customers || customers.length === 0)) {
     return (
       <>
         <PageHeader title="Customers" />
@@ -94,8 +95,8 @@ export function CustomerList() {
         >
           <div className="flex items-center justify-center gap-4">
             <ImportModal
-              endpoint="/customers/import"
-              templateEndpoint="/customers/import/template"
+              endpoint={API_ENDPOINTS.customers.import}
+              templateEndpoint={API_ENDPOINTS.customers.importTemplate}
               onSuccess={handleImportSuccess}
               trigger={
                 <Button variant="outline" className="px-6">
@@ -105,7 +106,7 @@ export function CustomerList() {
               }
             />
             <AddButton
-              to="/customers/new"
+              to={APP_PATHS.sales.customers.new()}
               permission={PERMISSIONS.CUSTOMERS.CREATE}
               label="Add Customer"
               className="shadow-lg shadow-primary/20"
@@ -116,7 +117,7 @@ export function CustomerList() {
     );
   }
 
-  const handleAddClick = () => navigate(getPath('/customers/new'));
+  const handleAddClick = () => navigate(getPath(APP_PATHS.sales.customers.new()));
 
   return (
     <>
@@ -136,14 +137,17 @@ export function CustomerList() {
         onReset={resetAll}
         headerActions={
           <div className="flex items-center gap-2">
-            <ExportButton endpoint="/customers/export" filename="customers-export.csv" />
+            <ExportButton
+              endpoint={API_ENDPOINTS.customers.export}
+              filename="customers-export.csv"
+            />
             <ImportModal
-              endpoint="/customers/import"
-              templateEndpoint="/customers/import/template"
+              endpoint={API_ENDPOINTS.customers.import}
+              templateEndpoint={API_ENDPOINTS.customers.importTemplate}
               onSuccess={handleImportSuccess}
             />
             <AddButton
-              to="/customers/new"
+              to={APP_PATHS.sales.customers.new()}
               permission={PERMISSIONS.CUSTOMERS.CREATE}
               label="Add Customer"
             />
@@ -158,7 +162,6 @@ export function CustomerList() {
             variant: 'destructive',
           },
         ]}
-        searchKey="companyName"
         toolbarFilters={(table) => (
           <DataTableFilter
             column={table.getColumn('status')}

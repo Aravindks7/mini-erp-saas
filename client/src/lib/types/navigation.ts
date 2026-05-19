@@ -19,6 +19,8 @@ export interface RouteManifest {
   requiredRoles?: ('admin' | 'manager' | 'user')[];
   /** Breadcrumb handler */
   crumb?: string | ((data: any) => string);
+  /** Flag to identify the module's root landing page for the sidebar group */
+  isModuleRoot?: boolean;
 }
 
 export type AppRoute = RouteObject & {

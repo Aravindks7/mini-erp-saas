@@ -17,7 +17,13 @@ import { receipts } from './receipts.schema.js';
 import { purchaseOrders } from './purchase-orders.schema.js';
 import { billLines } from './bill-lines.schema.js';
 
-export const billStatusEnum = pgEnum('bill_status', ['draft', 'open', 'paid', 'void']);
+export const billStatusEnum = pgEnum('bill_status', [
+  'draft',
+  'open',
+  'partially_paid',
+  'paid',
+  'void',
+]);
 
 export const bills = pgTable(
   'bills',
@@ -39,6 +45,7 @@ export const bills = pgTable(
     issueDate: timestamp('issue_date').notNull(),
     dueDate: timestamp('due_date').notNull(),
     totalAmount: numeric('total_amount', { precision: 18, scale: 8 }).notNull(),
+    balanceDue: numeric('balance_due', { precision: 18, scale: 8 }).notNull().default('0'),
     taxAmount: numeric('tax_amount', { precision: 18, scale: 8 }).notNull(),
     notes: text('notes'),
   },

@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { z } from 'zod';
-import { useQueryClient } from '@tanstack/react-query';
 import { Ruler, Plus } from 'lucide-react';
 
 import { EntityTable } from '@/components/shared/data-table/EntityTable';
@@ -12,9 +11,10 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Can } from '@/components/shared/Can';
+import { usePermissionsStatus } from '@/hooks/usePermission';
 
 import { getColumns } from './columns';
-import { useUoms } from '../hooks/uoms.hooks';
+import { useUomsQuery, useUomsActions } from '../hooks/uoms.hooks';
 import type { UomResponse } from '../api/uoms.api';
 import { UomFormSheet } from './UomFormSheet';
 
@@ -24,8 +24,9 @@ const searchSchema = z.object({
 });
 
 export function UomList() {
-  const queryClient = useQueryClient();
-  const { data: uoms, isLoading, isError } = useUoms();
+  const { data: uoms, isLoading: isDataLoading, isError } = useUomsQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateUoms } = useUomsActions();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
   const [formSheetState, setFormSheetState] = React.useState<{
@@ -50,20 +51,14 @@ export function UomList() {
       <ErrorState
         title="Failed to load units of measure"
         description="We encountered an error while fetching the units of measure. Please check your network or try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['uoms'] })}
+        onRetry={invalidateUoms}
       />
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!uoms || uoms.length === 0) {
+  if (!isLoading && (!uoms || uoms.length === 0)) {
     return (
       <div className="space-y-4">
         <PageHeader title="Units of Measure" />

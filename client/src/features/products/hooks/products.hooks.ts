@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
 import type { CreateProductInput, UpdateProductInput } from '@shared/contracts/products.contract';
 import { productsApi } from '../api/products.api';
+import { activityKeys } from '@/features/activity/hooks/activity.hooks';
 
 export const productKeys = {
   all: ['products'] as const,
@@ -16,12 +17,23 @@ export const productDetailQuery = (id: string) =>
     queryFn: () => productsApi.fetchProduct(id),
   });
 
-export function useProducts() {
-  return useQuery({
+export const productListQuery = () =>
+  queryOptions({
     queryKey: productKeys.lists(),
     queryFn: productsApi.fetchProducts,
     staleTime: 5000,
   });
+
+export function useProductsQuery() {
+  return useQuery(productListQuery());
+}
+
+export function useProductsActions() {
+  const queryClient = useQueryClient();
+
+  return {
+    invalidateProducts: () => queryClient.invalidateQueries({ queryKey: productKeys.lists() }),
+  };
 }
 
 export function useProduct(id: string | undefined) {
@@ -73,6 +85,7 @@ export function useBulkDeleteProducts() {
     mutationFn: (ids: string[]) => productsApi.bulkDeleteProducts(ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }

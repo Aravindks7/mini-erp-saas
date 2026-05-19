@@ -10,7 +10,7 @@ import { LineItemsSection } from '@/components/shared/domain/LineItemsSection';
 import { Textarea } from '@/components/ui/textarea';
 
 import { createInvoiceSchema, type CreateInvoiceInput } from '@shared/contracts/invoices.contract';
-import { useCustomers } from '@/features/customers/hooks/customers.hooks';
+import { useCustomersQuery } from '@/features/customers/hooks/customers.hooks';
 
 interface InvoiceFormProps {
   form: UseFormReturn<CreateInvoiceInput, undefined, CreateInvoiceInput>;
@@ -18,8 +18,11 @@ interface InvoiceFormProps {
   formId?: string;
 }
 
+import { useCurrency } from '@/features/currencies/hooks/use-currency';
+
 export function InvoiceForm({ form, onSubmit, formId }: InvoiceFormProps) {
-  const { data: customers } = useCustomers();
+  const { format: formatCurrency } = useCurrency();
+  const { data: customers } = useCustomersQuery();
 
   const lines = useWatch({
     control: form.control,
@@ -44,11 +47,6 @@ export function InvoiceForm({ form, onSubmit, formId }: InvoiceFormProps) {
       { totalAmount: 0, taxAmount: 0 },
     );
   }, [lines]);
-
-  const currencyFormatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  });
 
   return (
     <Form<CreateInvoiceInput, typeof createInvoiceSchema>
@@ -106,14 +104,14 @@ export function InvoiceForm({ form, onSubmit, formId }: InvoiceFormProps) {
             <div className="text-right space-y-4 min-w-[200px]">
               <div className="flex justify-between items-center text-sm text-muted-foreground">
                 <span>Tax Amount</span>
-                <span>{currencyFormatter.format(totals.taxAmount)}</span>
+                <span>{formatCurrency(totals.taxAmount)}</span>
               </div>
               <div className="pt-2 border-t">
                 <p className="text-sm text-muted-foreground font-medium uppercase tracking-wider">
                   Invoice Total
                 </p>
                 <p className="text-3xl font-bold tracking-tight text-primary">
-                  {currencyFormatter.format(totals.totalAmount)}
+                  {formatCurrency(totals.totalAmount)}
                 </p>
               </div>
             </div>

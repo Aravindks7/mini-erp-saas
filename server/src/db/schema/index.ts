@@ -4,7 +4,10 @@ export * from './organizations.schema.js';
 export * from './auth.schema.js';
 export * from './auth-enums.schema.js';
 export * from './permissions.schema.js';
+export * from './permission-sets.schema.js';
+export * from './permission-set-items.schema.js';
 export * from './roles.schema.js';
+export * from './role-permission-sets.schema.js';
 export * from './memberships.schema.js';
 export * from './invites.schema.js';
 
@@ -12,22 +15,29 @@ export * from './addresses.schema.js';
 export * from './contacts.schema.js';
 
 export * from './uom.schema.js';
+export * from './product-categories.schema.js';
 export * from './products.schema.js';
 export * from './taxes.schema.js';
 
 export * from './suppliers.schema.js';
+export * from './supplier-addresses.schema.js';
+export * from './supplier-contacts.schema.js';
 export * from './customers.schema.js';
 export * from './customer-addresses.schema.js';
 export * from './customer-contacts.schema.js';
 
 export * from './warehouses.schema.js';
+export * from './warehouse-addresses.schema.js';
 export * from './bins.schema.js';
 export * from './dashboard.schema.js';
 
 export * from './inventory-levels.schema.js';
+export * from './inventory-allocations.schema.js';
 export * from './inventory-ledgers.schema.js';
 export * from './inventory-adjustments.schema.js';
 export * from './inventory-adjustment-lines.schema.js';
+export * from './inventory-transfers.schema.js';
+export * from './inventory-transfer-lines.schema.js';
 
 export * from './sales-orders.schema.js';
 export * from './sales-order-lines.schema.js';
@@ -48,3 +58,12 @@ export * from './bills.schema.js';
 export * from './bill-lines.schema.js';
 
 export * from './sequences.schema.js';
+export * from './payment-intents.schema.js';
+export * from './payments.schema.js';
+
+export * from './accounts.schema.js';
+export * from './journal-entries.schema.js';
+export * from './journal-entry-lines.schema.js';
+export * from './finance-reports.schema.js';
+export * from './activity-logs.schema.js';
+export * from './currencies.schema.js';

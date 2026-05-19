@@ -7,7 +7,7 @@ import { NotificationBell } from './NotificationBell';
 import { UserProfileDropdown } from './UserProfileDropdown';
 import { Breadcrumbs } from './Breadcrumbs';
 import { DashboardGreeting } from './DashboardGreeting';
-import { SidebarContent } from './SidebarContent';
+import Sidebar from './sidebar/Sidebar';
 import {
   Sheet,
   SheetContent,
@@ -48,7 +48,7 @@ export default function Navbar() {
               <SheetTitle>Navigation Menu</SheetTitle>
               <SheetDescription>Access different sections of the ERP application.</SheetDescription>
             </SheetHeader>
-            <SidebarContent isCollapsed={false} onItemClick={() => setOpen(false)} />
+            <Sidebar isCollapsed={false} onItemClick={() => setOpen(false)} />
           </SheetContent>
         </Sheet>
         <div className="hidden lg:flex">

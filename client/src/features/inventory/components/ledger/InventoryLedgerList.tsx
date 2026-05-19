@@ -1,7 +1,5 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { History } from 'lucide-react';
 import { z } from 'zod';
-import { useSearchParams } from 'react-router-dom';
 
 import { EntityTable } from '@/components/shared/data-table/EntityTable';
 import { useDataTableState } from '@/hooks/useDataTableState';
@@ -9,30 +7,19 @@ import { useDataTableState } from '@/hooks/useDataTableState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { usePermissionsStatus } from '@/hooks/usePermission';
 
 import { columns } from './columns';
-import { useInventoryLedger } from '../../hooks/inventory.hooks';
+import { useInventoryLedgerQuery, useInventoryLedgerActions } from '../../hooks/inventory.hooks';
 
 const searchSchema = z.object({
   'product.name': z.string().optional(),
 });
 
 export function InventoryLedgerList() {
-  const [searchParams] = useSearchParams();
-  const productId = searchParams.get('productId') || undefined;
-  const warehouseId = searchParams.get('warehouseId') || undefined;
-  const binId = searchParams.get('binId') || undefined;
-
-  const queryClient = useQueryClient();
-  const {
-    data: ledger,
-    isLoading,
-    isError,
-  } = useInventoryLedger({
-    productId,
-    warehouseId,
-    binId,
-  });
+  const { data: ledger, isLoading: isDataLoading, isError } = useInventoryLedgerQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateLedger } = useInventoryLedgerActions();
 
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
@@ -41,20 +28,14 @@ export function InventoryLedgerList() {
       <ErrorState
         title="Failed to load inventory ledger"
         description="Encountered an error while fetching the movement history. Please try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['inventory', 'ledger'] })}
+        onRetry={invalidateLedger}
       />
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!ledger || ledger.length === 0) {
+  if (!isLoading && (!ledger || ledger.length === 0)) {
     return (
       <>
         <PageHeader title="Inventory Ledger" />
@@ -73,7 +54,7 @@ export function InventoryLedgerList() {
       title="Inventory Ledger"
       description="Full audit trail of every stock addition and deduction."
       enableGlobalSearch
-      data={ledger}
+      data={ledger || []}
       columns={columns}
       isLoading={isLoading}
       viewMode={tableState.viewMode}

@@ -1,40 +1,26 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { Truck, MapPin, FileEdit, AlertCircle, Users } from 'lucide-react';
-import * as React from 'react';
 
-import { useSupplier, supplierKeys } from '../hooks/suppliers.hooks';
+import { useSupplier } from '../hooks/suppliers.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
+import { DetailView } from '@/components/shared/DetailView';
 import { AddressCard, type Address } from '@/components/shared/domain/AddressCard';
 import { ContactCard, type Contact } from '@/components/shared/domain/ContactCard';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useTenantPath } from '@/hooks/useTenantPath';
-import { suppliersApi } from '../api/suppliers.api';
-
-const supplierStatusMap: StatusMap<string> = {
-  active: { label: 'Active', tone: 'success' },
-  inactive: { label: 'Inactive', tone: 'neutral' },
-};
+import { APP_PATHS } from '@/lib/paths';
 
 export default function SupplierDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
   const { data: supplier, isLoading, isError } = useSupplier(id);
-
-  React.useEffect(() => {
-    queryClient.prefetchQuery({
-      queryKey: supplierKeys.lists(),
-      queryFn: suppliersApi.fetchSuppliers,
-    });
-  }, [queryClient]);
 
   if (isLoading) {
     return (
@@ -56,7 +42,7 @@ export default function SupplierDetailsPage() {
             The supplier record you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate(getPath('/suppliers'))}
+            onClick={() => navigate(getPath(APP_PATHS.purchasing.suppliers.list()))}
             className="text-primary font-semibold hover:underline"
           >
             Return to Supplier Directory
@@ -71,18 +57,21 @@ export default function SupplierDetailsPage() {
       <PageHeader
         title={supplier.name}
         description={`Manage details, addresses, and contacts for ${supplier.name}.`}
-        backButton={{ href: getPath('/suppliers'), label: 'Back to Directory' }}
+        backButton={{
+          href: getPath(APP_PATHS.purchasing.suppliers.list()),
+          label: 'Back to Directory',
+        }}
         actions={[
           {
             label: 'Edit Supplier',
-            onClick: () => navigate(getPath(`/suppliers/${supplier.id}/edit`)),
+            onClick: () => navigate(getPath(APP_PATHS.purchasing.suppliers.edit(supplier.id))),
             icon: <FileEdit className="h-4 w-4" />,
             variant: 'default',
           },
         ]}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">
-          <StatusBadge value={supplier.status} statusMap={supplierStatusMap} />
+          <StatusBadge value={supplier.status as string} entityType="supplier" />
         </div>
       </PageHeader>
 
@@ -108,32 +97,30 @@ export default function SupplierDetailsPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      Supplier Name
-                    </label>
-                    <p className="text-base font-semibold">{supplier.name}</p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      Tax Registration Number
-                    </label>
-                    <p className="text-base font-mono bg-muted/50 w-fit px-2 py-0.5 rounded border">
-                      {supplier.taxNumber || '—'}
-                    </p>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      Relationship Status
-                    </label>
-                    <StatusBadge value={supplier.status} statusMap={supplierStatusMap} />
-                  </div>
-                </div>
-              </div>
+              <DetailView
+                columns={2}
+                sections={[
+                  {
+                    items: [
+                      {
+                        label: 'Supplier Name',
+                        value: supplier.name,
+                      },
+                      {
+                        label: 'Tax Registration Number',
+                        value: supplier.taxNumber,
+                        valueClassName: 'font-mono bg-muted/50 w-fit px-2 py-0.5 rounded border',
+                      },
+                      {
+                        label: 'Relationship Status',
+                        value: (
+                          <StatusBadge value={supplier.status as string} entityType="supplier" />
+                        ),
+                      },
+                    ],
+                  },
+                ]}
+              />
             </CardContent>
           </Card>
 

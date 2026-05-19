@@ -1,20 +1,14 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
-import { formatDate } from '@shared/utils/date';
+import { StatusBadge } from '@/components/shared/StatusBadge';
+
 import type { CustomerResponse } from '../api/customers.api';
 import { CustomerRowActions } from './CustomerRowActions';
 
-const customerStatusMap: StatusMap<string> = {
-  active: { label: 'Active', tone: 'success' },
-  inactive: { label: 'Inactive', tone: 'neutral' },
-};
+import { getStatusOptions } from '@/lib/status-registry';
 
-export const customerStatusOptions = Object.entries(customerStatusMap).map(([value, config]) => ({
-  label: config.label,
-  value,
-}));
+export const customerStatusOptions = getStatusOptions('customer');
 
 export const columns: ColumnDef<CustomerResponse>[] = [
   {
@@ -44,10 +38,48 @@ export const columns: ColumnDef<CustomerResponse>[] = [
     enableGlobalFilter: true,
   },
   {
-    accessorKey: 'taxNumber',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Tax Number" />,
-    cell: ({ row }) => row.getValue('taxNumber') || '-',
-    meta: { variant: 'subtitle', label: 'Tax ID' },
+    id: 'contactPerson',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Contact Person" />,
+    accessorFn: (row) => {
+      const primaryContact = row.contacts?.find((c) => c.isPrimary) || row.contacts?.[0];
+      return primaryContact ? `${primaryContact.firstName} ${primaryContact.lastName}` : '';
+    },
+    cell: ({ row }) => {
+      const primaryContact =
+        row.original.contacts?.find((c) => c.isPrimary) || row.original.contacts?.[0];
+      return primaryContact ? `${primaryContact.firstName} ${primaryContact.lastName}` : '-';
+    },
+    meta: { variant: 'field', label: 'Contact Person' },
+    enableGlobalFilter: true,
+  },
+  {
+    id: 'email',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Email" />,
+    accessorFn: (row) => {
+      const primaryContact = row.contacts?.find((c) => c.isPrimary) || row.contacts?.[0];
+      return primaryContact?.email || '';
+    },
+    cell: ({ row }) => {
+      const primaryContact =
+        row.original.contacts?.find((c) => c.isPrimary) || row.original.contacts?.[0];
+      return primaryContact?.email || '-';
+    },
+    meta: { variant: 'field', label: 'Email' },
+    enableGlobalFilter: true,
+  },
+  {
+    id: 'phone',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Phone" />,
+    accessorFn: (row) => {
+      const primaryContact = row.contacts?.find((c) => c.isPrimary) || row.contacts?.[0];
+      return primaryContact?.phone || '';
+    },
+    cell: ({ row }) => {
+      const primaryContact =
+        row.original.contacts?.find((c) => c.isPrimary) || row.original.contacts?.[0];
+      return primaryContact?.phone || '-';
+    },
+    meta: { variant: 'field', label: 'Phone' },
     enableGlobalFilter: true,
   },
   {
@@ -59,17 +91,10 @@ export const columns: ColumnDef<CustomerResponse>[] = [
       return Array.isArray(selectedValues) ? selectedValues.includes(rowValue) : false;
     },
     cell: ({ row }) => {
-      return <StatusBadge value={row.getValue('status') as string} statusMap={customerStatusMap} />;
+      return <StatusBadge value={row.getValue('status') as string} entityType="customer" />;
     },
+
     meta: { variant: 'field', label: 'Status' },
-  },
-  {
-    accessorKey: 'createdAt',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Created At" />,
-    cell: ({ row }) => {
-      return formatDate(row.getValue('createdAt'));
-    },
-    meta: { variant: 'field', label: 'Created' },
   },
   {
     id: 'actions',

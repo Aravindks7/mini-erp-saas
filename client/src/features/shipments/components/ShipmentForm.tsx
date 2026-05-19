@@ -13,9 +13,9 @@ import { Separator } from '@/components/ui/separator';
 
 import type { CreateShipmentInput } from '@shared/contracts/shipments.contract';
 import { createShipmentSchema } from '@shared/contracts/shipments.contract';
-import { useProducts } from '@/features/products/hooks/products.hooks';
-import { useWarehouses } from '@/features/warehouses/hooks/warehouses.hooks';
-import { useSalesOrders } from '@/features/sales-orders/hooks/sales-orders.hooks';
+import { useProductsQuery } from '@/features/products/hooks/products.hooks';
+import { useWarehousesQuery } from '@/features/warehouses/hooks/warehouses.hooks';
+import { useSalesOrdersQuery } from '@/features/sales-orders/hooks/sales-orders.hooks';
 
 interface ShipmentFormProps {
   form: UseFormReturn<CreateShipmentInput, unknown>;
@@ -24,9 +24,9 @@ interface ShipmentFormProps {
 }
 
 export function ShipmentForm({ form, onSubmit, formId }: ShipmentFormProps) {
-  const { data: salesOrders = [] } = useSalesOrders();
-  const { data: products = [] } = useProducts();
-  const { data: warehouses = [] } = useWarehouses();
+  const { data: salesOrders = [] } = useSalesOrdersQuery();
+  const { data: products = [] } = useProductsQuery();
+  const { data: warehouses = [] } = useWarehousesQuery();
 
   const { fields, append, remove, replace } = useFieldArray({
     control: form.control,

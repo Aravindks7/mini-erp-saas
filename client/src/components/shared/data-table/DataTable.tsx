@@ -3,7 +3,7 @@
 import * as React from 'react';
 import type { Table as TanstackTable } from '@tanstack/react-table';
 
-import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
+import { DataTableSkeleton } from './DataTableSkeleton';
 import { DataTablePagination } from './DataTablePagination';
 import { DataTableView } from './DataTableView';
 import { DataCardView } from './DataCardView';
@@ -44,13 +44,19 @@ export function DataTable<TData>({
           {children}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 12 }).map((_, i) => (
-              <SkeletonLoader key={i} variant="card" />
+              <DataTableSkeleton key={i} columnCount={1} showTitle={false} />
             ))}
           </div>
         </div>
       );
     }
-    return <SkeletonLoader variant="table" rows={5} />;
+    return (
+      <DataTableSkeleton
+        columnCount={table.getAllColumns().length}
+        showTitle={false}
+        rowCount={10}
+      />
+    );
   }
 
   return (

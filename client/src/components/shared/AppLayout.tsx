@@ -1,5 +1,6 @@
-import Sidebar from '@/components/shared/Sidebar';
+import Sidebar from '@/components/shared/sidebar/Sidebar';
 import Navbar from '@/components/shared/Navbar';
+import { GlobalProgressBar } from '@/components/shared/GlobalProgressBar';
 import { cn } from '@/lib/utils';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 
@@ -13,6 +14,7 @@ export default function AppLayout({ children, className }: AppLayoutProps) {
 
   return (
     <div className="flex h-dvh w-full overflow-hidden bg-background">
+      <GlobalProgressBar />
       {isDesktop && <Sidebar />}
 
       <div className="flex flex-1 flex-col overflow-y-auto relative">

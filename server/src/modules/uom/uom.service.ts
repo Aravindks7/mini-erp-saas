@@ -3,6 +3,9 @@ import { unitOfMeasures } from '../../db/schema/uom.schema.js';
 import { and, eq, inArray, ne, sql, type SQL } from 'drizzle-orm';
 import { CreateUomInput, UpdateUomInput } from '#shared/contracts/uom.contract.js';
 import { BaseService } from '../../lib/base.service.js';
+import { ActivityLogger } from '../../lib/activity-logger.js';
+
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export class UomService extends BaseService<typeof unitOfMeasures> {
   constructor() {
@@ -16,8 +19,8 @@ export class UomService extends BaseService<typeof unitOfMeasures> {
     });
   }
 
-  async getUomById(organizationId: string, id: string) {
-    return await db.query.unitOfMeasures.findFirst({
+  async getUomById(organizationId: string, id: string, tx: Transaction | typeof db = db) {
+    return await tx.query.unitOfMeasures.findFirst({
       where: this.getTenantWhere(organizationId, id),
     });
   }
@@ -69,20 +72,36 @@ export class UomService extends BaseService<typeof unitOfMeasures> {
         throw new Error('Failed to create UoM record');
       }
 
-      return newUom;
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        userId,
+        entityType: 'uom',
+        entityId: newUom.id,
+        entityDisplayId: newUom.code,
+        entityLabel: 'Unit of Measure',
+        action: 'CREATED',
+        reason: `UoM ${newUom.name} (${newUom.code}) created.`,
+      });
+
+      return await this.getUomById(organizationId, newUom.id, tx);
     });
   }
 
   async updateUom(organizationId: string, userId: string, id: string, data: UpdateUomInput) {
-    // 0. Duplicate check
-    if (data.code) {
-      const existing = await this.checkDuplicate(organizationId, data.code, id);
-      if (existing) {
-        throw new Error(`UoM with code '${data.code}' already exists`);
-      }
-    }
-
     return await db.transaction(async (tx) => {
+      const existingUom = await this.getUomById(organizationId, id, tx);
+      if (!existingUom) {
+        throw new Error('UoM not found');
+      }
+
+      // 0. Duplicate check
+      if (data.code) {
+        const duplicate = await this.checkDuplicate(organizationId, data.code, id);
+        if (duplicate) {
+          throw new Error(`UoM with code '${data.code}' already exists`);
+        }
+      }
+
       // 1. If this is being set to default, unset other defaults
       if (data.isDefault) {
         await tx
@@ -103,32 +122,90 @@ export class UomService extends BaseService<typeof unitOfMeasures> {
         .where(this.getTenantWhere(organizationId, id))
         .returning();
 
-      return updatedUom;
+      if (updatedUom) {
+        await ActivityLogger.recordUpdate(
+          tx as Transaction,
+          {
+            organizationId,
+            userId,
+            entityType: 'uom',
+            entityId: id,
+            entityDisplayId: existingUom.code,
+            entityLabel: 'Unit of Measure',
+            action: 'UPDATED',
+            reason: 'UoM master data modified',
+          },
+          existingUom,
+          data,
+        );
+      }
+
+      return await this.getUomById(organizationId, id, tx);
     });
   }
 
   async deleteUom(organizationId: string, userId: string, id: string) {
-    const [deletedUom] = await db
-      .update(unitOfMeasures)
-      .set(this.withAudit({ deletedAt: new Date() }, userId, true))
-      .where(this.getTenantWhere(organizationId, id))
-      .returning();
+    return await db.transaction(async (tx) => {
+      const existingUom = await this.getUomById(organizationId, id, tx);
+      if (!existingUom) throw new Error('UoM not found');
 
-    return deletedUom;
+      const [deletedUom] = await tx
+        .update(unitOfMeasures)
+        .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+        .where(this.getTenantWhere(organizationId, id))
+        .returning();
+
+      if (deletedUom) {
+        await ActivityLogger.record(tx as Transaction, {
+          organizationId,
+          userId,
+          entityType: 'uom',
+          entityId: id,
+          entityDisplayId: existingUom.code,
+          entityLabel: 'Unit of Measure',
+          action: 'DELETED',
+          reason: 'UoM record soft-deleted',
+        });
+      }
+
+      return deletedUom;
+    });
   }
 
   async bulkDeleteUoms(organizationId: string, userId: string, ids: string[]) {
     if (ids.length === 0) return [];
 
-    const deletedUoms = await db
-      .update(unitOfMeasures)
-      .set(this.withAudit({ deletedAt: new Date() }, userId, true))
-      .where(
-        and(eq(unitOfMeasures.organizationId, organizationId), inArray(unitOfMeasures.id, ids)),
-      )
-      .returning();
+    return await db.transaction(async (tx) => {
+      const uomsToDelete = await tx.query.unitOfMeasures.findMany({
+        where: and(
+          eq(unitOfMeasures.organizationId, organizationId),
+          inArray(unitOfMeasures.id, ids),
+        ),
+      });
 
-    return deletedUoms;
+      const deletedUoms = await tx
+        .update(unitOfMeasures)
+        .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+        .where(
+          and(eq(unitOfMeasures.organizationId, organizationId), inArray(unitOfMeasures.id, ids)),
+        )
+        .returning();
+
+      for (const u of uomsToDelete) {
+        await ActivityLogger.record(tx as Transaction, {
+          organizationId,
+          userId,
+          entityType: 'uom',
+          entityId: u.id,
+          entityDisplayId: u.code,
+          entityLabel: 'Unit of Measure',
+          action: 'DELETED',
+          reason: 'UoM record soft-deleted via bulk action',
+        });
+      }
+
+      return deletedUoms;
+    });
   }
 }
 

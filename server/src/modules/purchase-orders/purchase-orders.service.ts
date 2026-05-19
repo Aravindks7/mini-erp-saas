@@ -1,15 +1,21 @@
 import { db } from '../../db/index.js';
 import { purchaseOrders, purchaseOrderLines } from '../../db/schema/index.js';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import {
   CreatePurchaseOrderInput,
-  ReceivePurchaseOrderInput,
+  UpdatePurchaseOrderInput,
 } from '#shared/contracts/purchase-orders.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 import { sequencesService } from '../sequences/sequences.service.js';
-import { inventoryService } from '../inventory/inventory.service.js';
+
+import { ActivityLogger } from '../../lib/activity-logger.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+import { PurchaseOrderReconciler, POStatus } from './purchase-orders.reconciler.js';
+import type { ActivityAction } from '#shared/config/activity-actions.config.js';
+
+export type { POStatus };
 
 /**
  * PurchaseOrdersService: Orchestrates supplier procurement workflows.
@@ -113,7 +119,18 @@ export class PurchaseOrdersService extends BaseService<typeof purchaseOrders> {
         );
       }
 
-      return po;
+      await ActivityLogger.record(tx, {
+        organizationId,
+        entityType: 'purchase_order',
+        entityId: po.id,
+        entityDisplayId: po.documentNumber,
+        entityLabel: 'Purchase Order',
+        action: 'PO_CREATED',
+        reason: 'Initial order creation',
+        userId,
+      });
+
+      return await this.getPOById(organizationId, po.id, tx);
     });
   }
 
@@ -125,7 +142,7 @@ export class PurchaseOrdersService extends BaseService<typeof purchaseOrders> {
     organizationId: string,
     userId: string,
     id: string,
-    data: CreatePurchaseOrderInput,
+    data: UpdatePurchaseOrderInput,
   ) {
     return await db.transaction(async (tx) => {
       // 1. Verify existence and status
@@ -186,69 +203,138 @@ export class PurchaseOrdersService extends BaseService<typeof purchaseOrders> {
         );
       }
 
-      return { id, status: 'draft' };
+      await ActivityLogger.recordUpdate(
+        tx,
+        {
+          organizationId,
+          entityType: 'purchase_order',
+          entityId: id,
+          entityDisplayId: existingPO.documentNumber,
+          entityLabel: 'Purchase Order',
+          action: 'UPDATED',
+          reason: data.reason ?? null,
+          userId,
+        },
+        existingPO,
+        {
+          supplierId: data.supplierId,
+          totalAmount: totalAmount.toString(),
+        },
+      );
+
+      return await this.getPOById(organizationId, id, tx);
     });
   }
 
   /**
-   * Atomic Receipt Workflow: Intakes stock and marks PO as received.
-   * Orchestrates across PurchaseOrders and Inventory modules.
+   * Updates the status of a Purchase Order with transition validation and activity logging.
    */
-  async receivePO(
+  async updatePOStatus(
     organizationId: string,
     userId: string,
     id: string,
-    data: ReceivePurchaseOrderInput,
+    status: POStatus,
+    action: ActivityAction,
+    reason: string,
+    txIn?: Transaction | typeof db,
   ) {
+    const operation = async (tx: Transaction | typeof db) => {
+      await PurchaseOrderReconciler.updateStatus(
+        organizationId,
+        userId,
+        id,
+        status,
+        action,
+        reason,
+        tx as Transaction,
+      );
+      return await this.getPOById(organizationId, id, tx);
+    };
+
+    if (txIn) return await operation(txIn);
+    return await db.transaction(operation);
+  }
+
+  /**
+   * Deletes a single draft Purchase Order.
+   */
+  async deletePO(organizationId: string, userId: string, id: string) {
     return await db.transaction(async (tx) => {
-      // 1. Get PO with lines for validation
       const po = await this.getPOById(organizationId, id, tx);
       if (!po) {
         throw new Error('Purchase order not found');
       }
 
-      if (po.status === 'received') {
-        throw new Error('Purchase order already received');
+      if (po.status !== 'draft') {
+        throw new Error('Only draft purchase orders can be deleted');
       }
 
-      if (po.status === 'cancelled') {
-        throw new Error('Cannot receive a cancelled purchase order');
-      }
-
-      // 2. Update status to received
-      await tx
+      const [deleted] = await tx
         .update(purchaseOrders)
-        .set(this.withAudit({ status: 'received' }, userId, true))
-        .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.organizationId, organizationId)));
+        .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+        .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.organizationId, organizationId)))
+        .returning();
 
-      // 3. Process each receive line to intake stock
-      for (const receiveLine of data.lines) {
-        const poLine = po.lines.find((l) => l.id === receiveLine.purchaseOrderLineId);
-        if (!poLine) {
-          throw new Error(`PO Line ${receiveLine.purchaseOrderLineId} not found in this order`);
-        }
-
-        // Intake via Inventory Adjustment
-        await inventoryService.createAdjustment(
+      if (deleted) {
+        await ActivityLogger.record(tx, {
           organizationId,
+          entityType: 'purchase_order',
+          entityId: id,
+          entityDisplayId: po.documentNumber,
+          entityLabel: 'Purchase Order',
+          action: 'DELETED',
+          reason: 'Order manually deleted',
           userId,
-          {
-            reason: `PO Received: ${po.documentNumber}`,
-            reference: po.documentNumber,
-            lines: [
-              {
-                productId: poLine.productId,
-                warehouseId: receiveLine.warehouseId,
-                binId: receiveLine.binId,
-                quantityChange: receiveLine.quantityReceived,
-              },
-            ],
-          },
-          tx,
+        });
+      }
+
+      return deleted;
+    });
+  }
+
+  /**
+   * Bulk deletes draft Purchase Orders.
+   */
+  async bulkDeletePOs(organizationId: string, userId: string, ids: string[]) {
+    if (ids.length === 0) return [];
+
+    return await db.transaction(async (tx) => {
+      const posToDelete = await tx.query.purchaseOrders.findMany({
+        where: and(
+          inArray(purchaseOrders.id, ids),
+          eq(purchaseOrders.organizationId, organizationId),
+        ),
+      });
+
+      const nonDraft = posToDelete.find((po) => po.status !== 'draft');
+      if (nonDraft) {
+        throw new Error(
+          `Cannot delete PO ${nonDraft.documentNumber} because it is not in draft status`,
         );
       }
 
-      return { id, status: 'received' };
+      const deletedPOs = await tx
+        .update(purchaseOrders)
+        .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+        .where(
+          and(eq(purchaseOrders.organizationId, organizationId), inArray(purchaseOrders.id, ids)),
+        )
+        .returning();
+
+      for (const deleted of deletedPOs) {
+        await ActivityLogger.record(tx, {
+          organizationId,
+          entityType: 'purchase_order',
+          entityId: deleted.id,
+          entityDisplayId: deleted.documentNumber,
+          entityLabel: 'Purchase Order',
+          action: 'DELETED',
+          reason: 'Order deleted via bulk action',
+          userId,
+        });
+      }
+
+      return deletedPOs;
     });
   }
 }

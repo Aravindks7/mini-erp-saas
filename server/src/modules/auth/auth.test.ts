@@ -25,6 +25,10 @@ vi.mock('../../db/index.js', () => ({
           where: vi.fn().mockReturnThis(),
           limit: vi.fn().mockReturnThis(),
         })),
+        query: {
+          organizationInvites: { findMany: vi.fn().mockResolvedValue([]) },
+          organizationMemberships: { findFirst: vi.fn().mockResolvedValue(null) },
+        },
       };
       return await cb(tx);
     }),

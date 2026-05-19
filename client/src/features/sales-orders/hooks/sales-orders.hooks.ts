@@ -1,9 +1,11 @@
 import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
 import type {
   CreateSalesOrderInput,
-  FulfillSalesOrderInput,
+  UpdateSalesOrderInput,
 } from '@shared/contracts/sales-orders.contract';
-import { salesOrdersApi } from '../api/sales-orders.api';
+import type { ActivityAction } from '@shared/config/activity-actions.config';
+import { salesOrdersApi, type SOStatus } from '../api/sales-orders.api';
+import { activityKeys } from '../../activity/hooks/activity.hooks';
 
 export const salesOrderKeys = {
   all: ['sales-orders'] as const,
@@ -18,12 +20,24 @@ export const salesOrderDetailQuery = (id: string) =>
     queryFn: () => salesOrdersApi.fetchSalesOrder(id),
   });
 
-export function useSalesOrders() {
-  return useQuery({
+export const salesOrderListQuery = () =>
+  queryOptions({
     queryKey: salesOrderKeys.lists(),
     queryFn: salesOrdersApi.fetchSalesOrders,
     staleTime: 5000,
   });
+
+export function useSalesOrdersQuery() {
+  return useQuery(salesOrderListQuery());
+}
+
+export function useSalesOrdersActions() {
+  const queryClient = useQueryClient();
+
+  return {
+    invalidateSalesOrders: () =>
+      queryClient.invalidateQueries({ queryKey: salesOrderKeys.lists() }),
+  };
 }
 
 export function useSalesOrder(id: string | undefined) {
@@ -40,6 +54,7 @@ export function useCreateSalesOrder() {
     mutationFn: (data: CreateSalesOrderInput) => salesOrdersApi.createSalesOrder(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }
@@ -48,26 +63,60 @@ export function useUpdateSalesOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: CreateSalesOrderInput }) =>
+    mutationFn: ({ id, data }: { id: string; data: UpdateSalesOrderInput }) =>
       salesOrdersApi.updateSalesOrder(id, data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.lists() });
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.detail(data.id) });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }
 
-export function useFulfillSalesOrder() {
+export function useDeleteSalesOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: FulfillSalesOrderInput }) =>
-      salesOrdersApi.fulfillSalesOrder(id, data),
-    onSuccess: (data) => {
+    mutationFn: (id: string) => salesOrdersApi.deleteSalesOrder(id),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
+    },
+  });
+}
+
+export function useBulkDeleteSalesOrders() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ids: string[]) => salesOrdersApi.bulkDeleteSalesOrders(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: salesOrderKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
+    },
+  });
+}
+
+export function useUpdateSalesOrderStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      status,
+      action,
+      reason,
+    }: {
+      id: string;
+      status: SOStatus;
+      action: ActivityAction;
+      reason: string;
+    }) => salesOrdersApi.updateSalesOrderStatus(id, status, action, reason),
+    onSuccess: (data) => {
+      queryClient.setQueryData(salesOrderKeys.detail(data.id), data);
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.detail(data.id) });
-      // Invalidate inventory keys as well since fulfillment outtakes stock
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: salesOrderKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }

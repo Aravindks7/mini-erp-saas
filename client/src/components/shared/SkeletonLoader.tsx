@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 
 interface SkeletonLoaderProps {
   className?: string;
-  variant?: 'table' | 'form' | 'card' | 'list' | 'dashboard';
+  variant?: 'table' | 'form' | 'card' | 'list' | 'dashboard' | 'details';
   rows?: number;
 }
 
@@ -14,12 +14,12 @@ interface SkeletonLoaderProps {
 export function SkeletonLoader({ className, variant = 'table', rows = 5 }: SkeletonLoaderProps) {
   if (variant === 'dashboard') {
     return (
-      <div className={cn('space-y-8', className)}>
+      <div className={cn('space-y-8 animate-pulse', className)}>
         {/* KPI Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="rounded-xl border bg-card p-6 space-y-4">
-              <Skeleton className="h-3 w-[80px]" />
+              <Skeleton className="h-3 w-20" />
               <Skeleton className="h-8 w-[120px]" />
               <Skeleton className="h-3 w-[150px]" />
             </div>
@@ -59,17 +59,32 @@ export function SkeletonLoader({ className, variant = 'table', rows = 5 }: Skele
 
   if (variant === 'table') {
     return (
-      <div className={cn('w-full space-y-4', className)}>
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-[150px] lg:w-[250px]" />
-          <Skeleton className="h-8 w-[100px]" />
+      <div className={cn('w-full space-y-6 animate-pulse', className)}>
+        {/* Table Header Area */}
+        <div className="flex items-start justify-between px-1">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-96 max-w-full" />
+          </div>
+          <Skeleton className="h-10 w-32" />
         </div>
-        <div className="rounded-md border">
-          <div className="border-b h-10 flex items-center px-4">
+
+        {/* Table Toolbar */}
+        <div className="flex items-center justify-between gap-4 py-2">
+          <div className="flex gap-2 items-center flex-1">
+            <Skeleton className="h-10 w-full max-w-[300px]" />
+            <Skeleton className="h-10 w-24" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+
+        {/* Table Grid */}
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="border-b h-12 flex items-center px-4 bg-muted/30">
             <Skeleton className="h-4 w-full" />
           </div>
           {Array.from({ length: rows }).map((_, i) => (
-            <div key={i} className="border-b h-12 flex items-center px-4 last:border-b-0">
+            <div key={i} className="border-b h-16 flex items-center px-4 last:border-b-0">
               <Skeleton className="h-4 w-full" />
             </div>
           ))}
@@ -78,20 +93,89 @@ export function SkeletonLoader({ className, variant = 'table', rows = 5 }: Skele
     );
   }
 
-  if (variant === 'form') {
+  if (variant === 'details') {
     return (
-      <div className={cn('space-y-6', className)}>
-        <div className="space-y-2">
-          <Skeleton className="h-6 w-[200px]" />
-          <Skeleton className="h-4 w-full max-w-md" />
+      <div className={cn('space-y-8 animate-pulse', className)}>
+        {/* Detail Header */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-64" />
+            <div className="flex gap-2">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-5 w-32" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-24" />
+          </div>
         </div>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {Array.from({ length: rows }).map((_, i) => (
-            <div key={i} className="space-y-2">
-              <Skeleton className="h-4 w-[120px]" />
+
+        {/* Tabs/Sections */}
+        <div className="flex gap-4 border-b">
+          <Skeleton className="h-10 w-24" />
+          <Skeleton className="h-10 w-24" />
+          <Skeleton className="h-10 w-24" />
+        </div>
+
+        {/* Main Content Areas */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="rounded-xl border p-6 space-y-4">
+              <Skeleton className="h-6 w-32" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </div>
+            </div>
+            <div className="rounded-xl border p-6 space-y-4">
+              <Skeleton className="h-6 w-32" />
+              <div className="space-y-4">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            </div>
+          </div>
+          <div className="space-y-6">
+            <div className="rounded-xl border p-6 space-y-4">
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-32 w-full" />
+            </div>
+            <div className="rounded-xl border p-6 space-y-4">
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (variant === 'form') {
+    return (
+      <div className={cn('space-y-8 animate-pulse', className)}>
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-full max-w-md" />
+        </div>
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+          {Array.from({ length: rows }).map((_, i) => (
+            <div key={i} className="space-y-3">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-11 w-full rounded-md" />
+            </div>
           ))}
+        </div>
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          <Skeleton className="h-10 w-24" />
+          <Skeleton className="h-10 w-32" />
         </div>
       </div>
     );
@@ -99,7 +183,7 @@ export function SkeletonLoader({ className, variant = 'table', rows = 5 }: Skele
 
   if (variant === 'card') {
     return (
-      <div className={cn('rounded-xl border bg-card p-6 space-y-4', className)}>
+      <div className={cn('rounded-xl border bg-card p-6 space-y-4 animate-pulse', className)}>
         <Skeleton className="h-4 w-[100px]" />
         <Skeleton className="h-8 w-[150px]" />
         <Skeleton className="h-4 w-[200px]" />
@@ -109,7 +193,7 @@ export function SkeletonLoader({ className, variant = 'table', rows = 5 }: Skele
 
   if (variant === 'list') {
     return (
-      <div className={cn('space-y-4', className)}>
+      <div className={cn('space-y-4 animate-pulse', className)}>
         {Array.from({ length: rows }).map((_, i) => (
           <div key={i} className="flex items-center gap-4">
             <Skeleton className="h-12 w-12 rounded-full" />
@@ -123,5 +207,5 @@ export function SkeletonLoader({ className, variant = 'table', rows = 5 }: Skele
     );
   }
 
-  return <Skeleton className={cn('w-full h-full', className)} />;
+  return <Skeleton className={cn('w-full h-full animate-pulse', className)} />;
 }

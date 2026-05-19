@@ -4,7 +4,11 @@ import { PageContainer } from '@/components/shared/PageContainer';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { UpdateOrganizationForm } from './UpdateOrganizationForm';
 import { useTenant } from '@/contexts/TenantContext';
-import { useMembers, useInvitations, useDeleteOrganization } from '../hooks/organizations.hooks';
+import {
+  useMembersQuery,
+  useInvitationsQuery,
+  useDeleteOrganization,
+} from '../hooks/organizations.hooks';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
@@ -12,13 +16,16 @@ import { Users, Mail, Calendar, Building2, Trash2, AlertCircle } from 'lucide-re
 import { formatDate } from '@shared/utils/date';
 import { usePermission } from '@/hooks/usePermission';
 import { PERMISSIONS } from '@shared/index';
+import { APP_PATHS } from '@/lib/paths';
 
 export function OrgProfileTab() {
   const { activeOrganization, activeOrganizationId, syncActiveOrganizationId } = useTenant();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  const { data: members, isLoading: isLoadingMembers } = useMembers(activeOrganizationId || '');
-  const { data: invitations, isLoading: isLoadingInvites } = useInvitations(
+  const { data: members, isLoading: isLoadingMembers } = useMembersQuery(
+    activeOrganizationId || '',
+  );
+  const { data: invitations, isLoading: isLoadingInvites } = useInvitationsQuery(
     activeOrganizationId || '',
   );
 
@@ -30,7 +37,7 @@ export function OrgProfileTab() {
       await deleteOrg.mutateAsync(activeOrganizationId || '');
       toast.success('Organization deleted successfully');
       syncActiveOrganizationId(null);
-      window.location.assign('/');
+      window.location.assign(APP_PATHS.dashboard());
     } catch {
       toast.error('Failed to delete organization');
     }

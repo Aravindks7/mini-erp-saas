@@ -13,11 +13,16 @@ export function startDashboardWorker() {
 
   setInterval(async () => {
     try {
-      logger.info('🔄 Refreshing dashboard materialized view...');
-      await dashboardService.refreshMetrics();
-      logger.info('✅ Dashboard refresh complete.');
+      logger.info('🔄 Refreshing analytical materialized views...');
+
+      await Promise.all([
+        dashboardService.refreshMetrics(),
+        (await import('../finance/finance.service.js')).financeService.refreshReports(),
+      ]);
+
+      logger.info('✅ Analytical refresh complete.');
     } catch (error) {
-      logger.error({ error }, '❌ Dashboard background refresh failed');
+      logger.error({ error }, '❌ Analytical background refresh failed');
     }
   }, INTERVAL);
 }

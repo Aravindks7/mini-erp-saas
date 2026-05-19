@@ -19,9 +19,27 @@ router.post(
 );
 
 router.patch(
+  '/:id/status',
+  requirePermission(PERMISSIONS.SALES_ORDERS.UPDATE),
+  salesOrdersController.updateSOStatus,
+);
+
+router.patch(
   '/:id',
   requirePermission(PERMISSIONS.SALES_ORDERS.UPDATE),
   salesOrdersController.updateSO,
+);
+
+router.delete(
+  '/',
+  requirePermission(PERMISSIONS.SALES_ORDERS.DELETE),
+  salesOrdersController.bulkDeleteSOs,
+);
+
+router.delete(
+  '/:id',
+  requirePermission(PERMISSIONS.SALES_ORDERS.DELETE),
+  salesOrdersController.deleteSO,
 );
 
 export default router;

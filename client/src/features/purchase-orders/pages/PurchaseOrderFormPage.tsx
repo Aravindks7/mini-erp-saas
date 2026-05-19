@@ -12,6 +12,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { Button } from '@/components/ui/button';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 import { PurchaseOrderForm } from '../components/PurchaseOrderForm';
 import {
@@ -78,11 +79,11 @@ export default function PurchaseOrderFormPage() {
       if (isEditing && id) {
         await updatePO({ id, data });
         toast.success('Purchase order updated successfully', { id: toastId });
-        navigate(getPath(`/purchase-orders/${id}`));
+        navigate(getPath(APP_PATHS.purchasing.orders.detail(id)));
       } else {
         const result = await createPO(data);
         toast.success('Purchase order created successfully', { id: toastId });
-        navigate(getPath(`/purchase-orders/${result.id}`));
+        navigate(getPath(APP_PATHS.purchasing.orders.detail(result.id)));
       }
     } catch (error) {
       const message =
@@ -96,7 +97,11 @@ export default function PurchaseOrderFormPage() {
     if (form.formState.isDirty) {
       setShowCancelConfirm(true);
     } else {
-      navigate(getPath(isEditing ? `/purchase-orders/${id}` : '/purchase-orders'));
+      navigate(
+        getPath(
+          isEditing ? APP_PATHS.purchasing.orders.detail(id) : APP_PATHS.purchasing.orders.list(),
+        ),
+      );
     }
   };
 
@@ -114,7 +119,10 @@ export default function PurchaseOrderFormPage() {
         <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
           <ShoppingCart className="h-12 w-12 text-destructive" />
           <h2 className="text-xl font-bold">Failed to load purchase order</h2>
-          <Button variant="outline" onClick={() => navigate(getPath('/purchase-orders'))}>
+          <Button
+            variant="outline"
+            onClick={() => navigate(getPath(APP_PATHS.purchasing.orders.list()))}
+          >
             Back to List
           </Button>
         </div>
@@ -162,7 +170,13 @@ export default function PurchaseOrderFormPage() {
         isOpen={showCancelConfirm}
         onClose={() => setShowCancelConfirm(false)}
         onConfirm={() =>
-          navigate(getPath(isEditing ? `/purchase-orders/${id}` : '/purchase-orders'))
+          navigate(
+            getPath(
+              isEditing
+                ? APP_PATHS.purchasing.orders.detail(id)
+                : APP_PATHS.purchasing.orders.list(),
+            ),
+          )
         }
         title="Discard Changes?"
         description="You have unsaved changes. Are you sure you want to discard them and leave this page?"

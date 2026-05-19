@@ -2,13 +2,21 @@ import { db } from '../../db/index.js';
 import { products } from '../../db/schema/products.schema.js';
 import { unitOfMeasures } from '../../db/schema/uom.schema.js';
 import { taxes } from '../../db/schema/taxes.schema.js';
+import { productCategories } from '../../db/schema/product-categories.schema.js';
 import { and, eq, inArray, ne, sql, type SQL } from 'drizzle-orm';
-import { CreateProductInput, UpdateProductInput } from '#shared/contracts/products.contract.js';
+import {
+  createProductSchema,
+  CreateProductInput,
+  UpdateProductInput,
+} from '#shared/contracts/products.contract.js';
 
+import { ActivityLogger } from '../../lib/activity-logger.js';
 import { BaseService } from '../../lib/base.service.js';
 import { AppError } from '../../utils/AppError.js';
+import { parseCsv } from '../../utils/csv.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type ProductWithRelations = Awaited<ReturnType<ProductsService['getProductById']>>;
 
 export class ProductsService extends BaseService<typeof products> {
   constructor() {
@@ -20,6 +28,7 @@ export class ProductsService extends BaseService<typeof products> {
       where: this.getTenantWhere(organizationId),
       with: {
         baseUom: true,
+        category: true,
         tax: true,
       },
       orderBy: (products, { desc }) => [desc(products.createdAt)],
@@ -31,6 +40,7 @@ export class ProductsService extends BaseService<typeof products> {
       where: this.getTenantWhere(organizationId, id),
       with: {
         baseUom: true,
+        category: true,
         tax: true,
       },
     });
@@ -55,6 +65,7 @@ export class ProductsService extends BaseService<typeof products> {
   private async validateReferences(
     organizationId: string,
     baseUomId: string,
+    categoryId?: string | null,
     taxId?: string | null,
   ) {
     // Validate UoM
@@ -68,6 +79,24 @@ export class ProductsService extends BaseService<typeof products> {
 
     if (!uom) {
       throw new AppError('Invalid Base UoM ID or UoM does not belong to your organization', 400);
+    }
+
+    // Validate Category
+    if (categoryId) {
+      const category = await db.query.productCategories.findFirst({
+        where: and(
+          eq(productCategories.id, categoryId),
+          eq(productCategories.organizationId, organizationId),
+          sql`${productCategories.deletedAt} IS NULL`,
+        ),
+      });
+
+      if (!category) {
+        throw new AppError(
+          'Invalid Category ID or Category does not belong to your organization',
+          400,
+        );
+      }
     }
 
     // Validate Tax
@@ -94,19 +123,34 @@ export class ProductsService extends BaseService<typeof products> {
     }
 
     // 2. Reference check
-    await this.validateReferences(organizationId, data.baseUomId, data.taxId);
+    await this.validateReferences(organizationId, data.baseUomId, data.categoryId, data.taxId);
 
     // 3. Create Product
-    const [newProduct] = await db
-      .insert(products)
-      .values(this.withAudit({ ...data, organizationId }, userId))
-      .returning();
+    const operation = async (tx: Transaction | typeof db) => {
+      const [newProduct] = await tx
+        .insert(products)
+        .values(this.withAudit({ ...data, organizationId }, userId))
+        .returning();
 
-    if (!newProduct) {
-      throw new AppError('Failed to create product record', 500);
-    }
+      if (!newProduct) {
+        throw new AppError('Failed to create product record', 500);
+      }
 
-    return await this.getProductById(organizationId, newProduct.id);
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        userId,
+        entityType: 'product',
+        entityId: newProduct.id,
+        entityDisplayId: newProduct.sku,
+        entityLabel: 'Product',
+        action: 'CREATED',
+        reason: `Product ${newProduct.sku} (${newProduct.name}) created.`,
+      });
+
+      return await this.getProductById(organizationId, newProduct.id, tx);
+    };
+
+    return await db.transaction(operation);
   }
 
   async updateProduct(
@@ -115,64 +159,235 @@ export class ProductsService extends BaseService<typeof products> {
     id: string,
     data: UpdateProductInput,
   ) {
-    // 1. Check if product exists and belongs to org
-    const existingProduct = await this.getProductById(organizationId, id);
-    if (!existingProduct) {
-      throw new AppError('Product not found', 404);
-    }
-
-    // 2. Duplicate SKU check if SKU is changing
-    if (data.sku && data.sku.toLowerCase() !== existingProduct.sku.toLowerCase()) {
-      const duplicate = await this.checkDuplicateSku(organizationId, data.sku, id);
-      if (duplicate) {
-        throw new AppError(`Product with SKU '${data.sku}' already exists`, 409);
+    return await db.transaction(async (tx) => {
+      // 1. Check if product exists and belongs to org
+      const existingProduct = await this.getProductById(organizationId, id, tx);
+      if (!existingProduct) {
+        throw new AppError('Product not found', 404);
       }
-    }
 
-    // 3. Reference check if UoM or Tax is changing
-    const baseUomId = data.baseUomId || existingProduct.baseUomId;
-    const taxId = data.taxId !== undefined ? data.taxId : existingProduct.taxId;
+      // 2. Duplicate SKU check if SKU is changing
+      if (data.sku && data.sku.toLowerCase() !== existingProduct.sku.toLowerCase()) {
+        const duplicate = await this.checkDuplicateSku(organizationId, data.sku, id);
+        if (duplicate) {
+          throw new AppError(`Product with SKU '${data.sku}' already exists`, 409);
+        }
+      }
 
-    if (data.baseUomId || data.taxId !== undefined) {
-      await this.validateReferences(organizationId, baseUomId, taxId);
-    }
+      // 3. Reference check if UoM, Category or Tax is changing
+      const baseUomId = data.baseUomId || existingProduct.baseUomId;
+      const categoryId =
+        data.categoryId !== undefined ? data.categoryId : existingProduct.categoryId;
+      const taxId = data.taxId !== undefined ? data.taxId : existingProduct.taxId;
 
-    // 4. Update Product
-    const [updatedProduct] = await db
-      .update(products)
-      .set(this.withAudit(data, userId))
-      .where(this.getTenantWhere(organizationId, id))
-      .returning();
+      if (data.baseUomId || data.categoryId !== undefined || data.taxId !== undefined) {
+        await this.validateReferences(organizationId, baseUomId, categoryId, taxId);
+      }
 
-    if (!updatedProduct) {
-      throw new AppError('Failed to update product record', 500);
-    }
+      // 4. Update Product
+      const [updatedProduct] = await tx
+        .update(products)
+        .set(this.withAudit(data, userId, true))
+        .where(this.getTenantWhere(organizationId, id))
+        .returning();
 
-    return await this.getProductById(organizationId, updatedProduct.id);
+      if (!updatedProduct) {
+        throw new AppError('Failed to update product record', 500);
+      }
+
+      // Forensic Audit: Record Update
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          entityType: 'product',
+          entityId: id,
+          entityDisplayId: existingProduct.sku,
+          entityLabel: 'Product',
+          action: 'UPDATED',
+          reason: 'Product master data modified',
+          userId,
+        },
+        existingProduct,
+        data,
+      );
+
+      return await this.getProductById(organizationId, updatedProduct.id, tx);
+    });
   }
 
   async deleteProduct(organizationId: string, userId: string, id: string) {
-    const [deleted] = await db
-      .update(products)
-      .set(this.withAudit({ deletedAt: new Date() }, userId))
-      .where(this.getTenantWhere(organizationId, id))
-      .returning();
+    return await db.transaction(async (tx) => {
+      const [deleted] = await tx
+        .update(products)
+        .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+        .where(this.getTenantWhere(organizationId, id))
+        .returning();
 
-    if (!deleted) {
-      throw new AppError('Product not found or delete failed', 404);
-    }
+      if (!deleted) {
+        throw new AppError('Product not found or delete failed', 404);
+      }
 
-    return deleted;
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        userId,
+        entityType: 'product',
+        entityId: id,
+        entityDisplayId: deleted.sku,
+        entityLabel: 'Product',
+        action: 'DELETED',
+        reason: 'Product record soft-deleted',
+      });
+
+      return deleted;
+    });
   }
 
   async bulkDeleteProducts(organizationId: string, userId: string, ids: string[]) {
-    const results = await db
-      .update(products)
-      .set(this.withAudit({ deletedAt: new Date() }, userId))
-      .where(and(eq(products.organizationId, organizationId), inArray(products.id, ids)))
-      .returning();
+    return await db.transaction(async (tx) => {
+      const productsToDelete = await tx.query.products.findMany({
+        where: and(eq(products.organizationId, organizationId), inArray(products.id, ids)),
+      });
 
-    return results;
+      const results = await tx
+        .update(products)
+        .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+        .where(and(eq(products.organizationId, organizationId), inArray(products.id, ids)))
+        .returning();
+
+      for (const p of productsToDelete) {
+        await ActivityLogger.record(tx as Transaction, {
+          organizationId,
+          userId,
+          entityType: 'product',
+          entityId: p.id,
+          entityDisplayId: p.sku,
+          entityLabel: 'Product',
+          action: 'DELETED',
+          reason: 'Product record soft-deleted via bulk action',
+        });
+      }
+
+      return results;
+    });
+  }
+
+  async exportProducts(organizationId: string) {
+    const data = await this.listProducts(organizationId);
+
+    return data.map((p) => ({
+      sku: p.sku,
+      name: p.name,
+      description: p.description || '',
+      basePrice: p.basePrice,
+      baseUom: p.baseUom.name,
+      tax: p.tax?.name || '',
+      status: p.status,
+      createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : '',
+    }));
+  }
+
+  async importProducts(organizationId: string, userId: string, buffer: Buffer) {
+    const rawData = parseCsv<Record<string, string | undefined>>(buffer);
+
+    // Fetch all UoMs and Taxes for the org to avoid repeated DB calls in the loop
+    const orgUoms = await db.query.unitOfMeasures.findMany({
+      where: and(
+        eq(unitOfMeasures.organizationId, organizationId),
+        sql`${unitOfMeasures.deletedAt} IS NULL`,
+      ),
+    });
+    const orgTaxes = await db.query.taxes.findMany({
+      where: and(eq(taxes.organizationId, organizationId), sql`${taxes.deletedAt} IS NULL`),
+    });
+
+    const summary = {
+      totalProcessed: rawData.length,
+      successCount: 0,
+      failedCount: 0,
+      errors: [] as Array<{ row: number; message: string }>,
+      successfulRecords: [] as ProductWithRelations[],
+    };
+
+    for (let i = 0; i < rawData.length; i++) {
+      const rowNum = i + 1;
+      const row = rawData[i];
+
+      if (!row || !row.sku || !row.name || !row.baseUom) {
+        summary.failedCount++;
+        summary.errors.push({
+          row: rowNum,
+          message: 'Missing required fields (sku, name, baseUom)',
+        });
+        continue;
+      }
+
+      try {
+        // Find UoM ID by name
+        const uom = orgUoms.find((u) => u.name.toLowerCase() === row.baseUom!.toLowerCase());
+        if (!uom) {
+          summary.failedCount++;
+          summary.errors.push({ row: rowNum, message: `UoM '${row.baseUom}' not found` });
+          continue;
+        }
+
+        // Find Tax ID by name if provided
+        let taxId: string | null = null;
+        if (row.tax) {
+          const tax = orgTaxes.find((t) => t.name.toLowerCase() === row.tax!.toLowerCase());
+          if (!tax) {
+            summary.failedCount++;
+            summary.errors.push({ row: rowNum, message: `Tax '${row.tax}' not found` });
+            continue;
+          }
+          taxId = tax.id;
+        }
+
+        const productData: CreateProductInput = {
+          sku: row.sku,
+          name: row.name,
+          description: row.description || undefined,
+          basePrice: row.basePrice || '0',
+          baseUomId: uom.id,
+          taxId: taxId || undefined,
+          status: (row.status || 'active') as CreateProductInput['status'],
+        };
+
+        const validation = createProductSchema.safeParse(productData);
+        if (!validation.success) {
+          summary.failedCount++;
+          summary.errors.push({
+            row: rowNum,
+            message: validation.error.issues
+              .map((e) => `${e.path.join('.')}: ${e.message}`)
+              .join(', '),
+          });
+          continue;
+        }
+
+        const existing = await this.checkDuplicateSku(organizationId, validation.data.sku);
+        if (existing) {
+          summary.failedCount++;
+          summary.errors.push({
+            row: rowNum,
+            message: `Product with SKU '${validation.data.sku}' already exists`,
+          });
+          continue;
+        }
+
+        const newProduct = await this.createProduct(organizationId, userId, validation.data);
+        summary.successCount++;
+        summary.successfulRecords.push(newProduct);
+      } catch (error: unknown) {
+        summary.failedCount++;
+        summary.errors.push({
+          row: rowNum,
+          message: (error as Error).message || 'Unknown error',
+        });
+      }
+    }
+
+    return summary;
   }
 }
 

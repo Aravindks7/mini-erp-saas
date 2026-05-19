@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 import type { CreateWarehouseInput } from '@shared/contracts/warehouses.contract';
 import { createWarehouseSchema } from '@shared/contracts/warehouses.contract';
@@ -60,11 +61,11 @@ export default function WarehouseFormPage() {
       if (isEditing && id) {
         await updateWarehouse({ id, data });
         toast.success(`Warehouse ${data.name} updated successfully`, { id: toastId });
-        navigate(getPath(`/warehouses/${id}`));
+        navigate(getPath(APP_PATHS.setup.warehouses.detail(id)));
       } else {
         const result = await createWarehouse(data);
         toast.success(`Warehouse ${data.name} created successfully`, { id: toastId });
-        navigate(getPath(`/warehouses/${result.id}`));
+        navigate(getPath(APP_PATHS.setup.warehouses.detail(result.id)));
       }
     } catch (error) {
       const message =
@@ -78,7 +79,11 @@ export default function WarehouseFormPage() {
     if (form.formState.isDirty) {
       setShowCancelConfirm(true);
     } else {
-      navigate(getPath(isEditing ? `/warehouses/${id}` : '/warehouses'));
+      navigate(
+        getPath(
+          isEditing ? APP_PATHS.setup.warehouses.detail(id) : APP_PATHS.setup.warehouses.list(),
+        ),
+      );
     }
   };
 
@@ -96,7 +101,10 @@ export default function WarehouseFormPage() {
         <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
           <AlertCircle className="h-12 w-12 text-destructive" />
           <h2 className="text-xl font-bold">Failed to load warehouse</h2>
-          <Button variant="outline" onClick={() => navigate(getPath('/warehouses'))}>
+          <Button
+            variant="outline"
+            onClick={() => navigate(getPath(APP_PATHS.setup.warehouses.list()))}
+          >
             Back to List
           </Button>
         </div>
@@ -143,7 +151,13 @@ export default function WarehouseFormPage() {
       <ConfirmDialog
         isOpen={showCancelConfirm}
         onClose={() => setShowCancelConfirm(false)}
-        onConfirm={() => navigate(getPath(isEditing ? `/warehouses/${id}` : '/warehouses'))}
+        onConfirm={() =>
+          navigate(
+            getPath(
+              isEditing ? APP_PATHS.setup.warehouses.detail(id) : APP_PATHS.setup.warehouses.list(),
+            ),
+          )
+        }
         title="Discard Changes?"
         description="You have unsaved changes. Are you sure you want to discard them and leave this page?"
         confirmLabel="Discard Changes"

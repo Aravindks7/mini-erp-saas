@@ -1,22 +1,12 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatDate } from '@shared/utils/date';
 import type { InventoryAdjustmentResponse } from '../../api/inventory.api';
 import { AdjustmentRowActions } from './AdjustmentRowActions';
+import { getStatusOptions } from '@/lib/status-registry';
 
-const adjustmentStatusMap: StatusMap<string> = {
-  draft: { label: 'Draft', tone: 'neutral' },
-  approved: { label: 'Approved', tone: 'success' },
-  cancelled: { label: 'Cancelled', tone: 'danger' },
-};
-
-export const adjustmentStatusOptions = Object.entries(adjustmentStatusMap).map(
-  ([value, config]) => ({
-    label: config.label,
-    value,
-  }),
-);
+export const adjustmentStatusOptions = getStatusOptions('inventory_adjustment');
 
 export const columns: ColumnDef<InventoryAdjustmentResponse>[] = [
   {
@@ -24,6 +14,12 @@ export const columns: ColumnDef<InventoryAdjustmentResponse>[] = [
     header: ({ column }) => <DataTableColumnHeader column={column} title="Reference" />,
     meta: { variant: 'title', label: 'Reference' },
     enableGlobalFilter: true,
+  },
+  {
+    accessorKey: 'adjustmentDate',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Date" />,
+    cell: ({ row }) => formatDate(row.getValue('adjustmentDate')),
+    meta: { variant: 'field', label: 'Date' },
   },
   {
     accessorKey: 'reason',
@@ -36,16 +32,10 @@ export const columns: ColumnDef<InventoryAdjustmentResponse>[] = [
     header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
     cell: ({ row }) => {
       return (
-        <StatusBadge value={row.getValue('status') as string} statusMap={adjustmentStatusMap} />
+        <StatusBadge value={row.getValue('status') as string} entityType="inventory_adjustment" />
       );
     },
     meta: { variant: 'field', label: 'Status' },
-  },
-  {
-    accessorKey: 'adjustmentDate',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Adjustment Date" />,
-    cell: ({ row }) => formatDate(row.getValue('adjustmentDate')),
-    meta: { variant: 'field', label: 'Date' },
   },
   {
     accessorKey: 'lines',

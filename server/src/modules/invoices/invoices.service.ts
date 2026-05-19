@@ -1,12 +1,16 @@
 import { db } from '../../db/index.js';
-import { invoices, invoiceLines, salesOrders } from '../../db/schema/index.js';
+import { invoices, invoiceLines, salesOrders, payments } from '../../db/schema/index.js';
 import { and, desc, eq } from 'drizzle-orm';
 import {
   CreateInvoiceInput,
+  UpdateInvoiceInput,
   UpdateInvoiceStatusInput,
 } from '#shared/contracts/invoices.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 import { sequencesService } from '../sequences/sequences.service.js';
+import { InvoiceReconciler, InvoiceStatus } from './invoices.reconciler.js';
+import { ActivityLogger } from '../../lib/activity-logger.js';
+import type { ActivityAction } from '#shared/config/activity-actions.config.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -46,6 +50,82 @@ export class InvoicesService extends BaseService<typeof invoices> {
     });
   }
 
+  async deleteInvoice(
+    organizationId: string,
+    userId: string,
+    id: string,
+    txIn?: Transaction | typeof db,
+  ) {
+    const operation = async (tx: Transaction | typeof db) => {
+      const invoice = await this.getInvoiceById(organizationId, id, tx);
+
+      if (!invoice) {
+        throw new Error('Invoice not found');
+      }
+
+      if (invoice.status === 'draft') {
+        // Soft-delete
+        await tx
+          .update(invoices)
+          .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+          .where(and(eq(invoices.id, id), eq(invoices.organizationId, organizationId)));
+
+        // Soft-delete lines as well
+        await tx
+          .update(invoiceLines)
+          .set(this.withAudit({ deletedAt: new Date() }, userId, true))
+          .where(
+            and(eq(invoiceLines.invoiceId, id), eq(invoiceLines.organizationId, organizationId)),
+          );
+      } else {
+        // Check for completed payments
+        const completedPayment = await tx.query.payments.findFirst({
+          where: and(
+            eq(payments.invoiceId, id),
+            eq(payments.organizationId, organizationId),
+            eq(payments.status, 'completed'),
+          ),
+        });
+
+        if (completedPayment) {
+          throw new Error(
+            'Cannot void invoice with existing completed payments. Void the payments first.',
+          );
+        }
+
+        await InvoiceReconciler.updateStatus(
+          organizationId,
+          userId,
+          id,
+          'void',
+          'VOIDED',
+          'Invoice manually voided',
+          tx as Transaction,
+        );
+      }
+
+      return { id };
+    };
+
+    if (txIn) {
+      return await operation(txIn);
+    }
+
+    return await db.transaction(async (tx) => {
+      return await operation(tx);
+    });
+  }
+
+  async bulkDeleteInvoices(organizationId: string, userId: string, ids: string[]) {
+    return await db.transaction(async (tx) => {
+      const results = [];
+      for (const id of ids) {
+        results.push(await this.deleteInvoice(organizationId, userId, id, tx));
+      }
+      return results;
+    });
+  }
+
   async createInvoice(
     organizationId: string,
     userId: string,
@@ -76,6 +156,7 @@ export class InvoicesService extends BaseService<typeof invoices> {
               issueDate: data.issueDate,
               dueDate: data.dueDate,
               totalAmount: totalAmount.toString(),
+              balanceDue: totalAmount.toString(),
               taxAmount: taxAmount.toString(),
               notes: data.notes,
             },
@@ -105,6 +186,23 @@ export class InvoicesService extends BaseService<typeof invoices> {
           ),
         );
       }
+
+      // If created as 'open', post to GL
+      if (invoice.status === 'open') {
+        const { PostingService } = await import('../finance/posting.service.js');
+        await PostingService.postInvoice(invoice.id, organizationId, tx);
+      }
+
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId,
+        entityType: 'invoice',
+        entityId: invoice.id,
+        entityDisplayId: invoice.documentNumber,
+        entityLabel: 'Invoice',
+        action: 'INVOICE_CREATED',
+        reason: 'New invoice generated',
+        userId,
+      });
 
       return await this.getInvoiceById(organizationId, invoice.id, tx);
     };
@@ -159,7 +257,107 @@ export class InvoicesService extends BaseService<typeof invoices> {
         })),
       };
 
-      return await this.createInvoice(organizationId, userId, invoiceData, tx);
+      const invoice = await this.createInvoice(organizationId, userId, invoiceData, tx);
+
+      if (invoice) {
+        await ActivityLogger.record(tx, {
+          organizationId,
+          entityType: 'sales_order',
+          entityId: so.id,
+          entityDisplayId: so.documentNumber,
+          entityLabel: 'Sales Order',
+          action: 'ORDER_INVOICED',
+          reason: 'Invoice generated from sales order',
+          snapshot: { invoiceId: invoice.id, invoiceNumber: invoice.documentNumber },
+          userId,
+        });
+      }
+
+      return invoice;
+    });
+  }
+
+  async updateInvoice(
+    organizationId: string,
+    userId: string,
+    id: string,
+    data: UpdateInvoiceInput,
+  ) {
+    return await db.transaction(async (tx) => {
+      const existingInvoice = await this.getInvoiceById(organizationId, id, tx);
+      if (!existingInvoice) {
+        throw new Error('Invoice not found');
+      }
+
+      if (existingInvoice.status !== 'draft') {
+        throw new Error('Only draft invoices can be modified');
+      }
+
+      const totalAmount =
+        data.lines?.reduce((acc, line) => acc + Number(line.lineTotal), 0) ??
+        Number(existingInvoice.totalAmount);
+      const taxAmount =
+        data.lines?.reduce((acc, line) => acc + Number(line.taxAmount), 0) ??
+        Number(existingInvoice.taxAmount);
+
+      const updateData = {
+        totalAmount: totalAmount.toString(),
+        balanceDue: totalAmount.toString(),
+        taxAmount: taxAmount.toString(),
+        notes: data.notes,
+        ...(data.customerId && { customerId: data.customerId }),
+        ...(data.issueDate && { issueDate: data.issueDate }),
+        ...(data.dueDate && { dueDate: data.dueDate }),
+      };
+
+      await tx
+        .update(invoices)
+        .set(this.withAudit(updateData, userId, true))
+        .where(and(eq(invoices.id, id), eq(invoices.organizationId, organizationId)));
+
+      if (data.lines) {
+        await tx
+          .delete(invoiceLines)
+          .where(
+            and(eq(invoiceLines.invoiceId, id), eq(invoiceLines.organizationId, organizationId)),
+          );
+
+        for (const line of data.lines) {
+          await tx.insert(invoiceLines).values(
+            this.withAudit(
+              {
+                organizationId,
+                invoiceId: id,
+                productId: line.productId,
+                quantity: line.quantity,
+                unitPrice: line.unitPrice,
+                taxRateAtOrder: line.taxRateAtOrder,
+                taxAmount: line.taxAmount,
+                lineTotal: line.lineTotal,
+              },
+              userId,
+            ),
+          );
+        }
+      }
+
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          entityType: 'invoice',
+          entityId: id,
+          entityDisplayId: existingInvoice.documentNumber,
+          entityLabel: 'Invoice',
+          action: 'UPDATED',
+          reason: 'Invoice record modified',
+          userId,
+        },
+        existingInvoice,
+        updateData,
+      );
+
+      return await this.getInvoiceById(organizationId, id, tx);
     });
   }
 
@@ -169,13 +367,19 @@ export class InvoicesService extends BaseService<typeof invoices> {
     id: string,
     data: UpdateInvoiceStatusInput,
   ) {
-    const [updated] = await db
-      .update(invoices)
-      .set(this.withAudit({ status: data.status }, userId, true))
-      .where(and(eq(invoices.id, id), eq(invoices.organizationId, organizationId)))
-      .returning();
+    return await db.transaction(async (tx) => {
+      await InvoiceReconciler.updateStatus(
+        organizationId,
+        userId,
+        id,
+        data.status as InvoiceStatus,
+        data.action as ActivityAction,
+        data.reason,
+        tx as Transaction,
+      );
 
-    return updated;
+      return await this.getInvoiceById(organizationId, id, tx);
+    });
   }
 }
 

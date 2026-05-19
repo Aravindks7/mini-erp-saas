@@ -1,172 +1,96 @@
-import { db } from '../index.js';
-import {
-  inventoryAdjustments,
-  inventoryAdjustmentLines,
-  inventoryLevels,
-  inventoryLedgers,
-} from '../schema/index.js';
 import { SEED_DATA } from './constants.js';
-import { eq, sql } from 'drizzle-orm';
+import { runInventoryScenario } from './engine/workflows/inventory.workflow.js';
+import { subDays } from 'date-fns';
 
+/**
+ * Seeds the initial inventory state using the scenario engine.
+ * Generates adjustments and transfers over a 180-day timeline.
+ */
 export async function seedInventory() {
-  console.log('🌱 Seeding Inventory Adjustments & Levels...');
+  console.log('🌱 Generating Inventory Scenarios (Adjustments & Transfers)...');
+  const { ORGANIZATION_ID, USER_ID, PRODUCTS, WAREHOUSES, BINS } = SEED_DATA;
+  const now = new Date();
 
-  const adjustments = [
-    {
-      id: SEED_DATA.INVENTORY_ADJUSTMENTS.INITIAL_STOCK,
-      reference: 'SEED-MAIN-001',
-      reason: 'Initial Load - Main Warehouse',
-      lines: [
-        {
-          productId: SEED_DATA.PRODUCTS.WIDGET_A,
-          warehouseId: SEED_DATA.WAREHOUSES.MAIN,
-          binId: SEED_DATA.BINS.MAIN_A1,
-          quantity: '150',
-        },
-        {
-          productId: SEED_DATA.PRODUCTS.WIDGET_B,
-          warehouseId: SEED_DATA.WAREHOUSES.MAIN,
-          binId: SEED_DATA.BINS.MAIN_B1,
-          quantity: '300',
-        },
-        {
-          productId: SEED_DATA.PRODUCTS.STEEL_SHEET,
-          warehouseId: SEED_DATA.WAREHOUSES.MAIN,
-          binId: SEED_DATA.BINS.MAIN_A1,
-          quantity: '50',
-        },
-        {
-          productId: SEED_DATA.PRODUCTS.COPPER_WIRE,
-          warehouseId: SEED_DATA.WAREHOUSES.MAIN,
-          binId: SEED_DATA.BINS.MAIN_B1,
-          quantity: '20',
-        },
-      ],
-    },
-    {
-      id: SEED_DATA.INVENTORY_ADJUSTMENTS.ENRICHMENT_STOCK,
-      reference: 'SEED-ENRICH-001',
-      reason: 'Enrichment Load - Low Stock for Dashboard',
-      lines: [
-        {
-          productId: SEED_DATA.PRODUCTS.INK_CARTRIDGE,
-          warehouseId: SEED_DATA.WAREHOUSES.MAIN,
-          binId: SEED_DATA.BINS.MAIN_A1,
-          quantity: '4',
-        },
-        {
-          productId: SEED_DATA.PRODUCTS.PACKAGING_BOX,
-          warehouseId: SEED_DATA.WAREHOUSES.MAIN,
-          binId: SEED_DATA.BINS.MAIN_B1,
-          quantity: '8',
-        },
-      ],
-    },
-    {
-      id: SEED_DATA.INVENTORY_ADJUSTMENTS.INITIAL_STOCK_DC,
-      reference: 'SEED-DC-001',
-      reason: 'Initial Load - Distribution Center',
-      lines: [
-        {
-          productId: SEED_DATA.PRODUCTS.MICROCHIP_X,
-          warehouseId: SEED_DATA.WAREHOUSES.DIST_CENTER,
-          binId: SEED_DATA.BINS.DC_RACK_1,
-          quantity: '1000',
-        },
-        {
-          productId: SEED_DATA.PRODUCTS.LED_DISPLAY,
-          warehouseId: SEED_DATA.WAREHOUSES.DIST_CENTER,
-          binId: SEED_DATA.BINS.DC_RACK_2,
-          quantity: '500',
-        },
-        {
-          productId: SEED_DATA.PRODUCTS.OFFICE_PAPER,
-          warehouseId: SEED_DATA.WAREHOUSES.DIST_CENTER,
-          binId: SEED_DATA.BINS.DC_RACK_1,
-          quantity: '200',
-        },
-        {
-          productId: SEED_DATA.PRODUCTS.ASSEMBLY_KIT,
-          warehouseId: SEED_DATA.WAREHOUSES.DIST_CENTER,
-          binId: SEED_DATA.BINS.DC_RACK_2,
-          quantity: '25',
-        },
-      ],
-    },
+  const activeProductIds: string[] = [
+    PRODUCTS.WIDGET_A,
+    PRODUCTS.WIDGET_B,
+    PRODUCTS.STEEL_SHEET,
+    PRODUCTS.COPPER_WIRE,
+    PRODUCTS.OFFICE_PAPER,
+    PRODUCTS.INK_CARTRIDGE,
+    PRODUCTS.MICROCHIP_X,
+    PRODUCTS.LED_DISPLAY,
+    PRODUCTS.PACKAGING_BOX,
+    PRODUCTS.ASSEMBLY_KIT,
   ];
 
-  for (const adj of adjustments) {
-    const existingAdj = await db.query.inventoryAdjustments.findFirst({
-      where: eq(inventoryAdjustments.id, adj.id),
+  const warehouseList = [
+    { warehouseId: WAREHOUSES.MAIN, binId: BINS.MAIN_A1 },
+    { warehouseId: WAREHOUSES.DIST_CENTER, binId: BINS.DC_RACK_1 },
+    { warehouseId: WAREHOUSES.SECONDARY, binId: BINS.SEC_RACK_1 },
+  ];
+
+  // 1. Initial Opening Stock (Approved Adjustments)
+  console.log('   - Seeding Initial Opening Stock...');
+  for (let i = 0; i < activeProductIds.length; i++) {
+    const productId = activeProductIds[i]!;
+    const warehouse = warehouseList[i % warehouseList.length]!;
+
+    await runInventoryScenario({
+      scenarioId: 'INV-OPEN',
+      index: i,
+      organizationId: ORGANIZATION_ID,
+      userId: USER_ID,
+      productId,
+      warehouseId: warehouse.warehouseId,
+      binId: warehouse.binId,
+      quantity: '2000.00',
+      createdAt: subDays(now, 180),
+      flow: 'positive_adjustment',
     });
-
-    if (existingAdj) {
-      console.log(`   - Adjustment '${adj.reference}' already exists. Skipping.`);
-      continue;
-    }
-
-    await db.transaction(async (tx) => {
-      await tx.insert(inventoryAdjustments).values({
-        id: adj.id,
-        organizationId: SEED_DATA.ORGANIZATION_ID,
-        adjustmentDate: new Date(),
-        reason: adj.reason,
-        reference: adj.reference,
-        status: 'approved',
-        createdBy: SEED_DATA.USER_ID,
-        updatedBy: SEED_DATA.USER_ID,
-      });
-
-      for (const line of adj.lines) {
-        await tx.insert(inventoryAdjustmentLines).values({
-          organizationId: SEED_DATA.ORGANIZATION_ID,
-          adjustmentId: adj.id,
-          productId: line.productId,
-          warehouseId: line.warehouseId,
-          binId: line.binId,
-          quantityChange: line.quantity,
-          createdBy: SEED_DATA.USER_ID,
-          updatedBy: SEED_DATA.USER_ID,
-        });
-
-        await tx
-          .insert(inventoryLevels)
-          .values({
-            organizationId: SEED_DATA.ORGANIZATION_ID,
-            productId: line.productId,
-            warehouseId: line.warehouseId,
-            binId: line.binId,
-            quantityOnHand: line.quantity,
-            createdBy: SEED_DATA.USER_ID,
-            updatedBy: SEED_DATA.USER_ID,
-          })
-          .onConflictDoUpdate({
-            target: [
-              inventoryLevels.organizationId,
-              inventoryLevels.productId,
-              inventoryLevels.warehouseId,
-              inventoryLevels.binId,
-            ],
-            set: {
-              quantityOnHand: sql`${inventoryLevels.quantityOnHand} + ${line.quantity}::numeric`,
-              updatedAt: new Date(),
-              updatedBy: SEED_DATA.USER_ID,
-            },
-          });
-
-        await tx.insert(inventoryLedgers).values({
-          organizationId: SEED_DATA.ORGANIZATION_ID,
-          productId: line.productId,
-          warehouseId: line.warehouseId,
-          binId: line.binId,
-          quantityChange: line.quantity,
-          referenceType: 'adjustment',
-          referenceId: adj.id,
-          createdBy: SEED_DATA.USER_ID,
-          updatedBy: SEED_DATA.USER_ID,
-        });
-      }
-    });
-    console.log(`   - Adjustment '${adj.reference}' created and levels updated.`);
   }
+
+  // 2. Inventory Transaction Scenarios (Adjustments & Transfers)
+  const inventoryFlows: Array<Parameters<typeof runInventoryScenario>[0]['flow']> = [
+    'positive_adjustment',
+    'negative_adjustment',
+    'draft_adjustment',
+    'cancelled_adjustment',
+    'transfer_shipped',
+    'transfer_received',
+    'transfer_draft',
+    'transfer_cancelled',
+  ];
+
+  console.log(`   - Generating ${inventoryFlows.length * 5} Dynamic Inventory Scenarios...`);
+  let invCount = 0;
+
+  for (let i = 0; i < inventoryFlows.length; i++) {
+    const flow = inventoryFlows[i]!;
+    for (let j = 0; j < 5; j++) {
+      invCount++;
+      const productId = activeProductIds[invCount % activeProductIds.length]!;
+      const fromWarehouse = warehouseList[invCount % warehouseList.length]!;
+      const toWarehouse = warehouseList[(invCount + 1) % warehouseList.length]!;
+
+      await runInventoryScenario({
+        scenarioId: 'INV-TRANS',
+        index: invCount + 100, // Offset from opening stock
+        organizationId: ORGANIZATION_ID,
+        userId: USER_ID,
+        productId,
+        warehouseId: fromWarehouse.warehouseId,
+        binId: fromWarehouse.binId,
+        toWarehouseId: toWarehouse.warehouseId,
+        quantity: String((j + 1) * 20) + '.00',
+        createdAt: subDays(
+          now,
+          Math.max(0, 150 - Math.floor(invCount * (150 / (inventoryFlows.length * 5)))),
+        ),
+        flow,
+      });
+    }
+  }
+
+  console.log(`✅ ${activeProductIds.length + invCount} Inventory Scenarios completed.`);
 }

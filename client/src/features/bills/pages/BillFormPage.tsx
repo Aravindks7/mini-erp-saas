@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 import type { CreateBillInput } from '@shared/contracts/bills.contract';
 import { createBillSchema } from '@shared/contracts/bills.contract';
@@ -43,7 +44,7 @@ export default function BillFormPage() {
       lines: [],
       notes: '',
       status: 'draft',
-    } as any,
+    },
   });
 
   useEffect(() => {
@@ -63,7 +64,7 @@ export default function BillFormPage() {
         })),
         notes: bill.notes || '',
         status: bill.status as CreateBillInput['status'],
-      } as any);
+      });
     }
   }, [bill, form]);
 
@@ -73,11 +74,11 @@ export default function BillFormPage() {
       if (isEditing && id) {
         await updateBill({ id, data });
         toast.success(`Bill ${data.referenceNumber} updated successfully`, { id: toastId });
-        navigate(getPath(`/bills/${id}`));
+        navigate(getPath(APP_PATHS.purchasing.bills.detail(id)));
       } else {
         const result = await createBill(data);
         toast.success(`Bill ${data.referenceNumber} created successfully`, { id: toastId });
-        navigate(getPath(`/bills/${result.id}`));
+        navigate(getPath(APP_PATHS.purchasing.bills.detail(result.id)));
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Something went wrong.';
@@ -89,7 +90,11 @@ export default function BillFormPage() {
     if (form.formState.isDirty) {
       setShowCancelConfirm(true);
     } else {
-      navigate(getPath(isEditing ? `/bills/${id}` : '/bills'));
+      navigate(
+        getPath(
+          isEditing ? APP_PATHS.purchasing.bills.detail(id) : APP_PATHS.purchasing.bills.list(),
+        ),
+      );
     }
   };
 
@@ -107,7 +112,10 @@ export default function BillFormPage() {
         <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
           <AlertCircle className="h-12 w-12 text-destructive" />
           <h2 className="text-xl font-bold">Failed to load bill</h2>
-          <Button variant="outline" onClick={() => navigate(getPath('/bills'))}>
+          <Button
+            variant="outline"
+            onClick={() => navigate(getPath(APP_PATHS.purchasing.bills.list()))}
+          >
             Back to List
           </Button>
         </div>
@@ -151,7 +159,13 @@ export default function BillFormPage() {
       <ConfirmDialog
         isOpen={showCancelConfirm}
         onClose={() => setShowCancelConfirm(false)}
-        onConfirm={() => navigate(getPath(isEditing ? `/bills/${id}` : '/bills'))}
+        onConfirm={() =>
+          navigate(
+            getPath(
+              isEditing ? APP_PATHS.purchasing.bills.detail(id) : APP_PATHS.purchasing.bills.list(),
+            ),
+          )
+        }
         title="Discard Changes?"
         description="You have unsaved changes. Are you sure you want to discard them?"
         confirmLabel="Discard Changes"

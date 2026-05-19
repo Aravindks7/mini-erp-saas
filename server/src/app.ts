@@ -10,8 +10,13 @@ import customersRoutes from './modules/customers/customers.routes.js';
 import suppliersRoutes from './modules/suppliers/suppliers.routes.js';
 import organizationsRoutes from './modules/organizations/organizations.routes.js';
 import rbacRoutes from './modules/rbac/rbac.routes.js';
+import membersRoutes from './modules/members/members.routes.js';
+import invitationsRoutes from './modules/invitations/invitations.routes.js';
+import rolesRoutes from './modules/roles/roles.routes.js';
+import permissionSetsRoutes from './modules/permission-sets/permission-sets.routes.js';
 import uomRoutes from './modules/uom/uom.routes.js';
 import taxesRoutes from './modules/taxes/taxes.routes.js';
+import productCategoriesRoutes from './modules/product-categories/product-categories.routes.js';
 import productsRoutes from './modules/products/products.routes.js';
 import warehousesRoutes from './modules/warehouses/warehouses.routes.js';
 import inventoryRoutes from './modules/inventory/inventory.routes.js';
@@ -22,10 +27,16 @@ import shipmentsRoutes from './modules/shipments/shipments.routes.js';
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 import invoicesRoutes from './modules/invoices/invoices.routes.js';
 import billsRoutes from './modules/bills/bills.routes.js';
+import paymentsRoutes from './modules/payments/payments.routes.js';
+import sequencesRoutes from './modules/sequences/sequences.routes.js';
+import financeRoutes from './modules/finance/finance.routes.js';
+import activityLogsRoutes from './modules/activity-logs/activity-logs.routes.js';
+import currenciesRoutes from './modules/currencies/currencies.routes.js';
 
 const app = express();
 
 app.set('trust proxy', true);
+app.use(httpLogger);
 
 app.use(
   cors({
@@ -48,7 +59,6 @@ app.use((req, res, next) => {
 
 // Standard middleware (applied after the Better Auth catch-all)
 app.use(express.json());
-app.use(httpLogger);
 
 // Health check
 app.get('/health', (_req, res) => {
@@ -63,9 +73,14 @@ app.get('/', (_req, res) => {
 app.use('/customers', customersRoutes);
 app.use('/suppliers', suppliersRoutes);
 app.use('/organizations', organizationsRoutes);
+app.use('/members', membersRoutes);
+app.use('/invitations', invitationsRoutes);
+app.use('/roles', rolesRoutes);
+app.use('/permission-sets', permissionSetsRoutes);
 app.use('/rbac', rbacRoutes);
 app.use('/uom', uomRoutes);
 app.use('/taxes', taxesRoutes);
+app.use('/product-categories', productCategoriesRoutes);
 app.use('/products', productsRoutes);
 app.use('/warehouses', warehousesRoutes);
 app.use('/inventory', inventoryRoutes);
@@ -75,7 +90,12 @@ app.use('/sales-orders', salesOrdersRoutes);
 app.use('/shipments', shipmentsRoutes);
 app.use('/invoices', invoicesRoutes);
 app.use('/bills', billsRoutes);
+app.use('/payments', paymentsRoutes);
+app.use('/sequences', sequencesRoutes);
+app.use('/finance', financeRoutes);
 app.use('/dashboard', dashboardRoutes);
+app.use('/activity-logs', activityLogsRoutes);
+app.use('/currencies', currenciesRoutes);
 
 // Global error handler — must be last
 app.use(errorMiddleware);

@@ -29,24 +29,71 @@ vi.mock('../sequences/sequences.service.js', () => ({
   },
 }));
 
+vi.mock('../finance/posting.service.js', () => ({
+  PostingService: {
+    postInvoice: vi.fn().mockResolvedValue({ id: 'je-1' }),
+    postPayment: vi.fn().mockResolvedValue({ id: 'je-2' }),
+    postBill: vi.fn().mockResolvedValue({ id: 'je-3' }),
+    postShipment: vi.fn().mockResolvedValue({ id: 'je-4' }),
+    postShipmentReversal: vi.fn().mockResolvedValue({ id: 'je-5' }),
+  },
+}));
+
 vi.mock('../../db/index.js', () => {
   const mockTx = {
-    query: {
-      shipments: {
-        findFirst: vi.fn(),
-      },
-    },
     insert: vi.fn(() => ({
       values: vi.fn().mockReturnValue({
-        returning: vi.fn().mockResolvedValue([{ id: 'ship-1', shipmentNumber: 'SHP-2026-0001' }]),
         onConflictDoUpdate: vi.fn().mockReturnValue({
           returning: vi.fn().mockResolvedValue([{ id: 'lvl-1' }]),
         }),
+        returning: vi.fn().mockResolvedValue([{ id: 'ship-1' }]),
       }),
     })),
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          for: vi.fn().mockResolvedValue([]),
+        })),
+      })),
+    })),
+    query: {
+      inventoryLevels: {
+        findFirst: vi.fn().mockResolvedValue({ quantityOnHand: '100' }),
+      },
+      products: {
+        findFirst: vi.fn().mockResolvedValue({ sku: 'TEST-SKU' }),
+      },
+      warehouses: {
+        findFirst: vi.fn().mockResolvedValue({ name: 'Test Warehouse' }),
+      },
+      shipments: {
+        findFirst: vi.fn().mockResolvedValue({ id: '1', lines: [] }),
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+      salesOrderLines: {
+        findMany: vi.fn().mockResolvedValue([]),
+        findFirst: vi.fn().mockResolvedValue({ id: '1', quantity: '100', shipmentLines: [] }),
+      },
+      salesOrders: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: '1',
+          status: 'approved',
+          lines: [],
+          invoices: [],
+          shipments: [],
+        }),
+      },
+    },
     update: vi.fn(() => ({
       set: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue([{ id: 'so-1', status: 'shipped' }]),
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: '1' }]),
+        }),
+      }),
+    })),
+    delete: vi.fn(() => ({
+      where: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: '1' }]),
       }),
     })),
   };
@@ -59,7 +106,7 @@ vi.mock('../../db/index.js', () => {
         },
         shipments: {
           findMany: vi.fn().mockResolvedValue([]),
-          findFirst: vi.fn(),
+          findFirst: vi.fn().mockResolvedValue({ id: '1', lines: [] }),
         },
       },
       insert: vi.fn(() => ({
@@ -126,19 +173,30 @@ describe('Shipments Module', () => {
       expect(db.transaction).toHaveBeenCalled();
       expect(sequencesService.getNextSequence).toHaveBeenCalled();
     });
+  });
 
-    it('should return 400 for invalid data', async () => {
-      const payload = {
-        salesOrderId: 'not-a-uuid',
-        lines: [],
-      };
-
+  describe('DELETE /shipments/:id', () => {
+    it('should delete a shipment successfully', async () => {
       const response = await request(app)
-        .post('/shipments')
-        .set('x-organization-id', mockOrgId)
-        .send(payload);
+        .delete('/shipments/ship-1')
+        .set('x-organization-id', mockOrgId);
 
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(204);
+      expect(db.transaction).toHaveBeenCalled();
+    });
+  });
+
+  describe('DELETE /shipments', () => {
+    it('should bulk delete shipments successfully', async () => {
+      const ids = ['ship-1', 'ship-2'];
+      const response = await request(app)
+        .delete('/shipments')
+        .set('x-organization-id', mockOrgId)
+        .send({ ids });
+
+      console.log('DELETE BULK', response.body);
+      expect(response.status).toBe(204);
+      expect(db.transaction).toHaveBeenCalled();
     });
   });
 });

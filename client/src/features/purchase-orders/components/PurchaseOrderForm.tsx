@@ -11,7 +11,7 @@ import {
   createPurchaseOrderSchema,
   type CreatePurchaseOrderInput,
 } from '@shared/contracts/purchase-orders.contract';
-import { useSuppliers } from '@/features/suppliers/hooks/suppliers.hooks';
+import { useSuppliersQuery } from '@/features/suppliers/hooks/suppliers.hooks';
 
 interface PurchaseOrderFormProps {
   form: UseFormReturn<CreatePurchaseOrderInput, undefined, CreatePurchaseOrderInput>;
@@ -19,8 +19,11 @@ interface PurchaseOrderFormProps {
   formId?: string;
 }
 
+import { useCurrency } from '@/features/currencies/hooks/use-currency';
+
 export function PurchaseOrderForm({ form, onSubmit, formId }: PurchaseOrderFormProps) {
-  const { data: suppliers } = useSuppliers();
+  const { format: formatCurrency } = useCurrency();
+  const { data: suppliers } = useSuppliersQuery();
 
   const lines = useWatch({
     control: form.control,
@@ -39,11 +42,6 @@ export function PurchaseOrderForm({ form, onSubmit, formId }: PurchaseOrderFormP
       return acc + lineTotal;
     }, 0);
   }, [lines]);
-
-  const currencyFormatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  });
 
   return (
     <Form<CreatePurchaseOrderInput, typeof createPurchaseOrderSchema>
@@ -77,7 +75,7 @@ export function PurchaseOrderForm({ form, onSubmit, formId }: PurchaseOrderFormP
                 Estimated Total
               </p>
               <p className="text-3xl font-bold tracking-tight text-primary">
-                {currencyFormatter.format(orderTotal)}
+                {formatCurrency(orderTotal)}
               </p>
             </div>
           </div>

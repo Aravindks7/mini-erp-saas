@@ -1,7 +1,7 @@
 import { PageContainer } from '@/components/shared/PageContainer';
 import { InventoryLedgerList } from '../components/ledger/InventoryLedgerList';
 
-export function InventoryLedgerPage() {
+export default function InventoryLedgerPage() {
   return (
     <PageContainer>
       <InventoryLedgerList />

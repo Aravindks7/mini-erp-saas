@@ -4,6 +4,7 @@ import type {
   UpdateSupplierInput,
 } from '@shared/contracts/suppliers.contract';
 import { suppliersApi } from '../api/suppliers.api';
+import { activityKeys } from '@/features/activity/hooks/activity.hooks';
 
 export const supplierKeys = {
   all: ['suppliers'] as const,
@@ -19,12 +20,23 @@ export const supplierDetailQuery = (id: string) =>
     queryFn: () => suppliersApi.fetchSupplier(id),
   });
 
-export function useSuppliers() {
-  return useQuery({
+export const supplierListQuery = () =>
+  queryOptions({
     queryKey: supplierKeys.lists(),
     queryFn: suppliersApi.fetchSuppliers,
     staleTime: 5000,
   });
+
+export function useSuppliersQuery() {
+  return useQuery(supplierListQuery());
+}
+
+export function useSuppliersActions() {
+  const queryClient = useQueryClient();
+
+  return {
+    invalidateSuppliers: () => queryClient.invalidateQueries({ queryKey: supplierKeys.lists() }),
+  };
 }
 
 export function useSupplier(id: string | undefined) {
@@ -76,6 +88,7 @@ export function useBulkDeleteSuppliers() {
     mutationFn: (ids: string[]) => suppliersApi.bulkDeleteSuppliers(ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: supplierKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }

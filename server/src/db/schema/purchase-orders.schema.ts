@@ -13,7 +13,9 @@ import { z } from 'zod';
 export const purchaseOrderStatusEnum = pgEnum('purchase_order_status', [
   'draft',
   'sent',
+  'partially_received',
   'received',
+  'closed',
   'cancelled',
 ]);
 

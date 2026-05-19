@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 import type { CreateCustomerInput } from '@shared/contracts/customers.contract';
 import { createCustomerSchema } from '@shared/contracts/customers.contract';
@@ -63,11 +64,11 @@ export default function CustomerFormPage() {
       if (isEditing && id) {
         await updateCustomer({ id, data });
         toast.success(`Customer ${data.companyName} updated successfully`, { id: toastId });
-        navigate(getPath(`/customers/${id}`));
+        navigate(getPath(APP_PATHS.sales.customers.detail(id)));
       } else {
         const result = await createCustomer(data);
         toast.success(`Customer ${data.companyName} created successfully`, { id: toastId });
-        navigate(getPath(`/customers/${result.id}`));
+        navigate(getPath(APP_PATHS.sales.customers.detail(result.id)));
       }
     } catch (error) {
       const message =
@@ -81,7 +82,11 @@ export default function CustomerFormPage() {
     if (form.formState.isDirty) {
       setShowCancelConfirm(true);
     } else {
-      navigate(getPath(isEditing ? `/customers/${id}` : '/customers'));
+      navigate(
+        getPath(
+          isEditing ? APP_PATHS.sales.customers.detail(id) : APP_PATHS.sales.customers.list(),
+        ),
+      );
     }
   };
 
@@ -99,7 +104,10 @@ export default function CustomerFormPage() {
         <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
           <AlertCircle className="h-12 w-12 text-destructive" />
           <h2 className="text-xl font-bold">Failed to load customer</h2>
-          <Button variant="outline" onClick={() => navigate(getPath('/customers'))}>
+          <Button
+            variant="outline"
+            onClick={() => navigate(getPath(APP_PATHS.sales.customers.list()))}
+          >
             Back to List
           </Button>
         </div>
@@ -146,7 +154,13 @@ export default function CustomerFormPage() {
       <ConfirmDialog
         isOpen={showCancelConfirm}
         onClose={() => setShowCancelConfirm(false)}
-        onConfirm={() => navigate(getPath(isEditing ? `/customers/${id}` : '/customers'))}
+        onConfirm={() =>
+          navigate(
+            getPath(
+              isEditing ? APP_PATHS.sales.customers.detail(id) : APP_PATHS.sales.customers.list(),
+            ),
+          )
+        }
         title="Discard Changes?"
         description="You have unsaved changes. Are you sure you want to discard them and leave this page?"
         confirmLabel="Discard Changes"

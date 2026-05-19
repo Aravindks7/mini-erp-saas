@@ -1,6 +1,15 @@
 import { Request, Response } from 'express';
 import { inventoryService } from './inventory.service.js';
-import { createAdjustmentSchema } from '#shared/contracts/inventory.contract.js';
+import {
+  createInventoryAdjustmentSchema,
+  updateAdjustmentStatusSchema,
+  updateInventoryAdjustmentSchema,
+} from '#shared/contracts/inventory-adjustments.contract.js';
+import {
+  createInventoryTransferSchema,
+  updateTransferStatusSchema,
+  updateInventoryTransferSchema,
+} from '#shared/contracts/inventory-transfers.contract.js';
 import { logger } from '../../utils/logger.js';
 import type { DbError } from '../../types/db.js';
 
@@ -10,7 +19,7 @@ import type { DbError } from '../../types/db.js';
  */
 
 export async function createAdjustment(req: Request, res: Response) {
-  const parseResult = createAdjustmentSchema.safeParse(req.body);
+  const parseResult = createInventoryAdjustmentSchema.safeParse(req.body);
   if (!parseResult.success) {
     return res.status(400).json({ error: parseResult.error.flatten() });
   }
@@ -37,6 +46,65 @@ export async function createAdjustment(req: Request, res: Response) {
       });
     }
 
+    throw error;
+  }
+}
+
+export async function updateAdjustmentStatus(req: Request, res: Response) {
+  const { id } = req.params;
+  const parseResult = updateAdjustmentStatusSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    if (parseResult.data.status === 'approved') {
+      const result = await inventoryService.approveAdjustment(organizationId, userId, id as string);
+      return res.json(result);
+    }
+
+    if (parseResult.data.status === 'cancelled') {
+      const result = await inventoryService.cancelAdjustment(organizationId, userId, id as string);
+      return res.json(result);
+    }
+
+    res.status(400).json({ error: 'Unsupported status update' });
+  } catch (error) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to update adjustment status');
+    throw error;
+  }
+}
+
+export async function updateAdjustment(req: Request, res: Response) {
+  const { id } = req.params;
+  const parseResult = updateInventoryAdjustmentSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    const updated = await inventoryService.updateAdjustment(
+      organizationId,
+      userId,
+      id as string,
+      parseResult.data,
+    );
+    if (!updated) {
+      return res.status(404).json({ error: 'Adjustment not found' });
+    }
+    res.json(updated);
+  } catch (error: unknown) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to update adjustment');
+    const message = error instanceof Error ? error.message : 'Failed to update adjustment';
+    if (message === 'Only draft adjustments can be modified.') {
+      return res.status(400).json({ error: message });
+    }
     throw error;
   }
 }
@@ -75,6 +143,119 @@ export async function getAdjustment(req: Request, res: Response) {
   }
 }
 
+/**
+ * Transfers
+ */
+
+export async function createTransfer(req: Request, res: Response) {
+  const parseResult = createInventoryTransferSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    const result = await inventoryService.createTransfer(organizationId, userId, parseResult.data);
+    res.status(201).json(result);
+  } catch (error) {
+    logger.error({ error, organizationId, userId }, 'Failed to create inventory transfer');
+    throw error;
+  }
+}
+
+export async function updateTransferStatus(req: Request, res: Response) {
+  const { id } = req.params;
+  const parseResult = updateTransferStatusSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    let result;
+    if (parseResult.data.status === 'shipped') {
+      result = await inventoryService.shipTransfer(organizationId, userId, id as string);
+    } else if (parseResult.data.status === 'received') {
+      result = await inventoryService.receiveTransfer(organizationId, userId, id as string);
+    } else {
+      return res.status(400).json({ error: 'Unsupported status' });
+    }
+    res.json(result);
+  } catch (error) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to update transfer status');
+    throw error;
+  }
+}
+
+export async function updateTransfer(req: Request, res: Response) {
+  const { id } = req.params;
+  const parseResult = updateInventoryTransferSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    const updated = await inventoryService.updateTransfer(
+      organizationId,
+      userId,
+      id as string,
+      parseResult.data,
+    );
+    if (!updated) {
+      return res.status(404).json({ error: 'Transfer not found' });
+    }
+    res.json(updated);
+  } catch (error: unknown) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to update transfer');
+    const message = error instanceof Error ? error.message : 'Failed to update transfer';
+    if (message === 'Only draft transfers can be modified.') {
+      return res.status(400).json({ error: message });
+    }
+    throw error;
+  }
+}
+
+export async function listTransfers(req: Request, res: Response) {
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    const results = await inventoryService.listTransfers(organizationId);
+    res.json(results);
+  } catch (error) {
+    logger.error({ error, organizationId, userId }, 'Failed to list inventory transfers');
+    throw error;
+  }
+}
+
+export async function getTransfer(req: Request, res: Response) {
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ error: 'Missing transfer ID' });
+  }
+
+  try {
+    const result = await inventoryService.getTransferById(organizationId, id as string);
+    if (!result) {
+      return res.status(404).json({ error: 'Inventory transfer not found' });
+    }
+    res.json(result);
+  } catch (error) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to get inventory transfer');
+    throw error;
+  }
+}
+
 export async function listInventoryLevels(req: Request, res: Response) {
   const organizationId = req.organizationId;
   const userId = req.authSession.user.id;
@@ -88,17 +269,41 @@ export async function listInventoryLevels(req: Request, res: Response) {
   }
 }
 
+export async function getInventoryLevel(req: Request, res: Response) {
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+  const { id } = req.params;
+
+  try {
+    const result = await inventoryService.getInventoryLevel(organizationId, id as string);
+    if (!result) return res.status(404).json({ error: 'Inventory level not found' });
+    res.json(result);
+  } catch (error) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to get inventory level');
+    throw error;
+  }
+}
+
+export async function listLevelLedgerEntries(req: Request, res: Response) {
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+  const { id } = req.params;
+
+  try {
+    const results = await inventoryService.listLevelLedgerEntries(organizationId, id as string);
+    res.json(results);
+  } catch (error) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to list level ledger entries');
+    throw error;
+  }
+}
+
 export async function listLedgerEntries(req: Request, res: Response) {
   const organizationId = req.organizationId;
   const userId = req.authSession.user.id;
-  const { productId, warehouseId, binId } = req.query;
 
   try {
-    const results = await inventoryService.listLedgerEntries(organizationId, {
-      productId: productId as string,
-      warehouseId: warehouseId as string,
-      binId: binId as string,
-    });
+    const results = await inventoryService.listLedgerEntries(organizationId);
     res.json(results);
   } catch (error) {
     logger.error({ error, organizationId, userId }, 'Failed to list ledger entries');

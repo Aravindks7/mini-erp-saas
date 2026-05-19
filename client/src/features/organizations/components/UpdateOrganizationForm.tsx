@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { toast } from 'sonner';
 import { useTenant } from '@/contexts/TenantContext';
-import { useUpdateOrganization } from '../hooks/organizations.hooks';
 import {
   updateOrganizationSchema,
   type UpdateOrganizationInput,
@@ -17,8 +16,12 @@ import { PERMISSIONS } from '@shared/index';
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect';
 import { COUNTRIES } from '@shared/utils/countries';
 
+import { useUpdateOrganization, useOrganizationsActions } from '../hooks/organizations.hooks';
+
 export function UpdateOrganizationForm() {
-  const { activeOrganization } = useTenant();
+  const { activeOrganization, activeOrganizationId } = useTenant();
+  const { invalidateOrganizations, invalidateCurrencies } =
+    useOrganizationsActions(activeOrganizationId);
   const updateOrg = useUpdateOrganization(activeOrganization?.id || '');
   const canManageSettings = usePermission(PERMISSIONS.ORGANIZATION.SETTINGS);
 
@@ -31,6 +34,8 @@ export function UpdateOrganizationForm() {
     if (!activeOrganization) return;
     try {
       await updateOrg.mutateAsync(data);
+      invalidateOrganizations();
+      invalidateCurrencies();
       toast.success('Organization updated successfully');
     } catch {
       toast.error('Failed to update organization');

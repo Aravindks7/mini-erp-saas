@@ -35,7 +35,7 @@ export function ErrorState({
       <p className="text-muted-foreground max-w-xs mb-8 text-sm leading-relaxed">{description}</p>
 
       {onRetry && (
-        <Button variant="outline" onClick={onRetry} className="gap-2 transition-all hover:pr-6">
+        <Button variant="outline" onClick={onRetry} className="gap-2">
           <RefreshCcw className="h-4 w-4" />
           Try Again
         </Button>

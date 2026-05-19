@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 export interface SearchableSelectOption {
   label: string;
   value: string;
+  group?: string;
 }
 
 interface SearchableSelectProps {
@@ -28,6 +29,11 @@ interface SearchableSelectProps {
   className?: string;
   disabled?: boolean;
   id?: string;
+  action?: {
+    label: string;
+    onClick: () => void;
+    icon?: React.ReactNode;
+  };
 }
 
 /**
@@ -44,10 +50,23 @@ export function SearchableSelect({
   className,
   disabled = false,
   id,
+  action,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
 
   const selectedOption = options.find((option) => option.value === value);
+
+  const groupedOptions = React.useMemo(() => {
+    const groups: Record<string, SearchableSelectOption[]> = {};
+    options.forEach((option) => {
+      const group = option.group || '';
+      if (!groups[group]) {
+        groups[group] = [];
+      }
+      groups[group].push(option);
+    });
+    return groups;
+  }, [options]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -76,28 +95,46 @@ export function SearchableSelect({
           <CommandInput placeholder={`Search ${placeholder.toLowerCase()}...`} />
           <CommandList>
             <CommandEmpty>{emptyMessage}</CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.label}
-                  onSelect={() => {
-                    onChange(option.value === value ? undefined : option.value);
-                    setOpen(false);
-                  }}
-                  className="cursor-pointer"
-                >
-                  <Check
-                    className={cn(
-                      'mr-2 h-4 w-4',
-                      value === option.value ? 'opacity-100' : 'opacity-0',
-                    )}
-                  />
-                  {option.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {Object.entries(groupedOptions).map(([group, groupOptions]) => (
+              <CommandGroup key={group} heading={group || undefined}>
+                {groupOptions.map((option) => (
+                  <CommandItem
+                    key={option.value}
+                    value={option.label}
+                    onSelect={() => {
+                      onChange(option.value === value ? undefined : option.value);
+                      setOpen(false);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Check
+                      className={cn(
+                        'mr-2 h-4 w-4',
+                        value === option.value ? 'opacity-100' : 'opacity-0',
+                      )}
+                    />
+                    {option.label}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ))}
           </CommandList>
+          {action && (
+            <div className="border-t p-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start text-primary font-medium hover:text-primary hover:bg-primary/5 h-9 px-2"
+                onClick={() => {
+                  action.onClick();
+                  setOpen(false);
+                }}
+              >
+                {action.icon || <Plus className="mr-2 h-4 w-4" />}
+                {action.label}
+              </Button>
+            </div>
+          )}
         </Command>
       </PopoverContent>
     </Popover>

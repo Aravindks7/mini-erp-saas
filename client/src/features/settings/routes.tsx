@@ -3,12 +3,17 @@ import { Navigate } from 'react-router-dom';
 import type { AppRoute } from '@/lib/types/navigation';
 import SettingsPage from './pages/SettingsPage';
 import { OrgProfileTab } from '../organizations/components/OrgProfileTab';
-import { MembersTab } from '../organizations/components/MembersTab';
-import { InvitationsTab } from '../organizations/components/InvitationsTab';
-import { RolesTab } from '../organizations/components/RolesTab';
-import { PermissionSetsTab } from '../organizations/components/PermissionSetsTab';
-import RoleFormPage from '../organizations/pages/RoleFormPage';
-import PermissionSetFormPage from '../organizations/pages/PermissionSetFormPage';
+import { MemberList } from '../members';
+import { InvitationList } from '../invitations';
+import { RoleList, RoleFormPage, roleDetailQuery } from '../roles';
+import {
+  PermissionSetList,
+  PermissionSetFormPage,
+  permissionSetDetailQuery,
+} from '../permission-sets';
+import { SequenceSettingsTab } from './components/SequenceSettingsTab';
+import { queryClient } from '@/lib/query-client';
+import type { RoleResponse, PermissionSetResponse } from '@shared/index';
 
 export const settingsRoutes: AppRoute[] = [
   // The main settings layout with tabs
@@ -35,29 +40,36 @@ export const settingsRoutes: AppRoute[] = [
         },
       },
       {
+        path: 'sequences',
+        element: <SequenceSettingsTab />,
+        handle: {
+          title: 'Document Numbering',
+        },
+      },
+      {
         path: 'members',
-        element: <MembersTab />,
+        element: <MemberList />,
         handle: {
           title: 'Workspace Members',
         },
       },
       {
         path: 'invites',
-        element: <InvitationsTab />,
+        element: <InvitationList />,
         handle: {
           title: 'Pending Invitations',
         },
       },
       {
         path: 'roles',
-        element: <RolesTab />,
+        element: <RoleList />,
         handle: {
           title: 'Roles',
         },
       },
       {
         path: 'permission-sets',
-        element: <PermissionSetsTab />,
+        element: <PermissionSetList />,
         handle: {
           title: 'Permission Sets',
         },
@@ -76,9 +88,13 @@ export const settingsRoutes: AppRoute[] = [
   {
     path: 'settings/roles/:id',
     element: <RoleFormPage />,
+    loader: async ({ params }) => {
+      if (!params.id) throw new Error('No id provided');
+      return queryClient.ensureQueryData(roleDetailQuery(params.id));
+    },
     handle: {
       title: 'Edit Role',
-      crumb: 'Edit Role',
+      crumb: (data: RoleResponse) => (data ? `Edit ${data.name}` : 'Edit Role'),
     },
   },
   {
@@ -92,9 +108,13 @@ export const settingsRoutes: AppRoute[] = [
   {
     path: 'settings/permission-sets/:id',
     element: <PermissionSetFormPage />,
+    loader: async ({ params }) => {
+      if (!params.id) throw new Error('No id provided');
+      return queryClient.ensureQueryData(permissionSetDetailQuery(params.id));
+    },
     handle: {
       title: 'Edit Permission Set',
-      crumb: 'Edit Permission Set',
+      crumb: (data: PermissionSetResponse) => (data ? `Edit ${data.name}` : 'Edit Permission Set'),
     },
   },
 ];

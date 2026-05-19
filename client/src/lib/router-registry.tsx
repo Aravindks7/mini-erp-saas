@@ -3,48 +3,27 @@ import type { AppRoute } from '@/lib/types/navigation';
 
 import { authRoutes } from '@/features/auth/routes';
 import { dashboardRoutes as coreDashboardRoutes } from '@/features/dashboard/routes';
-import { customerRoutes } from '@/features/customers/routes';
-import { supplierRoutes } from '@/features/suppliers/routes';
-import { productRoutes } from '@/features/products/routes';
-import { uomRoutes } from '@/features/uom/routes';
-import { taxRoutes } from '@/features/taxes/routes';
-import { warehouseRoutes } from '@/features/warehouses/routes';
+import { salesRoutes } from '@/features/sales/routes';
+import { purchasingRoutes } from '@/features/purchasing/routes';
 import { inventoryRoutes } from '@/features/inventory/routes';
-import { purchaseOrdersRoutes } from '@/features/purchase-orders/routes';
-import { salesOrdersRoutes } from '@/features/sales-orders/routes';
-import { receiptRoutes } from '@/features/receipts/routes';
-import { billRoutes } from '@/features/bills/routes';
-import { paymentRoutes } from '@/features/payments/routes';
-import { shipmentRoutes } from '@/features/shipments/routes';
-import { invoiceRoutes } from '@/features/invoices/routes';
-import { bomRoutes } from '@/features/bom/routes';
-import { workOrderRoutes } from '@/features/work-orders/routes';
+import { financeRoutes } from '@/features/finance/routes';
+import { setupRoutes } from '@/features/setup/routes';
 import { settingsRoutes } from '@/features/settings/routes';
+import { activityRoutes } from '@/features/activity/routes';
 
 /**
  * Registry of all dashboard-internal routes.
- * Extracted to a separate module to prevent circular dependencies
- * between the app-router and UI components (like SidebarContent).
+ * Organized hierarchically via category-level feature modules.
  */
 export const dashboardRoutes: AppRoute[] = [
   ...coreDashboardRoutes,
-  ...customerRoutes,
-  ...supplierRoutes,
-  ...productRoutes,
-  ...uomRoutes,
-  ...taxRoutes,
-  ...warehouseRoutes,
+  ...salesRoutes,
+  ...purchasingRoutes,
   ...inventoryRoutes,
-  ...purchaseOrdersRoutes,
-  ...salesOrdersRoutes,
-  ...receiptRoutes,
-  ...billRoutes,
-  ...paymentRoutes,
-  ...shipmentRoutes,
-  ...invoiceRoutes,
-  ...bomRoutes,
-  ...workOrderRoutes,
+  ...financeRoutes,
+  ...setupRoutes,
   ...settingsRoutes,
+  ...activityRoutes,
 ];
 
 /**

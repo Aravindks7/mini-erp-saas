@@ -12,16 +12,18 @@ export async function getDashboard(req: Request, res: Response) {
   const userId = req.authSession.user.id;
 
   try {
-    const [metrics, lowStockItems, recentActivity] = await Promise.all([
+    const [metrics, lowStockItems, recentActivity, performanceData] = await Promise.all([
       dashboardService.getMetrics(organizationId),
       dashboardService.getLowStockItems(organizationId),
       dashboardService.getRecentActivity(organizationId),
+      dashboardService.getPerformanceData(organizationId),
     ]);
 
     res.json({
       metrics,
       lowStockItems,
       recentActivity,
+      performanceData,
     });
   } catch (error) {
     logger.error({ error, organizationId, userId }, 'Failed to fetch dashboard data');

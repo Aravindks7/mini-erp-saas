@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useMatches, Link } from 'react-router-dom';
 import { Home } from 'lucide-react';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -44,7 +45,7 @@ export function Breadcrumbs({ className, homeLabel = 'Dashboard' }: BreadcrumbsP
         <BreadcrumbItem>
           <BreadcrumbLink asChild>
             <Link
-              to={getPath('/')}
+              to={getPath(APP_PATHS.dashboard())}
               className="flex items-center gap-1.5 group transition-colors hover:text-foreground"
             >
               <Home className="size-3.5 group-hover:scale-110 transition-transform" />

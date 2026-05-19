@@ -3,8 +3,9 @@ import { MemoryRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import SelectOrganizationPage from '../SelectOrganization';
 import { useTenant } from '@/contexts/TenantContext';
-import { useOrganizations } from '@/features/organizations/hooks/organizations.hooks';
+import { useOrganizationsQuery } from '@/features/organizations/hooks/organizations.hooks';
 import { useAuth } from '@/contexts/AuthContext';
+import { APP_PATHS } from '@/lib/paths';
 
 // Mock the dependencies
 vi.mock('@/contexts/TenantContext', () => ({
@@ -12,7 +13,7 @@ vi.mock('@/contexts/TenantContext', () => ({
 }));
 
 vi.mock('@/features/organizations/hooks/organizations.hooks', () => ({
-  useOrganizations: vi.fn(),
+  useOrganizationsQuery: vi.fn(),
 }));
 
 vi.mock('@/contexts/AuthContext', () => ({
@@ -50,9 +51,9 @@ describe('SelectOrganizationPage', () => {
   });
 
   it('should render loading state when fetching organizations', () => {
-    vi.mocked(useOrganizations).mockReturnValue({
+    vi.mocked(useOrganizationsQuery).mockReturnValue({
       isLoading: true,
-    } as unknown as ReturnType<typeof useOrganizations>);
+    } as unknown as ReturnType<typeof useOrganizationsQuery>);
 
     render(
       <MemoryRouter>
@@ -68,10 +69,10 @@ describe('SelectOrganizationPage', () => {
       { id: 'org-1', name: 'Acme Corp', slug: 'acme', roleName: 'admin' },
       { id: 'org-2', name: 'Globex', slug: 'globex', roleName: 'employee' },
     ];
-    vi.mocked(useOrganizations).mockReturnValue({
+    vi.mocked(useOrganizationsQuery).mockReturnValue({
       isLoading: false,
       data: mockOrgs,
-    } as unknown as ReturnType<typeof useOrganizations>);
+    } as unknown as ReturnType<typeof useOrganizationsQuery>);
 
     render(
       <MemoryRouter>
@@ -87,10 +88,10 @@ describe('SelectOrganizationPage', () => {
 
   it('should call syncActiveOrganizationId and navigate on selection', () => {
     const mockOrgs = [{ id: 'org-1', name: 'Acme Corp', slug: 'acme', roleName: 'admin' }];
-    vi.mocked(useOrganizations).mockReturnValue({
+    vi.mocked(useOrganizationsQuery).mockReturnValue({
       isLoading: false,
       data: mockOrgs,
-    } as unknown as ReturnType<typeof useOrganizations>);
+    } as unknown as ReturnType<typeof useOrganizationsQuery>);
 
     render(
       <MemoryRouter>
@@ -105,10 +106,10 @@ describe('SelectOrganizationPage', () => {
   });
 
   it('should navigate to onboarding when no organizations found', () => {
-    vi.mocked(useOrganizations).mockReturnValue({
+    vi.mocked(useOrganizationsQuery).mockReturnValue({
       isLoading: false,
       data: [],
-    } as unknown as ReturnType<typeof useOrganizations>);
+    } as unknown as ReturnType<typeof useOrganizationsQuery>);
 
     render(
       <MemoryRouter>
@@ -117,14 +118,14 @@ describe('SelectOrganizationPage', () => {
     );
 
     // useEffect handles this, and navigate is called
-    expect(mockNavigate).toHaveBeenCalledWith('/onboarding');
+    expect(mockNavigate).toHaveBeenCalledWith(APP_PATHS.auth.onboarding());
   });
 
   it('should open create dialog when "Create New Organization" is clicked', () => {
-    vi.mocked(useOrganizations).mockReturnValue({
+    vi.mocked(useOrganizationsQuery).mockReturnValue({
       isLoading: false,
       data: [],
-    } as unknown as ReturnType<typeof useOrganizations>);
+    } as unknown as ReturnType<typeof useOrganizationsQuery>);
 
     render(
       <MemoryRouter>

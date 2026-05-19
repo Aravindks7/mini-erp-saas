@@ -6,30 +6,31 @@ interface DashboardMetricsCardsProps {
   metrics: DashboardMetrics;
 }
 
+import { useCurrency } from '@/features/currencies/hooks/use-currency';
+
 /**
  * Renders the top-level KPI cards for the Dashboard.
  * Axiom: Visualizes the Materialized View pre-aggregates.
  */
 export function DashboardMetricsCards({ metrics }: DashboardMetricsCardsProps) {
-  const currencyFormatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  });
+  const { format: formatCurrency } = useCurrency();
 
   return (
     <>
       <StatsCard
         title="Total Sales"
-        value={currencyFormatter.format(Number(metrics.totalSales))}
+        value={formatCurrency(Number(metrics.totalSales))}
         icon={TrendingUp}
         iconColor="text-emerald-500"
+        trend={metrics.totalSalesTrend}
         description="Historical sales total"
       />
       <StatsCard
         title="Total Purchases"
-        value={currencyFormatter.format(Number(metrics.totalPurchases))}
+        value={formatCurrency(Number(metrics.totalPurchases))}
         icon={ShoppingCart}
         iconColor="text-blue-500"
+        trend={metrics.totalPurchasesTrend}
         description="Historical purchase total"
       />
       <StatsCard
@@ -37,6 +38,7 @@ export function DashboardMetricsCards({ metrics }: DashboardMetricsCardsProps) {
         value={metrics.activeCustomers}
         icon={Users}
         iconColor="text-indigo-500"
+        trend={metrics.activeCustomersTrend}
         description="Total registered customers"
       />
       <StatsCard
@@ -44,6 +46,7 @@ export function DashboardMetricsCards({ metrics }: DashboardMetricsCardsProps) {
         value={metrics.totalProducts}
         icon={Package}
         iconColor="text-amber-500"
+        trend={metrics.totalProductsTrend}
         description="Items in catalog"
       />
     </>

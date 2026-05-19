@@ -5,7 +5,7 @@ import { hashPassword } from 'better-auth/crypto';
 import { eq, and, sql, or } from 'drizzle-orm';
 
 export async function seedAuth() {
-  console.log('🌱 Seeding Auth (Organization & Super Admin)...');
+  console.log('🌱 Seeding Auth (Organization & Multi-Role Users)...');
 
   // 1. Seed Organization
   const existingOrg = await db.query.organizations.findFirst({
@@ -22,55 +22,100 @@ export async function seedAuth() {
     console.log('   - Organization created.');
   }
 
-  // 2. Seed User
-  const existingUser = await db.query.user.findFirst({
-    where: or(eq(user.id, SEED_DATA.USER_ID), eq(user.email, 'admin@example.com')),
-  });
-
-  if (!existingUser) {
-    await db.insert(user).values({
-      id: SEED_DATA.USER_ID,
+  // 2. Define specialized users for a rich developer experience
+  const specializedUsers = [
+    {
+      id: SEED_DATA.USERS.SUPER_ADMIN,
       name: 'Super Admin',
       email: 'admin@example.com',
-      emailVerified: true,
+      roleName: 'Admin',
+    },
+    {
+      id: SEED_DATA.USERS.SALES_MANAGER,
+      name: 'Sales Manager',
+      email: 'sales.mgr@example.com',
+      roleName: 'Sales Manager',
+    },
+    {
+      id: SEED_DATA.USERS.PURCHASE_MANAGER,
+      name: 'Purchase Lead',
+      email: 'purchase.mgr@example.com',
+      roleName: 'Purchase Manager',
+    },
+    {
+      id: SEED_DATA.USERS.INVENTORY_MANAGER,
+      name: 'Logistics Head',
+      email: 'inventory.mgr@example.com',
+      roleName: 'Inventory Manager',
+    },
+    {
+      id: SEED_DATA.USERS.ACCOUNTANT,
+      name: 'Corporate Accountant',
+      email: 'accountant@example.com',
+      roleName: 'Accountant',
+    },
+    {
+      id: SEED_DATA.USERS.STAFF,
+      name: 'Operations Staff',
+      email: 'staff@example.com',
+      roleName: 'Employee',
+    },
+  ];
+
+  const hashedPassword = await hashPassword('password123');
+
+  for (const userData of specializedUsers) {
+    const existingUser = await db.query.user.findFirst({
+      where: or(eq(user.id, userData.id), eq(user.email, userData.email)),
     });
 
-    // Use Better Auth's internal hashing utility for compatibility
-    const hashedPassword = await hashPassword('password123');
+    let userId = userData.id;
 
-    await db.insert(account).values({
-      userId: SEED_DATA.USER_ID,
-      accountId: 'admin@example.com',
-      providerId: 'credential',
-      password: hashedPassword,
+    if (!existingUser) {
+      await db.insert(user).values({
+        id: userData.id,
+        name: userData.name,
+        email: userData.email,
+        emailVerified: true,
+      });
+
+      await db.insert(account).values({
+        userId: userData.id,
+        accountId: userData.email,
+        providerId: 'credential',
+        password: hashedPassword,
+      });
+      console.log(`   - User created: ${userData.name} (${userData.email})`);
+    } else {
+      userId = existingUser.id;
+    }
+
+    // 3. Link User to Org with specific Role
+    const targetRole = await db.query.roles.findFirst({
+      where: and(eq(roles.name, userData.roleName), sql`${roles.organizationId} IS NULL`),
     });
-    console.log('   - Super Admin user and account created.');
-  }
 
-  const finalUserId = existingUser ? existingUser.id : SEED_DATA.USER_ID;
+    if (!targetRole) {
+      console.warn(
+        `   ⚠️ Role "${userData.roleName}" not found for user ${userData.email}. Skipping link.`,
+      );
+      continue;
+    }
 
-  // 3. Link User to Org with Admin Role
-  const adminRole = await db.query.roles.findFirst({
-    where: and(eq(roles.name, 'Admin'), sql`${roles.organizationId} IS NULL`),
-  });
-
-  if (!adminRole) {
-    throw new Error('Admin role not found. Ensure seedRBAC runs before seedAuth.');
-  }
-
-  const existingMembership = await db.query.organizationMemberships.findFirst({
-    where: and(
-      eq(organizationMemberships.userId, finalUserId),
-      eq(organizationMemberships.organizationId, SEED_DATA.ORGANIZATION_ID),
-    ),
-  });
-
-  if (!existingMembership) {
-    await db.insert(organizationMemberships).values({
-      userId: finalUserId,
-      organizationId: SEED_DATA.ORGANIZATION_ID,
-      roleId: adminRole.id,
+    const existingMembership = await db.query.organizationMemberships.findFirst({
+      where: and(
+        eq(organizationMemberships.userId, userId),
+        eq(organizationMemberships.organizationId, SEED_DATA.ORGANIZATION_ID),
+      ),
     });
-    console.log('   - Super Admin linked to Organization.');
+
+    if (!existingMembership) {
+      await db.insert(organizationMemberships).values({
+        userId: userId,
+        organizationId: SEED_DATA.ORGANIZATION_ID,
+        roleId: targetRole.id,
+      });
+      console.log(`   - Linked ${userData.name} to Organization as ${userData.roleName}.`);
+    }
   }
 }

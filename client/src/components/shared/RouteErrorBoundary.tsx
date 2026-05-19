@@ -1,10 +1,10 @@
 import { useRouteError, isRouteErrorResponse, useNavigate } from 'react-router-dom';
-import { AlertTriangle, Home, RotateCcw, Copy, Check } from 'lucide-react';
+import { AlertTriangle, Home, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from './ErrorState';
 import { useTenantPath } from '@/hooks/useTenantPath';
-import { useState } from 'react';
-import { IconButton } from './IconButton';
+import { APP_PATHS } from '@/lib/paths';
+import { CopyButton } from './CopyButton';
 
 /**
  * RouteErrorBoundary
@@ -17,16 +17,8 @@ export function RouteErrorBoundary() {
   const error = useRouteError();
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const [copied, setCopied] = useState(false);
-
-  const errorText = error instanceof Error ? error.stack : JSON.stringify(error, null, 2);
-
-  const handleCopy = () => {
-    if (!errorText) return;
-    navigator.clipboard.writeText(errorText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const errorText =
+    error instanceof Error ? error.stack || error.message : JSON.stringify(error, null, 2);
 
   // If it's a known router error (e.g. 404, 403)
   if (isRouteErrorResponse(error)) {
@@ -37,7 +29,7 @@ export function RouteErrorBoundary() {
             title="404 - Page Not Found"
             description="The resource you are looking for does not exist or has been moved to a new location."
             className="max-w-md border-none shadow-none"
-            onRetry={() => navigate(getPath('/'))}
+            onRetry={() => navigate(getPath(APP_PATHS.dashboard()))}
           />
         </div>
       );
@@ -50,7 +42,7 @@ export function RouteErrorBoundary() {
             title="401 - Unauthorized"
             description="You do not have permission to access this page. Please log in to continue."
             className="max-w-md border-none shadow-none"
-            onRetry={() => navigate('/login')}
+            onRetry={() => navigate(APP_PATHS.auth.login())}
           />
         </div>
       );
@@ -87,28 +79,30 @@ export function RouteErrorBoundary() {
           <RotateCcw className="h-4 w-4" />
           Reload Application
         </Button>
-        <Button variant="outline" onClick={() => navigate(getPath('/'))} className="gap-2">
+        <Button
+          variant="outline"
+          onClick={() => navigate(getPath(APP_PATHS.dashboard()))}
+          className="gap-2"
+        >
           <Home className="h-4 w-4" />
           Go to Dashboard
         </Button>
       </div>
 
       {import.meta.env.DEV && (
-        <div className="group relative mt-12 w-full max-w-2xl text-left overflow-auto rounded-lg border bg-muted p-4 font-mono text-xs text-muted-foreground whitespace-pre-wrap">
-          <div className="flex items-center justify-between mb-2">
-            <p className="font-bold text-destructive uppercase tracking-widest">
+        <div className="group relative mt-12 w-full max-w-2xl text-left rounded-lg border bg-muted font-mono text-xs text-muted-foreground overflow-hidden">
+          <div className="sticky top-0 flex items-center justify-between p-3 border-b bg-muted/95 backdrop-blur-md z-10">
+            <p className="font-bold text-destructive uppercase tracking-widest px-1">
               Developer Diagnostics:
             </p>
-            <IconButton
-              icon={copied ? Check : Copy}
-              label={copied ? 'Copied!' : 'Copy to clipboard'}
-              onClick={handleCopy}
-              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-              iconClassName={copied ? 'text-green-500' : ''}
-              showTooltip={true}
+            <CopyButton
+              value={errorText || ''}
+              className="opacity-0 group-hover:opacity-100 transition-opacity bg-background/50 shadow-sm"
             />
           </div>
-          <pre>{errorText}</pre>
+          <div className="p-4 overflow-auto max-h-[400px] whitespace-pre-wrap">
+            <pre>{errorText}</pre>
+          </div>
         </div>
       )}
     </div>

@@ -35,6 +35,14 @@ vi.mock('../utils/logger', () => ({
   logger: mockLogger,
 }));
 
+// Forensic Audit Global Mock
+vi.mock('../../lib/activity-logger', () => ({
+  ActivityLogger: {
+    record: vi.fn().mockResolvedValue(undefined),
+    recordUpdate: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 // Add any custom matchers or teardown logic here
 afterEach(() => {
   vi.clearAllMocks();
