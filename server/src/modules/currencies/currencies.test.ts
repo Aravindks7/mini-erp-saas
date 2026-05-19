@@ -1,10 +1,97 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import { app } from '../../app.js';
+import { auth } from '../auth/auth.js';
+import { db } from '../../db/index.js';
+import { rbacService } from '../rbac/rbac.service.js';
 import { SEED_DATA } from '../../db/seeds/constants.js';
+
+// --- MOCKS ---
+
+vi.mock('../rbac/rbac.service.js', () => ({
+  rbacService: {
+    getPermissions: vi
+      .fn()
+      .mockResolvedValue([
+        'currencies:read',
+        'currencies:create',
+        'currencies:update',
+        'currencies:delete',
+      ]),
+    invalidateCache: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+vi.mock('../auth/auth.js', () => ({
+  auth: {
+    api: {
+      getSession: vi.fn(),
+    },
+    handler: vi.fn(),
+  },
+}));
+
+const mockReturning = vi.fn().mockResolvedValue([{ id: 'new-id', code: 'USD' }]);
+const mockWhere = vi.fn().mockReturnValue({ returning: mockReturning });
+const mockSet = vi.fn().mockReturnValue({ where: mockWhere, returning: mockReturning });
+
+const mockTx = {
+  query: {
+    currencies: {
+      findFirst: vi.fn().mockResolvedValue({ id: 'curr-123', code: 'USD', name: 'US Dollar' }),
+      findMany: vi.fn().mockResolvedValue([{ id: 'curr-123', code: 'USD', name: 'US Dollar' }]),
+    },
+  },
+  insert: vi.fn(() => ({
+    values: vi.fn().mockReturnValue({
+      returning: mockReturning,
+    }),
+  })),
+  update: vi.fn(() => ({
+    set: mockSet,
+  })),
+  delete: vi.fn(() => ({
+    where: mockWhere,
+  })),
+  execute: vi.fn().mockResolvedValue({}),
+};
+
+vi.mock('../../db/index.js', () => ({
+  db: {
+    query: {
+      organizationMemberships: {
+        findFirst: vi.fn().mockResolvedValue({ id: 'mem-123' }),
+      },
+      currencies: {
+        findMany: vi.fn().mockResolvedValue([{ id: 'curr-123', code: 'USD', name: 'US Dollar' }]),
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
+    },
+    insert: vi.fn(() => ({
+      values: vi.fn().mockReturnValue({
+        returning: mockReturning,
+      }),
+    })),
+    update: vi.fn(() => ({
+      set: mockSet,
+    })),
+    transaction: vi.fn((cb) => cb(mockTx)),
+    execute: vi.fn().mockResolvedValue({}),
+  },
+}));
+
+// --- TESTS ---
 
 describe('Currencies API', () => {
   const orgId = SEED_DATA.ORGANIZATION_ID;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default mock setup for successful requests
+    vi.mocked(db.query.currencies.findMany).mockResolvedValue([
+      { id: 'curr-123', code: 'USD' },
+    ] as any);
+  });
 
   describe('GET /currencies', () => {
     it('should list currencies for the organization', async () => {
@@ -20,15 +107,20 @@ describe('Currencies API', () => {
 
   describe('POST /currencies', () => {
     it('should create a new currency', async () => {
-      const randomCode = `C${Math.floor(Math.random() * 89 + 10)}`; // Ensures 3 characters (e.g., C12)
+      const randomCode = `C${Math.floor(Math.random() * 89 + 10)}`;
       const newCurrency = {
         code: randomCode,
-
         symbol: '¥',
         name: 'Japanese Yen',
         isActive: true,
         isDefault: false,
       };
+
+      vi.mocked(mockReturning).mockResolvedValueOnce([{ id: 'new-id', code: randomCode }]);
+      vi.mocked(mockTx.query.currencies.findFirst).mockResolvedValueOnce({
+        id: 'new-id',
+        code: randomCode,
+      });
 
       const res = await request(app)
         .post('/currencies')
@@ -42,10 +134,13 @@ describe('Currencies API', () => {
 
     it('should fail if currency code already exists', async () => {
       const duplicate = {
-        code: 'USD', // Assuming USD is seeded
+        code: 'USD',
         symbol: '$',
         name: 'US Dollar',
       };
+
+      // Mock duplicate check returning an existing currency
+      vi.mocked(db.query.currencies.findFirst).mockResolvedValueOnce({ id: 'existing' } as any);
 
       const res = await request(app)
         .post('/currencies')
@@ -60,24 +155,20 @@ describe('Currencies API', () => {
 
   describe('PATCH /currencies/:id', () => {
     it('should update an existing currency', async () => {
-      // Ensure at least one exists
-      await request(app)
-        .post('/currencies')
-        .set('x-organization-id', orgId)
-        .set('x-dev-bypass', 'true')
-        .send({
-          code: 'EUR',
-          symbol: '€',
-          name: 'Euro',
-        });
+      const currencyId = 'curr-123';
 
-      // First find a currency to update
-      const listRes = await request(app)
-        .get('/currencies')
-        .set('x-organization-id', orgId)
-        .set('x-dev-bypass', 'true');
-
-      const currencyId = listRes.body[0].id;
+      vi.mocked(db.query.currencies.findMany).mockResolvedValueOnce([{ id: currencyId }] as any);
+      vi.mocked(mockTx.query.currencies.findFirst).mockResolvedValueOnce({
+        id: currencyId,
+        code: 'USD',
+      } as any);
+      vi.mocked(mockReturning).mockResolvedValueOnce([
+        { id: currencyId, name: 'Updated Currency Name' },
+      ]);
+      vi.mocked(mockTx.query.currencies.findFirst).mockResolvedValueOnce({
+        id: currencyId,
+        name: 'Updated Currency Name',
+      } as any);
 
       const res = await request(app)
         .patch(`/currencies/${currencyId}`)
