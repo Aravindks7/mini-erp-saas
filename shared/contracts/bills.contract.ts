@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const billStatusEnumSchema = z.enum(['draft', 'open', 'paid', 'void']);
+export const billStatusEnumSchema = z.enum(['draft', 'open', 'partially_paid', 'paid', 'void']);
 
 export const billLineInputSchema = z.object({
   productId: z.string().uuid(),
@@ -27,6 +27,8 @@ export const updateBillSchema = createBillSchema.partial();
 
 export const updateBillStatusSchema = z.object({
   status: billStatusEnumSchema,
+  action: z.string().min(1, 'Action is required'),
+  reason: z.string().min(1, 'Reason is required'),
 });
 
 export type BillStatus = z.infer<typeof billStatusEnumSchema>;

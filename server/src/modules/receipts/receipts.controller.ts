@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { receiptsService } from './receipts.service.js';
-import { createReceiptSchema } from '#shared/contracts/receipts.contract.js';
+import { createReceiptSchema, updateReceiptSchema } from '#shared/contracts/receipts.contract.js';
 import { logger } from '../../utils/logger.js';
 
 export async function listReceipts(req: Request, res: Response) {
@@ -48,5 +48,65 @@ export async function createReceipt(req: Request, res: Response) {
   } catch (error) {
     logger.error({ error, organizationId, userId, body: req.body }, 'Failed to create receipt');
     throw error;
+  }
+}
+
+export async function updateReceipt(req: Request, res: Response) {
+  const { id } = req.params;
+  const parseResult = updateReceiptSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  const organizationId = req.organizationId!;
+  const userId = req.authSession!.user.id;
+
+  try {
+    const result = await receiptsService.updateReceipt(
+      organizationId,
+      userId,
+      id as string,
+      parseResult.data,
+    );
+    res.json(result);
+  } catch (error) {
+    logger.error({ error, organizationId, userId, id, body: req.body }, 'Failed to update receipt');
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Update failed' });
+  }
+}
+
+export async function deleteReceipt(req: Request, res: Response) {
+  const { id } = req.params;
+  const organizationId = req.organizationId!;
+  const userId = req.authSession!.user.id;
+
+  try {
+    await receiptsService.deleteReceipt(organizationId, userId, id as string);
+    res.status(204).end();
+  } catch (error) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to delete receipt');
+    res
+      .status(400)
+      .json({ error: error instanceof Error ? error.message : 'Failed to delete receipt' });
+  }
+}
+
+export async function bulkDeleteReceipts(req: Request, res: Response) {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'IDs array is required' });
+  }
+
+  const organizationId = req.organizationId!;
+  const userId = req.authSession!.user.id;
+
+  try {
+    await receiptsService.bulkDeleteReceipts(organizationId, userId, ids);
+    res.status(204).end();
+  } catch (error) {
+    logger.error({ error, organizationId, userId, ids }, 'Failed to bulk delete receipts');
+    res
+      .status(400)
+      .json({ error: error instanceof Error ? error.message : 'Failed to bulk delete receipts' });
   }
 }

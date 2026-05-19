@@ -21,14 +21,32 @@ router.get('/', requirePermission(PERMISSIONS.INVENTORY.READ), receiptsControlle
  */
 router.get('/:id', requirePermission(PERMISSIONS.INVENTORY.READ), receiptsController.getReceipt);
 
-/**
- * POST /api/receipts
- * Create a new inventory receipt.
- */
 router.post(
   '/',
   requirePermission(PERMISSIONS.INVENTORY.RECEIVE),
   receiptsController.createReceipt,
+);
+
+/**
+ * PATCH /api/receipts/:id
+ * Update a draft inventory receipt.
+ */
+router.patch(
+  '/:id',
+  requirePermission(PERMISSIONS.INVENTORY.RECEIVE),
+  receiptsController.updateReceipt,
+);
+
+router.delete(
+  '/',
+  requirePermission(PERMISSIONS.INVENTORY.RECEIVE),
+  receiptsController.bulkDeleteReceipts,
+);
+
+router.delete(
+  '/:id',
+  requirePermission(PERMISSIONS.INVENTORY.RECEIVE),
+  receiptsController.deleteReceipt,
 );
 
 export default router;

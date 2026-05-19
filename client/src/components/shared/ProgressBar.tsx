@@ -41,7 +41,7 @@ export function ProgressBar({
     >
       <div
         className={cn(
-          'h-full transition-all duration-500 ease-in-out',
+          'h-full transition-all duration-300 ease-out',
           colorClass,
           isIndeterminate && 'animate-progress-indeterminate absolute w-full',
         )}

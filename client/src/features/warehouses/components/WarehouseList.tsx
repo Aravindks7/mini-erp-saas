@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { Warehouse, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -17,11 +16,17 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
+import { usePermissionsStatus } from '@/hooks/usePermission';
 
 import { columns } from './columns';
-import { useWarehouses, useBulkDeleteWarehouses } from '../hooks/warehouses.hooks';
+import {
+  useWarehousesQuery,
+  useBulkDeleteWarehouses,
+  useWarehousesActions,
+} from '../hooks/warehouses.hooks';
 import type { WarehouseResponse } from '../api/warehouses.api';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { APP_PATHS } from '@/lib/paths';
 
 const searchSchema = z.object({
   name: z.string().optional(),
@@ -31,8 +36,9 @@ const searchSchema = z.object({
 export function WarehouseList() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
-  const { data: warehouses, isLoading, isError } = useWarehouses();
+  const { data: warehouses, isLoading: isDataLoading, isError } = useWarehousesQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateWarehouses } = useWarehousesActions();
   const bulkDeleteMutation = useBulkDeleteWarehouses();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
 
@@ -52,13 +58,13 @@ export function WarehouseList() {
       <ErrorState
         title="Failed to load warehouses"
         description="We encountered an error while fetching the warehouse list. Please check your network or try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['warehouses'] })}
+        onRetry={invalidateWarehouses}
       />
     );
   }
 
   const handleImportSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ['warehouses'] });
+    invalidateWarehouses();
   };
 
   const handleBulkDeleteConfirm = async () => {
@@ -74,15 +80,9 @@ export function WarehouseList() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!warehouses || warehouses.length === 0) {
+  if (!isLoading && (!warehouses || warehouses.length === 0)) {
     return (
       <>
         <PageHeader title="Warehouses" />
@@ -104,7 +104,7 @@ export function WarehouseList() {
               }
             />
             <AddButton
-              to="/warehouses/new"
+              to={APP_PATHS.setup.warehouses.new()}
               permission={PERMISSIONS.WAREHOUSES.CREATE}
               label="Add Warehouse"
               className="shadow-lg shadow-primary/20"
@@ -115,7 +115,7 @@ export function WarehouseList() {
     );
   }
 
-  const handleAddClick = () => navigate(getPath('/warehouses/new'));
+  const handleAddClick = () => navigate(getPath(APP_PATHS.setup.warehouses.new()));
 
   return (
     <>
@@ -142,7 +142,7 @@ export function WarehouseList() {
               onSuccess={handleImportSuccess}
             />
             <AddButton
-              to="/warehouses/new"
+              to={APP_PATHS.setup.warehouses.new()}
               permission={PERMISSIONS.WAREHOUSES.CREATE}
               label="Add Warehouse"
             />

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { invoicesService } from './invoices.service.js';
 import {
   createInvoiceSchema,
+  updateInvoiceSchema,
   updateInvoiceStatusSchema,
 } from '#shared/contracts/invoices.contract.js';
 import { logger } from '../../utils/logger.js';
@@ -99,6 +100,71 @@ export async function updateInvoiceStatus(req: Request, res: Response) {
     res.json(updated);
   } catch (error) {
     logger.error({ error, organizationId, userId, id }, 'Failed to update invoice status');
+    throw error;
+  }
+}
+
+export async function updateInvoice(req: Request, res: Response) {
+  const { id } = req.params;
+  const parseResult = updateInvoiceSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    const updated = await invoicesService.updateInvoice(
+      organizationId,
+      userId,
+      id as string,
+      parseResult.data,
+    );
+    if (!updated) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+    res.json(updated);
+  } catch (error) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to update invoice');
+    throw error;
+  }
+}
+
+export async function deleteInvoice(req: Request, res: Response) {
+  const { id } = req.params;
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    await invoicesService.deleteInvoice(organizationId, userId, id as string);
+    res.status(204).end();
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Cannot void invoice')) {
+      return res.status(400).json({ error: error.message });
+    }
+    logger.error({ error, organizationId, userId, id }, 'Failed to delete invoice');
+    throw error;
+  }
+}
+
+export async function bulkDeleteInvoices(req: Request, res: Response) {
+  const { ids } = req.body;
+  if (!Array.isArray(ids)) {
+    return res.status(400).json({ error: 'ids must be an array' });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    await invoicesService.bulkDeleteInvoices(organizationId, userId, ids);
+    res.status(204).end();
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Cannot void invoice')) {
+      return res.status(400).json({ error: error.message });
+    }
+    logger.error({ error, organizationId, userId, ids }, 'Failed to bulk delete invoices');
     throw error;
   }
 }

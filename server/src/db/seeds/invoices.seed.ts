@@ -24,6 +24,7 @@ export async function seedInvoices() {
       issueDate: subDays(now, 1),
       dueDate: addDays(now, 29),
       totalAmount: '250.00',
+      balanceDue: '0.00',
       taxAmount: '10.00',
       createdAt: subDays(now, 1),
       lines: [
@@ -46,6 +47,7 @@ export async function seedInvoices() {
       issueDate: subDays(now, 2),
       dueDate: addDays(now, 28),
       totalAmount: '45.00',
+      balanceDue: '45.00',
       taxAmount: '0.00',
       createdAt: subDays(now, 2),
       lines: [
@@ -68,6 +70,7 @@ export async function seedInvoices() {
       issueDate: now,
       dueDate: addDays(now, 30),
       totalAmount: '500.00',
+      balanceDue: '500.00',
       taxAmount: '0.00',
       createdAt: now,
       lines: [
@@ -96,6 +99,7 @@ export async function seedInvoices() {
         issueDate: seed.issueDate,
         dueDate: seed.dueDate,
         totalAmount: seed.totalAmount,
+        balanceDue: seed.balanceDue,
         taxAmount: seed.taxAmount,
         createdAt: seed.createdAt,
         updatedAt: seed.createdAt,

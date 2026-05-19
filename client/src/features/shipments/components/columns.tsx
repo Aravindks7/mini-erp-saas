@@ -1,21 +1,13 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
+import { getStatusOptions } from '@/lib/status-registry';
 import { formatDate } from '@shared/utils/date';
 import type { ShipmentResponse } from '../api/shipments.api';
 import { ShipmentRowActions } from './ShipmentRowActions';
 import { Checkbox } from '@/components/ui/checkbox';
 
-const shipmentStatusMap: StatusMap<string> = {
-  draft: { label: 'Draft', tone: 'neutral' },
-  shipped: { label: 'Shipped', tone: 'success' },
-  cancelled: { label: 'Cancelled', tone: 'danger' },
-};
-
-export const shipmentStatusOptions = Object.entries(shipmentStatusMap).map(([value, config]) => ({
-  label: config.label,
-  value,
-}));
+export const shipmentStatusOptions = getStatusOptions('shipment');
 
 export const columns: ColumnDef<ShipmentResponse>[] = [
   {
@@ -73,8 +65,9 @@ export const columns: ColumnDef<ShipmentResponse>[] = [
       return Array.isArray(selectedValues) ? selectedValues.includes(rowValue) : false;
     },
     cell: ({ row }) => {
-      return <StatusBadge value={row.getValue('status') as string} statusMap={shipmentStatusMap} />;
+      return <StatusBadge value={row.getValue('status') as string} entityType="shipment" />;
     },
+
     meta: { variant: 'field', label: 'Status' },
   },
   {

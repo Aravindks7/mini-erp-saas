@@ -1,11 +1,18 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import type { LucideIcon } from 'lucide-react';
+import { CopyButton } from './CopyButton';
 
 export interface DetailItem {
   label: string;
   value: React.ReactNode;
+  icon?: LucideIcon | React.ElementType;
+  action?: React.ReactNode;
   fullWidth?: boolean;
   className?: string;
+  valueClassName?: string;
+  labelClassName?: string;
+  copyValue?: string;
 }
 
 export interface DetailSection {
@@ -42,27 +49,55 @@ export function DetailView({ sections, columns = 2, className }: DetailViewProps
             </h3>
           )}
           <div className={cn('grid gap-x-12 gap-y-8 px-1', columnClass)}>
-            {section.items.map((item, iIdx) => (
-              <div
-                key={iIdx}
-                className={cn(
-                  'flex flex-col gap-2 group transition-all',
-                  item.fullWidth && 'md:col-span-full',
-                  item.className,
-                )}
-              >
-                <span className="text-[11px] font-semibold text-muted-foreground/80 uppercase tracking-tight">
-                  {item.label}
-                </span>
-                <div className="text-sm font-semibold text-foreground/90 wrap-break-word leading-relaxed border-l border-transparent group-hover:border-primary/20 group-hover:pl-3 transition-all">
-                  {item.value || (
-                    <span className="text-muted-foreground/30 font-normal italic">
-                      Not Provided
-                    </span>
+            {section.items.map((item, iIdx) => {
+              const Icon = item.icon;
+              const effectiveCopyValue =
+                item.copyValue ||
+                (typeof item.value === 'string' || typeof item.value === 'number'
+                  ? String(item.value)
+                  : undefined);
+
+              return (
+                <div
+                  key={iIdx}
+                  className={cn(
+                    'flex flex-col gap-2',
+                    item.fullWidth && 'md:col-span-full',
+                    item.className,
                   )}
+                >
+                  <span
+                    className={cn(
+                      'text-[11px] font-semibold text-muted-foreground/80 uppercase tracking-tight flex items-center gap-1.5',
+                      item.labelClassName,
+                    )}
+                  >
+                    {Icon && <Icon className="h-3.5 w-3.5" />}
+                    {item.label}
+                  </span>
+                  <div
+                    className={cn(
+                      'text-sm font-semibold text-foreground/90 wrap-break-word leading-relaxed flex items-start justify-between gap-4 group',
+                      item.valueClassName,
+                    )}
+                  >
+                    <div className="flex-1">
+                      {item.value || (
+                        <span className="text-muted-foreground/30 font-normal italic">
+                          Not Provided
+                        </span>
+                      )}
+                    </div>
+                    {(item.action || effectiveCopyValue) && (
+                      <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                        {effectiveCopyValue && <CopyButton value={effectiveCopyValue} />}
+                        {item.action}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ))}

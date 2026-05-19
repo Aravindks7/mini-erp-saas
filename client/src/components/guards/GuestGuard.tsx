@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { APP_PATHS } from '@/lib/paths';
 
 /**
  * GuestGuard prevents authenticated users from visiting public-only routes
@@ -22,7 +23,7 @@ export const GuestGuard = ({ children }: { children: ReactNode }) => {
 
   // Redirect authenticated users to the dashboard
   if (session?.user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={APP_PATHS.dashboard()} replace />;
   }
 
   return <>{children}</>;

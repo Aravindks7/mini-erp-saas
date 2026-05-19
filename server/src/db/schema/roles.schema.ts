@@ -1,10 +1,10 @@
-import { pgTable, text, uuid, boolean, primaryKey, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, uuid, boolean, uniqueIndex } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import { organizations } from './organizations.schema.js';
-import { permissionSets } from './permissions.schema.js';
 import { timestamps, userTracking } from './audit.schema.js';
 import { organizationMemberships } from './memberships.schema.js';
 import { organizationInvites } from './invites.schema.js';
+import { rolePermissionSets } from './role-permission-sets.schema.js';
 
 /**
  * Dynamic Roles
@@ -33,22 +33,6 @@ export const roles = pgTable(
   ],
 );
 
-/**
- * Role Permission Sets: Link roles to permission groups
- */
-export const rolePermissionSets = pgTable(
-  'role_permission_sets',
-  {
-    roleId: uuid('role_id')
-      .notNull()
-      .references(() => roles.id, { onDelete: 'cascade' }),
-    permissionSetId: uuid('permission_set_id')
-      .notNull()
-      .references(() => permissionSets.id, { onDelete: 'cascade' }),
-  },
-  (t) => [primaryKey({ columns: [t.roleId, t.permissionSetId] })],
-);
-
 export const rolesRelations = relations(roles, ({ one, many }) => ({
   organization: one(organizations, {
     fields: [roles.organizationId],
@@ -57,15 +41,4 @@ export const rolesRelations = relations(roles, ({ one, many }) => ({
   permissionSets: many(rolePermissionSets),
   memberships: many(organizationMemberships),
   invites: many(organizationInvites),
-}));
-
-export const rolePermissionSetsRelations = relations(rolePermissionSets, ({ one }) => ({
-  role: one(roles, {
-    fields: [rolePermissionSets.roleId],
-    references: [roles.id],
-  }),
-  permissionSet: one(permissionSets, {
-    fields: [rolePermissionSets.permissionSetId],
-    references: [permissionSets.id],
-  }),
 }));

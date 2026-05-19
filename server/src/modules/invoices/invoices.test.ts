@@ -34,11 +34,23 @@ vi.mock('../sequences/sequences.service.js', () => ({
   },
 }));
 
+vi.mock('../finance/posting.service.js', () => ({
+  PostingService: {
+    postInvoice: vi.fn().mockResolvedValue({ id: 'je-1' }),
+    postInvoiceReversal: vi.fn().mockResolvedValue({ id: 'je-1-rev' }),
+    postPayment: vi.fn().mockResolvedValue({ id: 'je-2' }),
+    postBill: vi.fn().mockResolvedValue({ id: 'je-3' }),
+  },
+}));
+
 vi.mock('../../db/index.js', () => {
   const mockTx = {
     query: {
       invoices: {
-        findFirst: vi.fn(),
+        findFirst: vi
+          .fn()
+          .mockResolvedValueOnce({ id: 'inv-123', status: 'draft', documentNumber: 'INV-001' })
+          .mockResolvedValue({ id: 'inv-123', status: 'open', documentNumber: 'INV-001' }),
       },
       salesOrders: {
         findFirst: vi.fn(),
@@ -205,10 +217,84 @@ describe('Invoices Module', () => {
       const response = await request(app)
         .patch(`/invoices/${invId}/status`)
         .set('x-organization-id', mockOrgId)
-        .send({ status: 'open' });
+        .send({ status: 'open', action: 'STATUS_CHANGED', reason: 'Test reason' });
 
       expect(response.status).toBe(200);
       expect(response.body.status).toBe('open');
+    });
+
+    it('should trigger GL reversal when invoice status is updated to void', async () => {
+      const invId = 'inv-123';
+      const mockInvoice = { id: invId, status: 'open', documentNumber: 'INV-001' };
+
+      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
+        const tx = {
+          query: {
+            invoices: {
+              findFirst: vi
+                .fn()
+                .mockResolvedValueOnce(mockInvoice)
+                .mockResolvedValue({ ...mockInvoice, status: 'void' }),
+            },
+            payments: {
+              findFirst: vi.fn().mockResolvedValue(undefined),
+            },
+          },
+          update: vi.fn(() => ({
+            set: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                returning: vi.fn().mockResolvedValue([{ id: invId, status: 'void' }]),
+              }),
+            }),
+          })),
+        } as any;
+        return cb(tx);
+      });
+
+      const { PostingService } = await import('../finance/posting.service.js');
+
+      const response = await request(app)
+        .patch(`/invoices/${invId}/status`)
+        .set('x-organization-id', mockOrgId)
+        .send({ status: 'void', action: 'STATUS_CHANGED', reason: 'Voiding invoice' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('void');
+      expect(PostingService.postInvoiceReversal).toHaveBeenCalledWith(
+        invId,
+        mockOrgId,
+        expect.any(Object),
+      );
+    });
+
+    it('should reject transition to void if completed payments exist', async () => {
+      const invId = 'inv-123';
+      const mockInvoice = { id: invId, status: 'open', documentNumber: 'INV-001' };
+      const mockPayment = { id: 'pmt-123', status: 'completed' };
+
+      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
+        const tx = {
+          query: {
+            invoices: {
+              findFirst: vi.fn().mockResolvedValue(mockInvoice),
+            },
+            payments: {
+              findFirst: vi.fn().mockResolvedValue(mockPayment),
+            },
+          },
+        } as any;
+        return cb(tx);
+      });
+
+      const response = await request(app)
+        .patch(`/invoices/${invId}/status`)
+        .set('x-organization-id', mockOrgId)
+        .send({ status: 'void', action: 'STATUS_CHANGED', reason: 'Voiding invoice' });
+
+      expect(response.status).toBe(500);
+      expect(response.body.message || response.text).toContain(
+        'Cannot void Invoice INV-001 because it has active completed payments',
+      );
     });
   });
 });

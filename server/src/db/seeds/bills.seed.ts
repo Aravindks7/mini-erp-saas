@@ -148,6 +148,7 @@ export async function seedBills() {
         issueDate: seed.issueDate,
         dueDate: seed.dueDate,
         totalAmount: seed.totalAmount,
+        balanceDue: seed.status === 'paid' ? '0' : seed.totalAmount,
         taxAmount: seed.taxAmount,
         notes: seed.notes,
         createdAt: seed.issueDate,

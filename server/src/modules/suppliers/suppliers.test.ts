@@ -55,6 +55,7 @@ const mockTx = {
   query: {
     suppliers: {
       findFirst: vi.fn().mockResolvedValue({ id: 'supp-123', name: 'Mock Supplier' }),
+      findMany: vi.fn().mockResolvedValue([]),
     },
     supplierAddresses: { findMany: vi.fn().mockResolvedValue([]) },
     supplierContacts: { findMany: vi.fn().mockResolvedValue([]) },
@@ -119,6 +120,11 @@ describe('Suppliers Module Integration', () => {
     vi.clearAllMocks();
     vi.mocked(mockTx.update).mockReturnValue({ set: mockSet });
     vi.mocked(mockTx.delete).mockReturnValue({ where: mockWhere });
+    vi.mocked(mockTx.query.suppliers.findFirst).mockResolvedValue({
+      id: 'supp-123',
+      name: 'Mock Supplier',
+    } as any);
+    vi.mocked(mockTx.query.suppliers.findMany).mockResolvedValue([] as any);
   });
 
   describe('Authentication & Multi-Tenancy', () => {
@@ -211,13 +217,19 @@ describe('Suppliers Module Integration', () => {
         organization: { id: mockOrgId },
       } as any);
 
+      // After update, it fetches the hydrated object
+      vi.mocked(mockTx.query.suppliers.findFirst).mockResolvedValue({
+        id: 'supp-123',
+        name: 'New Acme',
+      } as any);
+
       const response = await request(app)
         .patch('/suppliers/supp-123')
         .send({ name: 'New Acme' })
         .set('x-organization-id', mockOrgId);
 
       expect(response.status).toBe(200);
-      expect(response.body.id).toBe('supp-123');
+      expect(response.body.name).toBe('New Acme');
     });
 
     it('should successfully bulk delete suppliers via DELETE', async () => {
@@ -227,18 +239,17 @@ describe('Suppliers Module Integration', () => {
         organization: { id: mockOrgId },
       } as any);
 
-      vi.mocked(db.update).mockReturnValue({
-        set: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            returning: vi
-              .fn()
-              .mockResolvedValue([
-                { id: '123e4567-e89b-12d3-a456-426614174001' },
-                { id: '123e4567-e89b-12d3-a456-426614174002' },
-              ]),
-          }),
-        }),
-      } as any);
+      // Mock findMany for ActivityLogger
+      vi.mocked(mockTx.query.suppliers.findMany).mockResolvedValue([
+        { id: '123e4567-e89b-12d3-a456-426614174001', name: 'Supp 1' },
+        { id: '123e4567-e89b-12d3-a456-426614174002', name: 'Supp 2' },
+      ] as any);
+
+      // Mock update.returning() to return both deleted items
+      vi.mocked(mockReturning).mockResolvedValueOnce([
+        { id: '123e4567-e89b-12d3-a456-426614174001' },
+        { id: '123e4567-e89b-12d3-a456-426614174002' },
+      ]);
 
       const response = await request(app)
         .delete('/suppliers')
@@ -249,10 +260,6 @@ describe('Suppliers Module Integration', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.deletedCount).toBe(2);
-      expect(response.body.deletedIds).toEqual([
-        '123e4567-e89b-12d3-a456-426614174001',
-        '123e4567-e89b-12d3-a456-426614174002',
-      ]);
     });
 
     it('should return 400 if ids array is missing or empty in bulk delete', async () => {

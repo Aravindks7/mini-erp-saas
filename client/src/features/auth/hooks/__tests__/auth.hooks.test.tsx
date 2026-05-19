@@ -12,30 +12,12 @@ vi.mock('../../api/auth.api', () => ({
   },
 }));
 
-// Mock localStorage to avoid persistence during tests
-const localStorageMock = (() => {
-  let store: Record<string, string> = {};
-  return {
-    getItem: (key: string) => store[key] || null,
-    setItem: (key: string, value: string) => {
-      store[key] = value.toString();
-    },
-    removeItem: (key: string) => {
-      delete store[key];
-    },
-    clear: () => {
-      store = {};
-    },
-  };
-})();
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
-
 describe('useSignOutMutation (Nuclear Cleanup)', () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    localStorageMock.clear();
+    localStorage.clear();
 
     queryClient = new QueryClient({
       defaultOptions: {
@@ -61,6 +43,10 @@ describe('useSignOutMutation (Nuclear Cleanup)', () => {
     // Verify it exists in cache
     expect(queryClient.getQueryData(queryKey)).toEqual(sensitiveData);
 
+    // Seed sidebar state
+    localStorage.setItem('mini-erp-sidebar-collapsed', 'true');
+    localStorage.setItem('sidebar-group-sales', 'true');
+
     // 2. Execute logout
     const { result } = renderHook(() => useSignOutMutation(), { wrapper });
 
@@ -76,6 +62,10 @@ describe('useSignOutMutation (Nuclear Cleanup)', () => {
 
       // Assert that the tenant ID is cleared from localStorage
       expect(localStorage.getItem('erp_active_org_id')).toBeNull();
+
+      // Assert that sidebar state is cleared
+      expect(localStorage.getItem('mini-erp-sidebar-collapsed')).toBeNull();
+      expect(localStorage.getItem('sidebar-group-sales')).toBeNull();
     });
 
     expect(authApi.logout).toHaveBeenCalledTimes(1);

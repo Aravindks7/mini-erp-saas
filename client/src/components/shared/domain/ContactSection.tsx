@@ -50,7 +50,10 @@ export function ContactSection<TFieldValues extends FieldValues>({
       </div>
 
       {fields.map((field, index) => (
-        <Card key={field.id} className="relative overflow-hidden border-muted-foreground/20">
+        <Card
+          key={field.id}
+          className="relative overflow-hidden border-muted-foreground/20 animate-in fade-in slide-in-from-top-2 duration-300"
+        >
           <CardHeader className="bg-muted/30 py-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -66,16 +69,28 @@ export function ContactSection<TFieldValues extends FieldValues>({
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="grid gap-6 p-6 sm:grid-cols-2">
-            <FormField name={`${name}.${index}.firstName` as Path<TFieldValues>} label="First Name">
+          <CardContent className="grid gap-6 p-6 grid-cols-12 md:grid-cols-2">
+            <FormField
+              name={`${name}.${index}.firstName` as Path<TFieldValues>}
+              label="First Name"
+              className="col-span-12 md:col-span-1"
+            >
               {({ field }) => <Input {...field} placeholder="First name" />}
             </FormField>
 
-            <FormField name={`${name}.${index}.lastName` as Path<TFieldValues>} label="Last Name">
+            <FormField
+              name={`${name}.${index}.lastName` as Path<TFieldValues>}
+              label="Last Name"
+              className="col-span-12 md:col-span-1"
+            >
               {({ field }) => <Input {...field} placeholder="Last name" />}
             </FormField>
 
-            <FormField name={`${name}.${index}.email` as Path<TFieldValues>} label="Email">
+            <FormField
+              name={`${name}.${index}.email` as Path<TFieldValues>}
+              label="Email"
+              className="col-span-12 md:col-span-1"
+            >
               {({ field }) => (
                 <Input
                   {...field}
@@ -86,7 +101,11 @@ export function ContactSection<TFieldValues extends FieldValues>({
               )}
             </FormField>
 
-            <FormField name={`${name}.${index}.phone` as Path<TFieldValues>} label="Phone">
+            <FormField
+              name={`${name}.${index}.phone` as Path<TFieldValues>}
+              label="Phone"
+              className="col-span-12 md:col-span-1"
+            >
               {({ field }) => (
                 <Input {...field} value={field.value ?? ''} placeholder="Phone number" />
               )}
@@ -95,6 +114,7 @@ export function ContactSection<TFieldValues extends FieldValues>({
             <FormField
               name={`${name}.${index}.jobTitle` as Path<TFieldValues>}
               label="Job Title (Optional)"
+              className="col-span-12 md:col-span-2"
             >
               {({ field }) => (
                 <Input {...field} value={field.value ?? ''} placeholder="Job title" />
@@ -103,7 +123,7 @@ export function ContactSection<TFieldValues extends FieldValues>({
 
             <FormField
               name={`${name}.${index}.isPrimary` as Path<TFieldValues>}
-              className="sm:col-span-2"
+              className="col-span-12 md:col-span-2"
             >
               {({ field: { value, onChange, ...field } }) => (
                 <div className="flex items-center space-x-3 p-3 border rounded-lg bg-muted/10">

@@ -3,18 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { Building2, Plus, ArrowRight, Loader2, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { useOrganizations } from '@/features/organizations/hooks/organizations.hooks';
+import { useOrganizationsQuery } from '@/features/organizations/hooks/organizations.hooks';
 import { useTenant } from '@/contexts/TenantContext';
+import { APP_PATHS } from '@/lib/paths';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CreateOrganizationDialog } from '@/features/organizations/components/CreateOrganizationDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import AuthLayout from '@/components/shared/AuthLayout';
+import { getTenantPath } from '@/lib/path-utils';
 
 export default function SelectOrganization() {
   const navigate = useNavigate();
-  const { data: organizations, isLoading, isError } = useOrganizations();
+  const { data: organizations, isLoading, isError } = useOrganizationsQuery();
   const { syncActiveOrganizationId } = useTenant();
   const { data: session } = useAuth();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -22,14 +24,14 @@ export default function SelectOrganization() {
   // Redirect to onboarding if the user has no organizations and loading is finished.
   useEffect(() => {
     if (!isLoading && organizations && organizations.length === 0) {
-      navigate('/onboarding');
+      navigate(APP_PATHS.auth.onboarding());
     }
   }, [isLoading, organizations, navigate]);
 
   const handleSelect = (orgId: string, slug: string) => {
     syncActiveOrganizationId(orgId);
     toast.success('Switched organization');
-    navigate(`/${slug}`);
+    navigate(getTenantPath(APP_PATHS.dashboard(), slug));
   };
 
   if (isLoading) {

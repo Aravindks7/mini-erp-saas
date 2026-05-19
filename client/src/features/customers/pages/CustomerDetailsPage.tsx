@@ -1,45 +1,32 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { Building, MapPin, FileEdit, AlertCircle, Users } from 'lucide-react';
-import * as React from 'react';
 
-import { useCustomer, customerKeys } from '../hooks/customers.hooks';
+import { useCustomer } from '../hooks/customers.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PageHeader } from '@/components/shared/PageHeader';
+
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
+import { DetailView } from '@/components/shared/DetailView';
 import { AddressCard, type Address } from '@/components/shared/domain/AddressCard';
 import { ContactCard, type Contact } from '@/components/shared/domain/ContactCard';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useTenantPath } from '@/hooks/useTenantPath';
-import { customersApi } from '../api/customers.api';
-
-const customerStatusMap: StatusMap<string> = {
-  active: { label: 'Active', tone: 'success' },
-  inactive: { label: 'Inactive', tone: 'neutral' },
-};
+import { APP_PATHS } from '@/lib/paths';
 
 export default function CustomerDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
   const { data: customer, isLoading, isError } = useCustomer(id);
-
-  React.useEffect(() => {
-    queryClient.prefetchQuery({
-      queryKey: customerKeys.lists(),
-      queryFn: customersApi.fetchCustomers,
-    });
-  }, [queryClient]);
 
   if (isLoading) {
     return (
       <PageContainer>
-        <SkeletonLoader variant="form" rows={3} />
+        <SkeletonLoader variant="details" />
       </PageContainer>
     );
   }
@@ -56,7 +43,7 @@ export default function CustomerDetailsPage() {
             The customer record you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate(getPath('/customers'))}
+            onClick={() => navigate(getPath(APP_PATHS.sales.customers.list()))}
             className="text-primary font-semibold hover:underline"
           >
             Return to Customer Directory
@@ -71,18 +58,21 @@ export default function CustomerDetailsPage() {
       <PageHeader
         title={customer.companyName}
         description={`Manage details, addresses, and contacts for ${customer.companyName}.`}
-        backButton={{ href: getPath('/customers'), label: 'Back to Directory' }}
+        backButton={{
+          href: getPath(APP_PATHS.sales.customers.list()),
+          label: 'Back to Directory',
+        }}
         actions={[
           {
             label: 'Edit Customer',
-            onClick: () => navigate(getPath(`/customers/${customer.id}/edit`)),
+            onClick: () => navigate(getPath(APP_PATHS.sales.customers.edit(customer.id))),
             icon: <FileEdit className="h-4 w-4" />,
             variant: 'default',
           },
         ]}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">
-          <StatusBadge value={customer.status} statusMap={customerStatusMap} />
+          <StatusBadge value={customer.status as string} entityType="customer" />
         </div>
       </PageHeader>
 
@@ -108,32 +98,30 @@ export default function CustomerDetailsPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      Company Name
-                    </label>
-                    <p className="text-base font-semibold">{customer.companyName}</p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      Tax Registration Number
-                    </label>
-                    <p className="text-base font-mono bg-muted/50 w-fit px-2 py-0.5 rounded border">
-                      {customer.taxNumber || '—'}
-                    </p>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      Relationship Status
-                    </label>
-                    <StatusBadge value={customer.status} statusMap={customerStatusMap} />
-                  </div>
-                </div>
-              </div>
+              <DetailView
+                columns={2}
+                sections={[
+                  {
+                    items: [
+                      {
+                        label: 'Company Name',
+                        value: customer.companyName,
+                      },
+                      {
+                        label: 'Tax Registration Number',
+                        value: customer.taxNumber,
+                        valueClassName: 'font-mono bg-muted/50 w-fit px-2 py-0.5 rounded border',
+                      },
+                      {
+                        label: 'Relationship Status',
+                        value: (
+                          <StatusBadge value={customer.status as string} entityType="customer" />
+                        ),
+                      },
+                    ],
+                  },
+                ]}
+              />
             </CardContent>
           </Card>
 

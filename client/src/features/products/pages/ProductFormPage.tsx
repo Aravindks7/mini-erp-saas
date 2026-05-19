@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 import type { CreateProductInput } from '@shared/contracts/products.contract';
 import { createProductSchema } from '@shared/contracts/products.contract';
@@ -67,11 +68,11 @@ export default function ProductFormPage() {
       if (isEditing && id) {
         await updateProduct({ id, data });
         toast.success(`Product ${data.name} updated successfully`, { id: toastId });
-        navigate(getPath(`/products/${id}`));
+        navigate(getPath(APP_PATHS.inventory.products.detail(id)));
       } else {
         const result = await createProduct(data);
         toast.success(`Product ${data.name} created successfully`, { id: toastId });
-        navigate(getPath(`/products/${result.id}`));
+        navigate(getPath(APP_PATHS.inventory.products.detail(result.id)));
       }
     } catch (error) {
       const message =
@@ -85,7 +86,11 @@ export default function ProductFormPage() {
     if (form.formState.isDirty) {
       setShowCancelConfirm(true);
     } else {
-      navigate(getPath(isEditing ? `/products/${id}` : '/products'));
+      navigate(
+        getPath(
+          isEditing ? APP_PATHS.inventory.products.detail(id) : APP_PATHS.inventory.products.list(),
+        ),
+      );
     }
   };
 
@@ -103,7 +108,10 @@ export default function ProductFormPage() {
         <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
           <AlertCircle className="h-12 w-12 text-destructive" />
           <h2 className="text-xl font-bold">Failed to load product</h2>
-          <Button variant="outline" onClick={() => navigate(getPath('/products'))}>
+          <Button
+            variant="outline"
+            onClick={() => navigate(getPath(APP_PATHS.inventory.products.list()))}
+          >
             Back to List
           </Button>
         </div>
@@ -150,7 +158,15 @@ export default function ProductFormPage() {
       <ConfirmDialog
         isOpen={showCancelConfirm}
         onClose={() => setShowCancelConfirm(false)}
-        onConfirm={() => navigate(getPath(isEditing ? `/products/${id}` : '/products'))}
+        onConfirm={() =>
+          navigate(
+            getPath(
+              isEditing
+                ? APP_PATHS.inventory.products.detail(id)
+                : APP_PATHS.inventory.products.list(),
+            ),
+          )
+        }
         title="Discard Changes?"
         description="You have unsaved changes. Are you sure you want to discard them and leave this page?"
         confirmLabel="Discard Changes"

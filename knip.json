@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["playwright.config.ts"]
+    },
+    "client": {
+      "entry": ["src/main.tsx", "vite.config.ts", "vitest.config.ts"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "server": {
+      "entry": ["src/server.ts", "src/db/migrate.ts", "scripts/*.ts", "vitest.config.ts"],
+      "project": ["src/**/*.ts", "scripts/**/*.ts"]
+    },
+    "shared": {
+      "entry": ["index.ts", "vitest.config.ts"],
+      "project": ["**/*.ts"]
+    }
+  },
+  "ignore": ["**/dist/**", "**/node_modules/**", "**/coverage/**"],
+  "ignoreDependencies": ["@vitest/coverage-v8"]
+}

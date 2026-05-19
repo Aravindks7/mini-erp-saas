@@ -1,0 +1,12 @@
+src/db/seeds/scenarios.seed.ts(50,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/db/seeds/scenarios.seed.ts(51,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/db/seeds/scenarios.seed.ts(89,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/db/seeds/scenarios.seed.ts(90,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/modules/payments/payments.service.ts(46,59): error TS2379: Argument of type '{ payment_method_types: "card"[]; line_items: { price_data: { currency: string; product_data: { name: string; description: string; }; unit_amount: number; }; quantity: number; }[]; mode: "payment"; success_url: string; cancel_url: string; client_reference_id: string; metadata: { ...; }; customer_email: string | unde...' is not assignable to parameter of type 'SessionCreateParams' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'customer_email' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.

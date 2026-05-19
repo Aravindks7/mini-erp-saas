@@ -1,25 +1,34 @@
 import * as React from 'react';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
-import { Package } from 'lucide-react';
+import { Package, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { EntityTable } from '@/components/shared/data-table/EntityTable';
 import { AddButton } from '@/components/shared/data-table/AddButton';
 import { DataTableFilter } from '@/components/shared/data-table/DataTableFilter';
+import { ExportButton } from '@/components/shared/data-table/ExportButton';
+import { ImportModal } from '@/components/shared/data-table/ImportModal';
 import { useDataTableState } from '@/hooks/useDataTableState';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { PERMISSIONS } from '@shared/index';
 
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { Button } from '@/components/ui/button';
 import { DeleteConfirmDialog } from '@/components/shared/form/DeleteConfirmDialog';
+import { usePermissionsStatus } from '@/hooks/usePermission';
 
-import { columns, productStatusOptions } from './columns';
-import { useProducts, useBulkDeleteProducts } from '../hooks/products.hooks';
+import { useProductColumns, productStatusOptions } from './columns';
+import {
+  useProductsQuery,
+  useBulkDeleteProducts,
+  useProductsActions,
+} from '../hooks/products.hooks';
 import type { ProductResponse } from '../api/products.api';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { APP_PATHS } from '@/lib/paths';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 const searchSchema = z.object({
   name: z.string().optional(),
@@ -30,10 +39,23 @@ const searchSchema = z.object({
 export function ProductList() {
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
-  const { data: products, isLoading, isError } = useProducts();
+  const { data: products, isLoading: isDataLoading, isError } = useProductsQuery();
+  const { isLoading: isPermissionsLoading } = usePermissionsStatus();
+  const { invalidateProducts } = useProductsActions();
   const bulkDeleteMutation = useBulkDeleteProducts();
   const { tableState, tableSetters, resetAll } = useDataTableState(searchSchema);
+  const columns = useProductColumns();
+
+  const handleImportSuccess = () => {
+    invalidateProducts();
+  };
+
+  const importColumns = [
+    { header: 'SKU', accessorKey: 'sku' },
+    { header: 'Name', accessorKey: 'name' },
+    { header: 'Price', accessorKey: 'basePrice' },
+    { header: 'Status', accessorKey: 'status' },
+  ];
 
   // Bulk Delete State
   const [bulkDeleteState, setBulkDeleteState] = React.useState<{
@@ -51,7 +73,7 @@ export function ProductList() {
       <ErrorState
         title="Failed to load products"
         description="We encountered an error while fetching the product catalog. Please check your network or try again."
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['products'] })}
+        onRetry={invalidateProducts}
       />
     );
   }
@@ -69,26 +91,32 @@ export function ProductList() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
-  }
+  const isLoading = isDataLoading || isPermissionsLoading;
 
-  if (!products || products.length === 0) {
+  if (!isLoading && (!products || products.length === 0)) {
     return (
       <>
         <PageHeader title="Products" />
         <EmptyState
           title="Product Catalog is empty"
-          description="You haven't added any products yet. Get started by creating your first product record."
+          description="You haven't added any products yet. Get started by creating your first product record or importing your catalog from a CSV."
           icon={Package}
         >
           <div className="flex items-center justify-center gap-4">
+            <ImportModal
+              endpoint={API_ENDPOINTS.products.import}
+              templateEndpoint={API_ENDPOINTS.products.importTemplate}
+              onSuccess={handleImportSuccess}
+              columns={importColumns}
+              trigger={
+                <Button variant="outline" className="gap-2">
+                  <Upload className="h-4 w-4" />
+                  Import CSV
+                </Button>
+              }
+            />
             <AddButton
-              to="/products/new"
+              to={APP_PATHS.inventory.products.new()}
               permission={PERMISSIONS.PRODUCTS.CREATE}
               label="Add Product"
               className="shadow-lg shadow-primary/20"
@@ -99,7 +127,7 @@ export function ProductList() {
     );
   }
 
-  const handleAddClick = () => navigate(getPath('/products/new'));
+  const handleAddClick = () => navigate(getPath(APP_PATHS.inventory.products.new()));
 
   return (
     <>
@@ -119,8 +147,15 @@ export function ProductList() {
         onReset={resetAll}
         headerActions={
           <div className="flex items-center gap-2">
+            <ExportButton endpoint={API_ENDPOINTS.products.export} filename="products-export.csv" />
+            <ImportModal
+              endpoint={API_ENDPOINTS.products.import}
+              templateEndpoint={API_ENDPOINTS.products.importTemplate}
+              onSuccess={handleImportSuccess}
+              columns={importColumns}
+            />
             <AddButton
-              to="/products/new"
+              to={APP_PATHS.inventory.products.new()}
               permission={PERMISSIONS.PRODUCTS.CREATE}
               label="Add Product"
             />

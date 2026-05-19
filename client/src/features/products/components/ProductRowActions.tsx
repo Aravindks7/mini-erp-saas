@@ -11,6 +11,7 @@ import {
 import type { ProductResponse } from '../api/products.api';
 import { useDeleteProduct } from '../hooks/products.hooks';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 interface ProductRowActionsProps {
   row: { original: ProductResponse };
@@ -33,13 +34,13 @@ export function ProductRowActions({ row }: ProductRowActionsProps) {
     {
       label: 'View',
       icon: <Eye className="h-4 w-4" />,
-      onClick: () => navigate(getPath(`/products/${product.id}`)),
+      onClick: () => navigate(getPath(APP_PATHS.inventory.products.detail(product.id))),
       tooltip: 'View Details',
     },
     {
       label: 'Edit',
       icon: <FileEdit className="h-4 w-4" />,
-      onClick: () => navigate(getPath(`/products/${product.id}/edit`)),
+      onClick: () => navigate(getPath(APP_PATHS.inventory.products.edit(product.id))),
       tooltip: 'Edit Product',
     },
     {

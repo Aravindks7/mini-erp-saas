@@ -13,11 +13,11 @@ export const billRoutes: AppRoute[] = [
   {
     path: 'bills',
     handle: {
-      title: 'Vendor Bills',
+      title: 'Bills',
       icon: ReceiptText,
       showInSidebar: true,
       sidebarGroup: 'Purchasing',
-      order: 40,
+      order: 30,
       crumb: 'Vendor Bills',
     },
     children: [

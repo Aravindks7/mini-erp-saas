@@ -1,21 +1,13 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
+import { getStatusOptions } from '@/lib/status-registry';
 import { formatDate } from '@shared/utils/date';
 import type { ReceiptResponse } from '../api/receipts.api';
 import { ReceiptRowActions } from './ReceiptRowActions';
 import { Checkbox } from '@/components/ui/checkbox';
 
-const receiptStatusMap: StatusMap<string> = {
-  draft: { label: 'Draft', tone: 'neutral' },
-  received: { label: 'Received', tone: 'success' },
-  cancelled: { label: 'Cancelled', tone: 'danger' },
-};
-
-export const receiptStatusOptions = Object.entries(receiptStatusMap).map(([value, config]) => ({
-  label: config.label,
-  value,
-}));
+export const receiptStatusOptions = getStatusOptions('receipt');
 
 export const columns: ColumnDef<ReceiptResponse>[] = [
   {
@@ -73,8 +65,9 @@ export const columns: ColumnDef<ReceiptResponse>[] = [
       return Array.isArray(selectedValues) ? selectedValues.includes(rowValue) : false;
     },
     cell: ({ row }) => {
-      return <StatusBadge value={row.getValue('status') as string} statusMap={receiptStatusMap} />;
+      return <StatusBadge value={row.getValue('status') as string} entityType="receipt" />;
     },
+
     meta: { variant: 'field', label: 'Status' },
   },
   {

@@ -32,7 +32,7 @@ test.describe('Customer Lifecycle', () => {
 
     // 2. Click Add Customer
     await page.click('button:has-text("Add Customer")');
-    await expect(page).toHaveURL(/\/customers\/new/);
+    await expect(page).toHaveURL(/\/sales\/customers\/new/);
 
     // 3. Fill Global Info
     await page.getByLabel('Company Name').fill(customerName);
@@ -62,8 +62,8 @@ test.describe('Customer Lifecycle', () => {
     await page.click('button:has-text("Save Customer")');
 
     // 7. Verify redirection to Details Page
-    // The URL should be /customers/[uuid]
-    await expect(page).toHaveURL(/\/customers\/[0-9a-f-]+$/);
+    // The URL should be /sales/customers/[uuid]
+    await expect(page).toHaveURL(/\/sales\/customers\/[0-9a-f-]+$/);
     await expect(page.getByText(customerName).first()).toBeVisible();
 
     // Verify Address (under tab)
@@ -76,7 +76,7 @@ test.describe('Customer Lifecycle', () => {
 
     // 8. Go back to list to verify appearance and then delete
     await page.click('a:has-text("Customers")');
-    await expect(page).toHaveURL(/\/customers$/);
+    await expect(page).toHaveURL(/\/sales\/customers$/);
     await expect(page.getByText(customerName).first()).toBeVisible();
 
     // 9. Delete Customer

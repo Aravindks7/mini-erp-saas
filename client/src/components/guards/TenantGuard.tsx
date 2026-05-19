@@ -1,8 +1,10 @@
 import { type ReactNode, useEffect } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { useTenant } from '../../contexts/TenantContext';
-import { useOrganizations } from '@/features/organizations/hooks/organizations.hooks';
+import { useOrganizationsQuery } from '@/features/organizations/hooks/organizations.hooks';
 import type { OrganizationResponse } from '@/features/organizations/api/organizations.api';
+import { APP_PATHS } from '@/lib/paths';
+import { getTenantPath } from '@/lib/path-utils';
 
 /**
  * Hook to synchronize the full activeOrganization object when the ID or data changes.
@@ -25,8 +27,14 @@ function useSyncActiveOrg(
       return;
     }
 
-    // Only update if it's a different organization to prevent render loops
-    if (activeOrg?.id !== currentOrg.id) {
+    // Only update if it's a different organization or data changed to prevent render loops
+    const hasDataChanged =
+      activeOrg?.id !== currentOrg.id ||
+      activeOrg?.defaultCountry !== currentOrg.defaultCountry ||
+      activeOrg?.name !== currentOrg.name ||
+      activeOrg?.slug !== currentOrg.slug;
+
+    if (hasDataChanged) {
       setActiveOrg(currentOrg);
     }
   }, [organizations, activeId, activeOrg, setActiveOrg]);
@@ -43,7 +51,7 @@ export const TenantGuard = ({ children }: { children: ReactNode }) => {
   const { slug } = useParams();
   const location = useLocation();
 
-  const { data: organizations, isLoading, isFetching, isError, error } = useOrganizations();
+  const { data: organizations, isLoading, isFetching, isError, error } = useOrganizationsQuery();
 
   // Sync the full organization object to the context
   useSyncActiveOrg(organizations, activeOrganizationId, activeOrganization, setActiveOrganization);
@@ -117,7 +125,7 @@ export const TenantGuard = ({ children }: { children: ReactNode }) => {
   // FAIL-FAST REDIRECTION
   if (isError) {
     console.error('[TenantGuard] Failed to fetch organizations:', error);
-    return <Navigate to="/login" replace />;
+    return <Navigate to={APP_PATHS.auth.login()} replace />;
   }
 
   // AUTOMATED ONBOARDING REDIRECTION
@@ -129,18 +137,15 @@ export const TenantGuard = ({ children }: { children: ReactNode }) => {
       setActiveOrganizationId(null);
     }
 
-    if (location.pathname === '/onboarding') return <>{children}</>;
-    return <Navigate to="/onboarding" state={{ from: location }} replace />;
+    if (location.pathname === APP_PATHS.auth.onboarding()) return <>{children}</>;
+    return <Navigate to={APP_PATHS.auth.onboarding()} state={{ from: location }} replace />;
   }
 
   // 1. ROOT PATH REDIRECTION: Ensure slug-prefixed URL if user lands on a non-slugged route
   if (!slug) {
     const orgToRedirect = organizations?.find((o) => o.id === activeOrganizationId);
     if (orgToRedirect) {
-      const targetPath =
-        location.pathname === '/'
-          ? `/${orgToRedirect.slug}`
-          : `/${orgToRedirect.slug}${location.pathname}`;
+      const targetPath = getTenantPath(location.pathname, orgToRedirect.slug);
       console.log('[TenantGuard] Redirecting to slug-prefixed route:', targetPath);
       return <Navigate to={targetPath} replace />;
     }
@@ -151,7 +156,7 @@ export const TenantGuard = ({ children }: { children: ReactNode }) => {
     const isValidSlug = organizations.some((org) => org.slug === slug);
     if (!isValidSlug) {
       console.warn('[TenantGuard] Invalid slug detected. Redirecting to selection.');
-      return <Navigate to="/select-organization" replace />;
+      return <Navigate to={APP_PATHS.auth.selectOrganization()} replace />;
     }
   }
 
@@ -187,8 +192,8 @@ export const TenantGuard = ({ children }: { children: ReactNode }) => {
       setActiveOrganizationId(null);
     }
 
-    if (location.pathname === '/select-organization') return <>{children}</>;
-    return <Navigate to="/select-organization" state={{ from: location }} replace />;
+    if (location.pathname === APP_PATHS.auth.selectOrganization()) return <>{children}</>;
+    return <Navigate to={APP_PATHS.auth.selectOrganization()} state={{ from: location }} replace />;
   }
 
   return <>{children}</>;

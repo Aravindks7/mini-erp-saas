@@ -2,7 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import {
-  useCustomers,
+  useCustomersQuery,
   useCreateCustomer,
   useUpdateCustomer,
   useDeleteCustomer,
@@ -50,14 +50,14 @@ describe('Customers Hooks (Multi-Tenant Data Engine)', () => {
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 
-  describe('useCustomers', () => {
+  describe('useCustomersQuery', () => {
     it('should fetch customers successfully', async () => {
       const mockCustomers = [{ id: '1', companyName: 'Acme Corp' }];
       vi.mocked(customersApi.fetchCustomers).mockResolvedValue(
         mockCustomers as unknown as Awaited<ReturnType<typeof customersApi.fetchCustomers>>,
       );
 
-      const { result } = renderHook(() => useCustomers(), { wrapper });
+      const { result } = renderHook(() => useCustomersQuery(), { wrapper });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(result.current.data).toEqual(mockCustomers);

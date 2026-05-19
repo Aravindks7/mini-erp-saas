@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -14,34 +14,45 @@ interface SearchInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
  * A specialized input with a search icon and clear button, designed for ERP filter toolbars.
  */
 export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
-  ({ className, onClear, value, onChange, placeholder = 'Search...', ...props }, ref) => {
+  (
+    { className, onClear, value, onChange, placeholder = 'Search...', isLoading, ...props },
+    ref,
+  ) => {
     const hasValue = !!value;
 
     const handleClear = () => {
       if (onClear) {
         onClear();
       }
-      // If controlled via onChange, we rely on the parent to update value
     };
 
     return (
       <div className={cn('relative flex items-center w-full', className)}>
-        <Search className="absolute left-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <div className="absolute left-3 h-4 w-4 flex items-center justify-center shrink-0 pointer-events-none">
+          {isLoading ? (
+            <Loader2 className="h-3.5 w-3.5 text-primary animate-spin" />
+          ) : (
+            <Search className="h-4 w-4 text-muted-foreground" />
+          )}
+        </div>
         <Input
           ref={ref}
           type="text"
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className="pl-9 pr-9 h-9"
+          className={cn(
+            'w-full h-9 pl-9 pr-9 rounded-lg border border-border/50 text-sm font-normal text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/20 transition-all',
+            className,
+          )}
           {...props}
         />
         {hasValue && (
           <Button
             type="button"
-            variant="ghost"
+            variant="link"
             size="icon"
-            className="absolute right-0 h-9 w-9 text-muted-foreground hover:bg-transparent hover:text-foreground"
+            className="absolute right-0 h-10 w-10 text-muted-foreground hover:text-foreground"
             onClick={handleClear}
           >
             <X className="h-4 w-4" />

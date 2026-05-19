@@ -11,6 +11,7 @@ export const PERMISSIONS = {
     READ: 'inventory:read',
     ADJUST: 'inventory:adjust',
     RECEIVE: 'inventory:receive',
+    TRANSFER: 'inventory:transfer',
   },
   UOM: {
     READ: 'uom:read',
@@ -40,6 +41,12 @@ export const PERMISSIONS = {
     CREATE: 'products:create',
     UPDATE: 'products:update',
     DELETE: 'products:delete',
+  },
+  PRODUCT_CATEGORIES: {
+    READ: 'product-categories:read',
+    CREATE: 'product-categories:create',
+    UPDATE: 'product-categories:update',
+    DELETE: 'product-categories:delete',
   },
   WAREHOUSES: {
     READ: 'warehouses:read',
@@ -84,10 +91,23 @@ export const PERMISSIONS = {
   PAYMENTS: {
     READ: 'payments:read',
     CREATE: 'payments:create',
+    UPDATE: 'payments:update',
     DELETE: 'payments:delete',
   },
   DASHBOARD: {
     READ: 'dashboard:read',
+  },
+  FINANCE: {
+    READ: 'finance:read',
+    CREATE: 'finance:create',
+    UPDATE: 'finance:update',
+    DELETE: 'finance:delete',
+  },
+  CURRENCIES: {
+    READ: 'currencies:read',
+    CREATE: 'currencies:create',
+    UPDATE: 'currencies:update',
+    DELETE: 'currencies:delete',
   },
 } as const;
 
@@ -100,40 +120,4 @@ export const permissionSchema = z.string().refine((val): val is Permission => {
   return allPermissions.includes(val as Permission);
 });
 
-// --- RBAC Management Schemas ---
-
-export const permissionSetResponseSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string(),
-  organizationId: z.string().uuid().nullable(),
-  permissions: z.array(z.string()),
-});
-
-export const createPermissionSetSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(100),
-  permissions: z.array(z.string()).min(1, 'At least one permission is required'),
-});
-
-export const roleResponseSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string(),
-  organizationId: z.string().uuid().nullable(),
-  isBaseRole: z.boolean(),
-  permissionSetIds: z.array(z.string().uuid()),
-});
-
-export const createRoleSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(100),
-  permissionSetIds: z.array(z.string().uuid()).min(1, 'At least one permission set is required'),
-});
-
-export type PermissionSetResponse = z.infer<typeof permissionSetResponseSchema>;
-export type CreatePermissionSetInput = z.infer<typeof createPermissionSetSchema>;
-export type RoleResponse = z.infer<typeof roleResponseSchema>;
-export type CreateRoleInput = z.infer<typeof createRoleSchema>;
-
-export const updatePermissionSetSchema = createPermissionSetSchema.partial();
-export const updateRoleSchema = createRoleSchema.partial();
-
-export type UpdatePermissionSetInput = z.infer<typeof updatePermissionSetSchema>;
-export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
+// --- RBAC Management Schemas (Moved to dedicated files) ---

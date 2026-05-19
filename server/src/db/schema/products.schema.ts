@@ -14,6 +14,7 @@ import { timestamps, userTracking, versioning, lifecycle } from './audit.schema.
 import { organizations } from './organizations.schema.js';
 import { unitOfMeasures, productUomConversions } from './uom.schema.js';
 import { taxes } from './taxes.schema.js';
+import { productCategories } from './product-categories.schema.js';
 
 export const productStatusEnum = pgEnum('product_status', ['active', 'inactive']);
 
@@ -34,6 +35,7 @@ export const products = pgTable(
     baseUomId: uuid('base_uom_id')
       .notNull()
       .references(() => unitOfMeasures.id),
+    categoryId: uuid('category_id').references(() => productCategories.id),
     taxId: uuid('tax_id').references(() => taxes.id),
 
     status: productStatusEnum('status').default('active').notNull(),
@@ -41,6 +43,7 @@ export const products = pgTable(
   (table) => [
     index('products_org_idx').on(table.organizationId),
     index('products_name_idx').on(table.name),
+    index('products_category_idx').on(table.categoryId),
     uniqueIndex('products_org_sku_unique')
       .on(table.organizationId, sql`lower(${table.sku})`)
       .where(sql`${table.sku} IS NOT NULL AND ${table.deletedAt} IS NULL`),
@@ -56,6 +59,10 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   baseUom: one(unitOfMeasures, {
     fields: [products.baseUomId],
     references: [unitOfMeasures.id],
+  }),
+  category: one(productCategories, {
+    fields: [products.categoryId],
+    references: [productCategories.id],
   }),
   tax: one(taxes, {
     fields: [products.taxId],

@@ -49,7 +49,7 @@ export function LowStockWidget({ items }: LowStockWidgetProps) {
                   <TableCell>{item.warehouseName}</TableCell>
                   <TableCell className="text-right">
                     <Badge variant="destructive" className="ml-auto">
-                      {item.quantityOnHand}
+                      {Number(item.quantityOnHand).toFixed(0)}
                     </Badge>
                   </TableCell>
                 </TableRow>

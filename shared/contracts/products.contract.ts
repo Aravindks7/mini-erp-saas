@@ -11,6 +11,7 @@ export const createProductSchema = z.object({
     .refine((val) => !isNaN(Number(val)), 'Base price must be a valid number')
     .default('0'),
   baseUomId: z.string().uuid('Invalid Base UoM ID'),
+  categoryId: z.string().uuid('Invalid Category ID').optional().nullable(),
   taxId: z.string().uuid('Invalid Tax ID').optional().nullable(),
   status: productStatusEnumSchema.default('active'),
 });

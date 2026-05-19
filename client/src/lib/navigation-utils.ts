@@ -1,5 +1,13 @@
-import { type LucideIcon, ShoppingCart, ShoppingBag, Package, DollarSign } from 'lucide-react';
+import {
+  type LucideIcon,
+  ShoppingCart,
+  ShoppingBag,
+  Package,
+  DollarSign,
+  Settings2,
+} from 'lucide-react';
 import type { AppRoute } from './types/navigation';
+import { getTenantPath } from './path-utils';
 
 export interface SidebarItem {
   route: AppRoute;
@@ -14,6 +22,7 @@ export interface SidebarGroupData {
   order: number;
   items: SidebarItem[];
   isActive: boolean;
+  indexPath?: string;
 }
 
 export interface SidebarTree {
@@ -27,7 +36,8 @@ export const SIDEBAR_GROUP_CONFIG: Record<string, { icon: LucideIcon; order: num
   Sales: { icon: ShoppingCart, order: 10 },
   Purchasing: { icon: ShoppingBag, order: 20 },
   Inventory: { icon: Package, order: 30 },
-  Financials: { icon: DollarSign, order: 50 },
+  Finance: { icon: DollarSign, order: 40 },
+  Setup: { icon: Settings2, order: 100 },
 };
 
 export function buildSidebarTree(
@@ -44,52 +54,73 @@ export function buildSidebarTree(
 
   const groupMap = new Map<string, SidebarGroupData>();
 
-  for (const route of routes) {
-    if (!route.handle?.showInSidebar || route.handle?.hidden) {
-      continue;
-    }
+  // Helper to process routes and their children
+  const processRoute = (route: AppRoute, parentPath = '') => {
+    // Determine the full path for this route (relative to parent)
+    const routePath = route.index ? '' : route.path ? `/${route.path}` : '';
+    const absolutePath = `${parentPath}${routePath}`.replace(/\/+/g, '/');
+    const tenantPath = getTenantPath(absolutePath, tenantSlug);
 
-    const routePath = route.index ? '' : `/${route.path}`;
-    const fullPath = tenantSlug ? `/${tenantSlug}${routePath}` : routePath || '/';
-
-    // For index routes (like dashboard), we want exact match.
-    // For others, any sub-path makes it active.
-    const isActive = route.index ? currentPath === fullPath : currentPath.startsWith(fullPath);
-
-    const sidebarItem: SidebarItem = { route, path: fullPath, isActive };
-    const groupName = route.handle.sidebarGroup;
-
-    if (!groupName) {
-      const order = route.handle.order ?? 0;
-      if (order >= 90) {
-        tree.ungroupedBottom.push(sidebarItem);
-      } else {
-        tree.ungroupedTop.push(sidebarItem);
+    // If this route is a module root, assign its path to the group
+    const groupName = route.handle?.sidebarGroup;
+    if (groupName) {
+      if (!groupMap.has(groupName)) {
+        const config = SIDEBAR_GROUP_CONFIG[groupName];
+        groupMap.set(groupName, {
+          id: groupName,
+          name: groupName,
+          icon: config?.icon,
+          order: config?.order ?? 99,
+          items: [],
+          isActive: false,
+        });
       }
-      continue;
+
+      const group = groupMap.get(groupName)!;
+      if (route.handle?.isModuleRoot) {
+        group.indexPath = tenantPath;
+      }
     }
 
-    if (!groupMap.has(groupName)) {
-      const config = SIDEBAR_GROUP_CONFIG[groupName];
-      groupMap.set(groupName, {
-        id: groupName,
-        name: groupName,
-        icon: config?.icon,
-        order: config?.order ?? 99,
-        items: [],
-        isActive: false,
-      });
+    // Check if this specific route entry should be in the sidebar items
+    if (route.handle?.showInSidebar && !route.handle?.hidden) {
+      const isActive = route.index
+        ? currentPath === tenantPath
+        : currentPath.startsWith(tenantPath);
+      const sidebarItem: SidebarItem = { route, path: tenantPath, isActive };
+
+      if (!groupName) {
+        const order = route.handle.order ?? 0;
+        if (order >= 90) {
+          tree.ungroupedBottom.push(sidebarItem);
+        } else {
+          tree.ungroupedTop.push(sidebarItem);
+        }
+      } else {
+        const group = groupMap.get(groupName)!;
+        group.items.push(sidebarItem);
+
+        if (isActive) {
+          group.isActive = true;
+          tree.activeGroupId = group.id;
+        }
+      }
     }
 
-    const group = groupMap.get(groupName)!;
-    group.items.push(sidebarItem);
-
-    if (isActive) {
-      group.isActive = true;
-      tree.activeGroupId = group.id;
+    // Recursively process children
+    if (route.children) {
+      for (const child of route.children) {
+        processRoute(child, absolutePath);
+      }
     }
+  };
+
+  // Start processing all top-level routes
+  for (const route of routes) {
+    processRoute(route);
   }
 
+  // Sort groups and items
   for (const group of groupMap.values()) {
     group.items.sort((a, b) => (a.route.handle?.order ?? 99) - (b.route.handle?.order ?? 99));
   }
@@ -101,4 +132,24 @@ export function buildSidebarTree(
   );
 
   return tree;
+}
+
+/**
+ * Resets all sidebar-related local storage state.
+ * Used during login/logout to ensure a fresh UI state for the user.
+ */
+export function resetSidebarState() {
+  localStorage.removeItem('mini-erp-sidebar-collapsed');
+
+  // Clear all group expansion states
+  // We collect keys first to avoid issues with removing items while iterating
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith('sidebar-group-')) {
+      keysToRemove.push(key);
+    }
+  }
+
+  keysToRemove.forEach((key) => localStorage.removeItem(key));
 }

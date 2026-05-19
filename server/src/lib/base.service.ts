@@ -21,14 +21,16 @@ export abstract class BaseService<
   /**
    * Helper to get common where clause for tenant isolation and soft-delete.
    */
-  protected getTenantWhere(organizationId: string, id?: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  protected getTenantWhere(organizationId: string, id?: string, tableOverride?: any) {
+    const targetTable = tableOverride || this.table;
     const conditions = [
-      eq(this.table.organizationId, organizationId),
-      sql`${this.table.deletedAt} IS NULL`,
+      eq(targetTable.organizationId, organizationId),
+      sql`${targetTable.deletedAt} IS NULL`,
     ];
 
     if (id) {
-      conditions.push(eq(this.table.id, id));
+      conditions.push(eq(targetTable.id, id));
     }
 
     return and(...conditions);

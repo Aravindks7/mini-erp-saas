@@ -30,7 +30,7 @@ export function ResponsiveDrawer({
   onOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
 }) {
-  const isDesktop = useBreakpoint('md');
+  const isDesktop = useBreakpoint('sm');
 
   return (
     <ResponsiveDrawerContext.Provider value={{ isDesktop }}>

@@ -1,0 +1,145 @@
+
+ RUN  v4.1.2 /home/aravind/personal/mini-erp-saas/server
+
+ ❯ src/modules/suppliers/suppliers.test.ts (18 tests | 6 failed) 342ms
+       ✓ should return 401 if unauthorized (no session) 84ms
+       ✓ should return 400 if x-organization-id header is missing 17ms
+       ✓ should return 403 if user is not a member of the organization 10ms
+       ✓ should allow employees to list suppliers 11ms
+       ✓ should forbid employees from deleting suppliers 10ms
+       × should allow admins to delete suppliers 38ms
+       × should successfully update a supplier via PATCH 43ms
+       × should successfully bulk delete suppliers via DELETE 14ms
+       ✓ should return 400 if ids array is missing or empty in bulk delete 15ms
+       × should create a supplier with nested contacts and addresses 19ms
+       ✓ should retrieve a supplier with nested data (GET /:id) 6ms
+       ✓ should list suppliers with nested data (GET /) 5ms
+         ✓ should return 404 when attempting to access a supplier belonging to another organization 8ms
+         ✓ should return 404 when attempting to update a supplier belonging to another organization 11ms
+       ✓ should fail if name is missing 12ms
+         ✓ should rollback supplier creation if address insertion fails 12ms
+         × should normalize multiple primary addresses to a single primary in createSupplier 13ms
+         × should reset existing primaries when a new primary is designated in updateSupplier 11ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/modules/suppliers/suppliers.test.ts > Suppliers Module Integration > RBAC Enforcement > should allow admins to delete suppliers
+AssertionError: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ src/modules/suppliers/suppliers.test.ts:204:31
+    202|         .set('x-organization-id', mockOrgId);
+    203|
+    204|       expect(response.status).toBe(200);
+       |                               ^
+    205|       expect(response.body.message).toContain('successfully');
+    206|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  src/modules/suppliers/suppliers.test.ts > Suppliers Module Integration > CRUD Lifecycle > should successfully update a supplier via PATCH
+AssertionError: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ src/modules/suppliers/suppliers.test.ts:225:31
+    223|         .set('x-organization-id', mockOrgId);
+    224|
+    225|       expect(response.status).toBe(200);
+       |                               ^
+    226|       expect(response.body.name).toBe('New Acme');
+    227|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  src/modules/suppliers/suppliers.test.ts > Suppliers Module Integration > CRUD Lifecycle > should successfully bulk delete suppliers via DELETE
+AssertionError: expected 400 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 400
+
+ ❯ src/modules/suppliers/suppliers.test.ts:249:31
+    247|         .set('x-organization-id', mockOrgId);
+    248|
+    249|       expect(response.status).toBe(200);
+       |                               ^
+    250|       expect(response.body.deletedCount).toBe(2);
+    251|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  src/modules/suppliers/suppliers.test.ts > Suppliers Module Integration > Aggregate Root Mutation & Nested Retrieval > should create a supplier with nested contacts and addresses
+AssertionError: expected 500 to be 201 // Object.is equality
+
+- Expected
++ Received
+
+- 201
++ 500
+
+ ❯ src/modules/suppliers/suppliers.test.ts:294:31
+    292|         .set('x-organization-id', mockOrgId);
+    293|
+    294|       expect(response.status).toBe(201);
+       |                               ^
+    295|     });
+    296|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  src/modules/suppliers/suppliers.test.ts > Suppliers Module Integration > Aggregate Root Mutation & Nested Retrieval > Primary Record Normalization > should normalize multiple primary addresses to a single primary in createSupplier
+AssertionError: expected 500 to be 201 // Object.is equality
+
+- Expected
++ Received
+
+- 201
++ 500
+
+ ❯ src/modules/suppliers/suppliers.test.ts:417:33
+    415|           .set('x-organization-id', mockOrgId);
+    416|
+    417|         expect(response.status).toBe(201);
+       |                                 ^
+    418|       });
+    419|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  src/modules/suppliers/suppliers.test.ts > Suppliers Module Integration > Aggregate Root Mutation & Nested Retrieval > Primary Record Normalization > should reset existing primaries when a new primary is designated in updateSupplier
+AssertionError: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ src/modules/suppliers/suppliers.test.ts:432:33
+    430|           .set('x-organization-id', mockOrgId);
+    431|
+    432|         expect(response.status).toBe(200);
+       |                                 ^
+    433|       });
+    434|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 12 passed (18)
+   Start at  12:07:06
+   Duration  5.30s (transform 2.52s, setup 121ms, import 4.41s, tests 342ms, environment 0ms)
+

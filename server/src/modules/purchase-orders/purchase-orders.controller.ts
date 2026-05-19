@@ -2,9 +2,10 @@ import { Request, Response } from 'express';
 import { purchaseOrdersService } from './purchase-orders.service.js';
 import {
   createPurchaseOrderSchema,
-  receivePurchaseOrderSchema,
+  updatePurchaseOrderStatusSchema,
 } from '#shared/contracts/purchase-orders.contract.js';
 import { logger } from '../../utils/logger.js';
+import { ActivityAction } from '#shared/config/activity-actions.config.js';
 
 /**
  * Controller for Purchase Orders.
@@ -85,9 +86,46 @@ export async function updatePO(req: Request, res: Response) {
   }
 }
 
-export async function receivePO(req: Request, res: Response) {
+export async function deletePO(req: Request, res: Response) {
   const { id } = req.params;
-  const parseResult = receivePurchaseOrderSchema.safeParse(req.body);
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    await purchaseOrdersService.deletePO(organizationId, userId, id as string);
+    res.status(204).end();
+  } catch (error: unknown) {
+    logger.error({ error, organizationId, userId, id }, 'Failed to delete purchase order');
+    res
+      .status(400)
+      .json({ error: error instanceof Error ? error.message : 'Failed to delete purchase order' });
+  }
+}
+
+export async function bulkDeletePOs(req: Request, res: Response) {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'IDs array is required' });
+  }
+
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    await purchaseOrdersService.bulkDeletePOs(organizationId, userId, ids);
+    res.status(204).end();
+  } catch (error: unknown) {
+    logger.error({ error, organizationId, userId, ids }, 'Failed to bulk delete purchase orders');
+    res.status(400).json({
+      error: error instanceof Error ? error.message : 'Failed to bulk delete purchase orders',
+    });
+  }
+}
+
+export async function updatePOStatus(req: Request, res: Response) {
+  const { id } = req.params;
+  const parseResult = updatePurchaseOrderStatusSchema.safeParse(req.body);
+
   if (!parseResult.success) {
     return res.status(400).json({ error: parseResult.error.flatten() });
   }
@@ -96,18 +134,19 @@ export async function receivePO(req: Request, res: Response) {
   const userId = req.authSession.user.id;
 
   try {
-    const result = await purchaseOrdersService.receivePO(
+    const updatedPO = await purchaseOrdersService.updatePOStatus(
       organizationId,
       userId,
       id as string,
-      parseResult.data,
+      parseResult.data.status,
+      parseResult.data.action as ActivityAction,
+      parseResult.data.reason,
     );
-    res.json(result);
+    res.json(updatedPO);
   } catch (error: unknown) {
-    logger.error({ error, organizationId, userId, id }, 'Failed to receive purchase order');
-    // Return 400 for business logic violations (e.g. PO already received)
-    res
-      .status(400)
-      .json({ error: error instanceof Error ? error.message : 'Failed to receive purchase order' });
+    logger.error({ error, organizationId, userId, id }, 'Failed to update purchase order status');
+    res.status(400).json({
+      error: error instanceof Error ? error.message : 'Failed to update purchase order status',
+    });
   }
 }

@@ -5,6 +5,7 @@ import type {
   UpdateCustomerInput,
 } from '@shared/contracts/customers.contract';
 import { addressSchema, contactSchema } from '@shared/contracts/common.contract';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export interface RawAddressResponse {
   id: string;
@@ -76,34 +77,37 @@ function mapCustomer(raw: RawCustomerResponse): CustomerResponse {
 
 export const customersApi = {
   fetchCustomers: async () => {
-    const raw = await apiFetch<RawCustomerResponse[]>('/customers');
+    const raw = await apiFetch<RawCustomerResponse[]>(API_ENDPOINTS.customers.base);
     return raw.map(mapCustomer);
   },
   fetchCustomer: async (id: string) => {
-    const raw = await apiFetch<RawCustomerResponse>(`/customers/${id}`);
+    const raw = await apiFetch<RawCustomerResponse>(API_ENDPOINTS.customers.detail(id));
     return mapCustomer(raw);
   },
   createCustomer: async (data: CreateCustomerInput) => {
-    const raw = await apiFetch<RawCustomerResponse>('/customers', {
+    const raw = await apiFetch<RawCustomerResponse>(API_ENDPOINTS.customers.base, {
       method: 'POST',
       body: JSON.stringify(data),
     });
     return mapCustomer(raw);
   },
   updateCustomer: async (id: string, data: UpdateCustomerInput) => {
-    const raw = await apiFetch<RawCustomerResponse>(`/customers/${id}`, {
+    const raw = await apiFetch<RawCustomerResponse>(API_ENDPOINTS.customers.detail(id), {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
     return mapCustomer(raw);
   },
   deleteCustomer: (id: string) =>
-    apiFetch<{ message: string }>(`/customers/${id}`, {
+    apiFetch<{ message: string }>(API_ENDPOINTS.customers.detail(id), {
       method: 'DELETE',
     }),
   bulkDeleteCustomers: (ids: string[]) =>
-    apiFetch<{ message: string; deletedCount: number; deletedIds: string[] }>('/customers', {
-      method: 'DELETE',
-      body: JSON.stringify({ ids }),
-    }),
+    apiFetch<{ message: string; deletedCount: number; deletedIds: string[] }>(
+      API_ENDPOINTS.customers.bulkDelete,
+      {
+        method: 'DELETE',
+        body: JSON.stringify({ ids }),
+      },
+    ),
 };

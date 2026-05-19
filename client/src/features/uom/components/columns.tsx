@@ -1,7 +1,7 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { formatDate } from '@shared/utils/date';
+
 import { Badge } from '@/components/ui/badge';
 import type { UomResponse } from '../api/uoms.api';
 import { UomRowActions } from './UomRowActions';
@@ -43,34 +43,17 @@ export const getColumns = ({ onEdit }: ColumnProps): ColumnDef<UomResponse>[] =>
     meta: { variant: 'subtitle', label: 'Name' },
     enableGlobalFilter: true,
   },
-  {
-    accessorKey: 'description',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Description" />,
-    cell: ({ row }) => row.getValue('description') || '-',
-    meta: { variant: 'field', label: 'Description' },
-    enableGlobalFilter: true,
-  },
+
   {
     accessorKey: 'isDefault',
     header: ({ column }) => <DataTableColumnHeader column={column} title="Default" />,
     cell: ({ row }) => {
       const isDefault = row.getValue('isDefault') as boolean;
-      return isDefault ? (
-        <Badge variant="outline" className="border-primary text-primary">
-          Default
-        </Badge>
-      ) : (
-        '-'
-      );
+      return isDefault ? <Badge>Default</Badge> : '-';
     },
     meta: { variant: 'field', label: 'Default' },
   },
-  {
-    accessorKey: 'createdAt',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Created At" />,
-    cell: ({ row }) => formatDate(row.getValue('createdAt')),
-    meta: { variant: 'field', label: 'Created' },
-  },
+
   {
     id: 'actions',
     cell: ({ row }) => <UomRowActions row={row} onEdit={onEdit} />,

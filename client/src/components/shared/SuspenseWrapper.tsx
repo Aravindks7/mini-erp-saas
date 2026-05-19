@@ -25,7 +25,7 @@ export const SuspenseWrapper = ({
 }: SuspenseWrapperProps) => {
   const defaultFallback =
     variant === 'skeleton' ? (
-      <SkeletonLoader variant="card" />
+      <SkeletonLoader variant="table" />
     ) : variant === 'overlay' ? (
       <LoadingOverlay isVisible={true} message={message} />
     ) : null;

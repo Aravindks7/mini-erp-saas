@@ -12,6 +12,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { Button } from '@/components/ui/button';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 import { SalesOrderForm } from '../components/SalesOrderForm';
 import {
@@ -78,11 +79,11 @@ export default function SalesOrderFormPage() {
       if (isEditing && id) {
         await updateSO({ id, data });
         toast.success('Sales order updated successfully', { id: toastId });
-        navigate(getPath(`/sales-orders/${id}`));
+        navigate(getPath(APP_PATHS.sales.orders.detail(id)));
       } else {
         const result = await createSO(data);
         toast.success('Sales order created successfully', { id: toastId });
-        navigate(getPath(`/sales-orders/${result.id}`));
+        navigate(getPath(APP_PATHS.sales.orders.detail(result.id)));
       }
     } catch (error) {
       const message =
@@ -96,7 +97,9 @@ export default function SalesOrderFormPage() {
     if (form.formState.isDirty) {
       setShowCancelConfirm(true);
     } else {
-      navigate(getPath(isEditing ? `/sales-orders/${id}` : '/sales-orders'));
+      navigate(
+        getPath(isEditing ? APP_PATHS.sales.orders.detail(id) : APP_PATHS.sales.orders.list()),
+      );
     }
   };
 
@@ -114,7 +117,10 @@ export default function SalesOrderFormPage() {
         <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
           <LayoutList className="h-12 w-12 text-destructive" />
           <h2 className="text-xl font-bold">Failed to load sales order</h2>
-          <Button variant="outline" onClick={() => navigate(getPath('/sales-orders'))}>
+          <Button
+            variant="outline"
+            onClick={() => navigate(getPath(APP_PATHS.sales.orders.list()))}
+          >
             Back to List
           </Button>
         </div>
@@ -161,7 +167,11 @@ export default function SalesOrderFormPage() {
       <ConfirmDialog
         isOpen={showCancelConfirm}
         onClose={() => setShowCancelConfirm(false)}
-        onConfirm={() => navigate(getPath(isEditing ? `/sales-orders/${id}` : '/sales-orders'))}
+        onConfirm={() =>
+          navigate(
+            getPath(isEditing ? APP_PATHS.sales.orders.detail(id) : APP_PATHS.sales.orders.list()),
+          )
+        }
         title="Discard Changes?"
         description="You have unsaved changes. Are you sure you want to discard them and leave this page?"
         confirmLabel="Discard Changes"

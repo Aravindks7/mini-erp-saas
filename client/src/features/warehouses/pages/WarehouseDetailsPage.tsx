@@ -1,34 +1,25 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { Warehouse, MapPin, FileEdit, AlertCircle, Box } from 'lucide-react';
-import * as React from 'react';
 
-import { useWarehouse, warehouseKeys } from '../hooks/warehouses.hooks';
+import { useWarehouse } from '../hooks/warehouses.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
+import { DetailView } from '@/components/shared/DetailView';
 import { AddressCard, type Address } from '@/components/shared/domain/AddressCard';
 import { BinCard } from '../components/BinCard';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useTenantPath } from '@/hooks/useTenantPath';
-import { warehousesApi } from '../api/warehouses.api';
+import { APP_PATHS } from '@/lib/paths';
 
 export default function WarehouseDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const queryClient = useQueryClient();
   const { data: warehouse, isLoading, isError } = useWarehouse(id);
-
-  React.useEffect(() => {
-    queryClient.prefetchQuery({
-      queryKey: warehouseKeys.lists(),
-      queryFn: warehousesApi.fetchWarehouses,
-    });
-  }, [queryClient]);
 
   if (isLoading) {
     return (
@@ -50,7 +41,7 @@ export default function WarehouseDetailsPage() {
             The warehouse record you are looking for doesn't exist or you don't have access.
           </p>
           <button
-            onClick={() => navigate(getPath('/warehouses'))}
+            onClick={() => navigate(getPath(APP_PATHS.setup.warehouses.list()))}
             className="text-primary font-semibold hover:underline"
           >
             Return to Warehouse List
@@ -65,11 +56,11 @@ export default function WarehouseDetailsPage() {
       <PageHeader
         title={warehouse.name}
         description={`Manage details, addresses, and bins for ${warehouse.name}.`}
-        backButton={{ href: getPath('/warehouses'), label: 'Back to List' }}
+        backButton={{ href: APP_PATHS.setup.warehouses.list(), label: 'Back to List' }}
         actions={[
           {
             label: 'Edit Warehouse',
-            onClick: () => navigate(getPath(`/warehouses/${warehouse.id}/edit`)),
+            onClick: () => navigate(getPath(APP_PATHS.setup.warehouses.edit(warehouse.id))),
             icon: <FileEdit className="h-4 w-4" />,
             variant: 'default',
           },
@@ -98,24 +89,24 @@ export default function WarehouseDetailsPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      Warehouse Name
-                    </label>
-                    <p className="text-base font-semibold">{warehouse.name}</p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 block">
-                      Warehouse Code
-                    </label>
-                    <p className="text-base font-mono bg-muted/50 w-fit px-2 py-0.5 rounded border">
-                      {warehouse.code}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <DetailView
+                columns={2}
+                sections={[
+                  {
+                    items: [
+                      {
+                        label: 'Warehouse Name',
+                        value: warehouse.name,
+                      },
+                      {
+                        label: 'Warehouse Code',
+                        value: warehouse.code,
+                        valueClassName: 'font-mono bg-muted/50 w-fit px-2 py-0.5 rounded border',
+                      },
+                    ],
+                  },
+                ]}
+              />
             </CardContent>
           </Card>
 

@@ -3,15 +3,32 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { AmountInput } from '../AmountInput';
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { TenantProvider } from '../../../../contexts/TenantContext';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+});
+
 const AmountInputWrapper = ({
   initialValue,
   currency,
 }: {
-  initialValue?: number;
+  initialValue?: number | string;
   currency: string;
 }) => {
-  const [value, setValue] = React.useState<number | undefined>(initialValue);
-  return <AmountInput value={value} onChange={setValue} currency={currency} />;
+  const [value, setValue] = React.useState<number | string | undefined>(initialValue);
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TenantProvider>
+        <AmountInput value={value} onChange={setValue} currency={currency} />
+      </TenantProvider>
+    </QueryClientProvider>
+  );
 };
 
 describe('AmountInput Component', () => {

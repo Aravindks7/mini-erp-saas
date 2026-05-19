@@ -7,6 +7,7 @@ import {
 } from '#shared/contracts/products.contract.js';
 import { logger } from '../../utils/logger.js';
 import { AppError } from '../../utils/AppError.js';
+import { generateCsv } from '../../utils/csv.js';
 import type { DbError } from '../../types/db.js';
 
 export async function listProducts(req: Request, res: Response) {
@@ -139,5 +140,64 @@ export async function bulkDeleteProducts(req: Request, res: Response) {
       return res.status(error.statusCode).json({ error: error.message });
     }
     throw error;
+  }
+}
+
+export async function exportProducts(req: Request, res: Response) {
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+
+  try {
+    const csvData = await productsService.exportProducts(organizationId);
+    const csv = generateCsv(csvData);
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=products-export-${Date.now()}.csv`);
+    res.send(csv);
+  } catch (error) {
+    logger.error({ error, organizationId, userId }, 'Failed to export products');
+    throw error;
+  }
+}
+
+export async function getImportTemplate(req: Request, res: Response) {
+  try {
+    const templateData = [
+      {
+        sku: 'PROD-001',
+        name: 'Sample Product',
+        description: 'Sample description',
+        basePrice: '100.00',
+        baseUom: 'pcs',
+        tax: 'Standard Tax',
+        status: 'active',
+      },
+    ];
+    const csv = generateCsv(templateData);
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=products-import-template.csv');
+    res.send(csv);
+  } catch (error) {
+    logger.error({ error }, 'Failed to get import template');
+    throw error;
+  }
+}
+
+export async function importProducts(req: Request, res: Response) {
+  const organizationId = req.organizationId;
+  const userId = req.authSession.user.id;
+  const file = req.file;
+
+  if (!file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
+  try {
+    const summary = await productsService.importProducts(organizationId, userId, file.buffer);
+    res.json(summary);
+  } catch (error: unknown) {
+    logger.error({ error, organizationId, userId }, 'Failed to import products');
+    res.status(400).json({ error: (error as Error).message || 'Failed to parse CSV' });
   }
 }

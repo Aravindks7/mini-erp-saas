@@ -29,6 +29,12 @@ interface ImportResult {
   successfulRecords?: Array<unknown>;
 }
 
+interface ImportColumn {
+  header: string;
+  accessorKey: string;
+  format?: (value: unknown) => string;
+}
+
 interface ImportModalProps {
   endpoint: string;
   templateEndpoint?: string;
@@ -36,6 +42,7 @@ interface ImportModalProps {
   description?: string;
   onSuccess?: () => void;
   trigger?: React.ReactNode;
+  columns?: ImportColumn[];
 }
 
 export function ImportModal({
@@ -45,6 +52,7 @@ export function ImportModal({
   description = 'Upload a CSV file to import records.',
   onSuccess,
   trigger,
+  columns,
 }: ImportModalProps) {
   const [open, setOpen] = React.useState(false);
   const [file, setFile] = React.useState<File | null>(null);
@@ -273,38 +281,43 @@ export function ImportModal({
                     <table className="w-full text-left text-[11px]">
                       <thead className="bg-muted/50">
                         <tr>
-                          {['Company Name', 'Tax Number', 'Status', 'Created At', 'Updated At'].map(
-                            (header) => (
-                              <th
-                                key={header}
-                                className="px-2 py-1 font-medium text-muted-foreground whitespace-nowrap"
-                              >
-                                {header}
-                              </th>
-                            ),
-                          )}
+                          {(
+                            columns || [
+                              { header: 'Company Name', accessorKey: 'companyName' },
+                              { header: 'Tax Number', accessorKey: 'taxNumber' },
+                              { header: 'Status', accessorKey: 'status' },
+                              { header: 'Created At', accessorKey: 'createdAt' },
+                              { header: 'Updated At', accessorKey: 'updatedAt' },
+                            ]
+                          ).map((col) => (
+                            <th
+                              key={col.header}
+                              className="px-2 py-1 font-medium text-muted-foreground whitespace-nowrap"
+                            >
+                              {col.header}
+                            </th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody>
                         {(result.successfulRecords as unknown[]).map((item, i) => {
                           const record = item as Record<string, unknown>;
+                          const displayCols = columns || [
+                            { header: 'Company Name', accessorKey: 'companyName' },
+                            { header: 'Tax Number', accessorKey: 'taxNumber' },
+                            { header: 'Status', accessorKey: 'status' },
+                            { header: 'Created At', accessorKey: 'createdAt' },
+                            { header: 'Updated At', accessorKey: 'updatedAt' },
+                          ];
                           return (
                             <tr key={(record.id as string) || i} className="border-b last:border-0">
-                              <td className="px-2 py-1 truncate max-w-[150px]">
-                                {formatValue('companyName', record.companyName)}
-                              </td>
-                              <td className="px-2 py-1 truncate max-w-[150px]">
-                                {formatValue('taxNumber', record.taxNumber)}
-                              </td>
-                              <td className="px-2 py-1 truncate max-w-[150px] capitalize">
-                                {formatValue('status', record.status)}
-                              </td>
-                              <td className="px-2 py-1 truncate max-w-[150px]">
-                                {formatValue('createdAt', record.createdAt)}
-                              </td>
-                              <td className="px-2 py-1 truncate max-w-[150px]">
-                                {formatValue('updatedAt', record.updatedAt)}
-                              </td>
+                              {displayCols.map((col) => (
+                                <td key={col.header} className="px-2 py-1 truncate max-w-[150px]">
+                                  {col.format
+                                    ? col.format(record[col.accessorKey])
+                                    : formatValue(col.accessorKey, record[col.accessorKey])}
+                                </td>
+                              ))}
                             </tr>
                           );
                         })}

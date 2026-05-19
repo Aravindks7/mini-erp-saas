@@ -1,5 +1,5 @@
-import { pgTable, text, index, pgEnum } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { pgTable, text, index, pgEnum, uniqueIndex } from 'drizzle-orm/pg-core';
+import { relations, sql } from 'drizzle-orm';
 import { baseColumns } from './base.schema.js';
 import { timestamps, userTracking, versioning, lifecycle } from './audit.schema.js';
 import { organizations } from './organizations.schema.js';
@@ -29,6 +29,9 @@ export const customers = pgTable(
   (table) => [
     index('customers_org_idx').on(table.organizationId),
     index('customers_status_idx').on(table.status),
+    uniqueIndex('customers_org_name_unique')
+      .on(table.organizationId, table.companyName)
+      .where(sql`${table.deletedAt} IS NULL`),
   ],
 );
 

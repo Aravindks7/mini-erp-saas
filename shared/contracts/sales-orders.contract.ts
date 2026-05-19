@@ -1,5 +1,14 @@
 import { z } from 'zod';
 
+export const salesOrderStatusEnumSchema = z.enum([
+  'draft',
+  'approved',
+  'partially_shipped',
+  'shipped',
+  'closed',
+  'cancelled',
+]);
+
 export const salesOrderLineInputSchema = z.object({
   productId: z.string().uuid(),
   quantity: z.string().min(1, 'Quantity is required'),
@@ -14,6 +23,12 @@ export const createSalesOrderSchema = z.object({
 });
 
 export type CreateSalesOrderInput = z.infer<typeof createSalesOrderSchema>;
+
+export const updateSalesOrderSchema = createSalesOrderSchema.extend({
+  reason: z.string().optional(),
+});
+
+export type UpdateSalesOrderInput = z.infer<typeof updateSalesOrderSchema>;
 
 export const fulfillSalesOrderLineSchema = z.object({
   salesOrderLineId: z.string().uuid(),

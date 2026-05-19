@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { APP_PATHS } from '@/lib/paths';
 
 export const AuthGuard = ({ children }: { children: ReactNode }) => {
   const { data: session, isPending, isError, error } = useAuth();
@@ -32,7 +33,7 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
   // and we still don't have a user, it's an unauthorized state.
   if (isError || !session?.user) {
     if (isError) console.error('[AuthGuard] Session check failed:', error);
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to={APP_PATHS.auth.login()} state={{ from: location }} replace />;
   }
 
   return <>{children}</>;

@@ -1,4 +1,4 @@
-import { History } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -8,6 +8,7 @@ import {
 
 import type { InventoryLevelResponse } from '../../api/inventory.api';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import { APP_PATHS } from '@/lib/paths';
 
 interface InventoryLevelRowActionsProps {
   row: { original: InventoryLevelResponse };
@@ -20,16 +21,12 @@ export function InventoryLevelRowActions({ row }: InventoryLevelRowActionsProps)
 
   const primaryActions: RowAction[] = [
     {
-      label: 'View History',
-      icon: <History className="h-4 w-4" />,
+      label: 'View Details',
+      icon: <Eye className="h-4 w-4" />,
       onClick: () => {
-        const params = new URLSearchParams();
-        params.set('productId', level.productId);
-        params.set('warehouseId', level.warehouseId);
-        if (level.binId) params.set('binId', level.binId);
-        navigate(getPath(`/ledger?${params.toString()}`));
+        navigate(getPath(APP_PATHS.inventory.levels.detail(level.id)));
       },
-      tooltip: 'View Movement Ledger',
+      tooltip: 'View Level Details',
     },
   ];
 

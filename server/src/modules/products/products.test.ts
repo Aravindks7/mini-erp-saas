@@ -89,6 +89,9 @@ describe('Products Module', () => {
       userId: mockUserId,
       organization: { id: mockOrgId },
     });
+
+    (db.query.products.findFirst as any).mockResolvedValue({ id: mockProductId, sku: 'PROD-001' });
+    (db.query.products.findMany as any).mockResolvedValue([]);
   });
 
   describe('POST /products', () => {
@@ -220,7 +223,8 @@ describe('Products Module', () => {
       const mockSet = vi.fn().mockReturnValue({ where: mockWhere });
       (db.update as any).mockReturnValue({ set: mockSet });
 
-      (db.query.products.findFirst as any).mockResolvedValueOnce(updatedProduct);
+      // After update, it fetches the hydrated object
+      (db.query.products.findFirst as any).mockResolvedValue(updatedProduct);
 
       const res = await request(app)
         .patch(`/products/${mockProductId}`)
@@ -234,7 +238,8 @@ describe('Products Module', () => {
 
   describe('DELETE /products/:id', () => {
     it('should soft delete a product', async () => {
-      const mockRet = vi.fn().mockResolvedValueOnce([{ id: mockProductId }]);
+      // Mock existing check (now returning the record via update.returning)
+      const mockRet = vi.fn().mockResolvedValueOnce([{ id: mockProductId, sku: 'DEL-001' }]);
       const mockWhere = vi.fn().mockReturnValue({ returning: mockRet });
       const mockSet = vi.fn().mockReturnValue({ where: mockWhere });
       (db.update as any).mockReturnValue({ set: mockSet });

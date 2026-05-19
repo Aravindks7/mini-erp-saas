@@ -10,6 +10,7 @@ import { useCreateReceipt } from '../hooks/receipts.hooks';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import type { CreateReceiptInput } from '@shared/contracts/receipts.contract';
 import { createReceiptSchema } from '@shared/contracts/receipts.contract';
+import { APP_PATHS } from '@/lib/paths';
 
 export default function ReceiptFormPage() {
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ export default function ReceiptFormPage() {
   const onSubmit = async (data: CreateReceiptInput) => {
     try {
       await createReceipt(data);
-      navigate(getPath('/receipts'));
+      navigate(getPath(APP_PATHS.purchasing.receipts.list()));
     } catch (error) {
       console.error('Failed to submit receipt:', error);
     }
@@ -45,7 +46,10 @@ export default function ReceiptFormPage() {
       <PageHeader
         title="Receive Goods"
         description="Record a new inbound shipment to update inventory stock levels."
-        backButton={{ href: getPath('/receipts'), label: 'Back to Receipts' }}
+        backButton={{
+          href: getPath(APP_PATHS.purchasing.receipts.list()),
+          label: 'Back to Receipts',
+        }}
         actions={[
           {
             label: isPending ? 'Creating...' : 'Finalize Receipt',

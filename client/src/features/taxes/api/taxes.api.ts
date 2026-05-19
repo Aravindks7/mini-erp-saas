@@ -1,5 +1,6 @@
 import { apiFetch } from '@/lib/api';
 import type { CreateTaxInput, UpdateTaxInput } from '@shared/contracts/taxes.contract';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export interface TaxResponse {
   id: string;
@@ -11,25 +12,28 @@ export interface TaxResponse {
 }
 
 export const taxesApi = {
-  fetchTaxes: () => apiFetch<TaxResponse[]>('/taxes'),
-  fetchTax: (id: string) => apiFetch<TaxResponse>(`/taxes/${id}`),
+  fetchTaxes: () => apiFetch<TaxResponse[]>(API_ENDPOINTS.setup.taxes.base),
+  fetchTax: (id: string) => apiFetch<TaxResponse>(API_ENDPOINTS.setup.taxes.detail(id)),
   createTax: (data: CreateTaxInput) =>
-    apiFetch<TaxResponse>('/taxes', {
+    apiFetch<TaxResponse>(API_ENDPOINTS.setup.taxes.base, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   updateTax: (id: string, data: UpdateTaxInput) =>
-    apiFetch<TaxResponse>(`/taxes/${id}`, {
+    apiFetch<TaxResponse>(API_ENDPOINTS.setup.taxes.detail(id), {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
   deleteTax: (id: string) =>
-    apiFetch<{ message: string }>(`/taxes/${id}`, {
+    apiFetch<{ message: string }>(API_ENDPOINTS.setup.taxes.detail(id), {
       method: 'DELETE',
     }),
   bulkDeleteTaxes: (ids: string[]) =>
-    apiFetch<{ message: string; deletedCount: number; deletedIds: string[] }>('/taxes', {
-      method: 'DELETE',
-      body: JSON.stringify({ ids }),
-    }),
+    apiFetch<{ message: string; deletedCount: number; deletedIds: string[] }>(
+      API_ENDPOINTS.setup.taxes.base, // Using base as bulkDelete in API_ENDPOINTS for setup is also root. Wait, let me check.
+      {
+        method: 'DELETE',
+        body: JSON.stringify({ ids }),
+      },
+    ),
 };

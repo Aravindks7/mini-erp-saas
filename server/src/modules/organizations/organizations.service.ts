@@ -2,18 +2,19 @@ import { db } from '../../db/index.js';
 import {
   organizations,
   organizationMemberships,
-  user,
-  organizationInvites,
   roles,
-  rolePermissionSets,
+  documentSequences,
+  currencies,
 } from '../../db/schema/index.js';
 import { and, eq, sql, ne } from 'drizzle-orm';
-import {
-  CreateOrganizationInput,
-  UpdateOrganizationInput,
-} from '#shared/contracts/organizations.contract.js';
+import { type CreateOrganizationInput, type UpdateOrganizationInput } from '#shared/index.js';
 import { rbacService } from '../rbac/rbac.service.js';
 import { PERMISSIONS, type Permission } from '#shared/index.js';
+import { getCurrencyByCountry } from '#shared/utils/currency-map.js';
+import { ActivityLogger } from '../../lib/activity-logger.js';
+import { AppError } from '../../utils/AppError.js';
+
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export class OrganizationsService {
   /**
@@ -57,7 +58,6 @@ export class OrganizationsService {
       if (!newOrg) throw new Error('Failed to create organization');
 
       // 3. Resolve the "Admin" base role (Global)
-      // NOTE: For now we assume a seed script creates a role named "Admin" with isBaseRole=true and organizationId=null.
       const adminRole = await tx.query.roles.findFirst({
         where: and(
           eq(roles.name, 'Admin'),
@@ -70,11 +70,39 @@ export class OrganizationsService {
         throw new Error('SYSTEM_ERROR: Base Admin role not found. Please seed the database.');
       }
 
-      // 4. Link the current user as an admin using the resolved roleId
+      // 4. Link the current user as an admin
       await tx.insert(organizationMemberships).values({
-        userId: userId,
+        userId,
         organizationId: newOrg.id,
         roleId: adminRole.id,
+      });
+
+      // 5. Seed default document sequences
+      const sequenceTypes = ['SO', 'PO', 'INV', 'REC', 'SHP', 'BILL', 'PAY', 'ADJ'];
+      const sequenceValues = sequenceTypes.map((type) => ({
+        organizationId: newOrg.id,
+        type,
+        prefix: `${type}-`,
+        nextValue: 1,
+        padding: 4,
+        createdBy: userId,
+        updatedBy: userId,
+      }));
+
+      await tx.insert(documentSequences).values(sequenceValues);
+
+      // 6. Sync default currency
+      await this.syncDefaultCurrency(tx, newOrg.id, userId, newOrg.defaultCountry);
+
+      await ActivityLogger.record(tx as Transaction, {
+        organizationId: newOrg.id,
+        userId,
+        entityType: 'organization',
+        entityId: newOrg.id,
+        entityDisplayId: newOrg.slug,
+        entityLabel: 'Organization',
+        action: 'CREATED',
+        reason: `Organization ${newOrg.name} created.`,
       });
 
       return newOrg;
@@ -82,7 +110,7 @@ export class OrganizationsService {
   }
 
   /**
-   * Simple slug generator: lowercase and replace non-alphanumeric with hyphens.
+   * Simple slug generator.
    */
   private generateSlug(name: string): string {
     return name
@@ -113,251 +141,17 @@ export class OrganizationsService {
   }
 
   /**
-   * Add a member to an organization. Requires requester to have membership management permission.
-   */
-  async addMember(params: {
-    adminId: string;
-    organizationId: string;
-    userEmail: string;
-    roleId: string;
-  }) {
-    const { adminId, organizationId, userEmail, roleId } = params;
-
-    // 1. Verify the requester has management permission
-    await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
-
-    // 2. Find the user to add
-    const targetUser = await db.query.user.findFirst({
-      where: eq(user.email, userEmail),
-    });
-
-    if (!targetUser) {
-      throw new Error('USER_NOT_FOUND');
-    }
-
-    // 3. Add them to the org (UPSERT for robustness)
-    await db
-      .insert(organizationMemberships)
-      .values({
-        userId: targetUser.id,
-        organizationId: organizationId,
-        roleId: roleId,
-      })
-      .onConflictDoUpdate({
-        target: [organizationMemberships.userId, organizationMemberships.organizationId],
-        set: {
-          roleId: roleId,
-          updatedAt: new Date(),
-        },
-      });
-
-    return { success: true };
-  }
-
-  /**
-   * Invite a member by email.
-   */
-  async inviteMember(params: {
-    adminId: string;
-    organizationId: string;
-    userEmail: string;
-    roleId: string;
-  }) {
-    const { adminId, organizationId, userEmail, roleId } = params;
-
-    // 1. Verify requester has permission
-    await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
-
-    // 2. Check if user already exists
-    const existingUser = await db.query.user.findFirst({
-      where: eq(user.email, userEmail),
-    });
-
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
-
-    if (existingUser) {
-      await this.addMember(params);
-
-      await db
-        .insert(organizationInvites)
-        .values({
-          email: userEmail,
-          organizationId,
-          invitedById: adminId,
-          roleId: roleId,
-          status: 'accepted',
-          expiresAt,
-        })
-        .onConflictDoUpdate({
-          target: [organizationInvites.email, organizationInvites.organizationId],
-          set: {
-            status: 'accepted',
-            roleId,
-            expiresAt,
-            updatedAt: new Date(),
-          },
-        });
-
-      return { success: true };
-    }
-
-    // 3. Create/Update invitation (UPSERT)
-    await db
-      .insert(organizationInvites)
-      .values({
-        email: userEmail,
-        organizationId,
-        invitedById: adminId,
-        roleId,
-        status: 'pending',
-        expiresAt,
-      })
-      .onConflictDoUpdate({
-        target: [organizationInvites.email, organizationInvites.organizationId],
-        set: {
-          status: 'pending',
-          roleId,
-          expiresAt,
-          invitedById: adminId,
-          updatedAt: new Date(),
-        },
-      });
-
-    return { success: true, invited: true };
-  }
-
-  /**
-   * List all members of an organization.
-   */
-  async listMembers(organizationId: string) {
-    const members = await db.query.organizationMemberships.findMany({
-      where: eq(organizationMemberships.organizationId, organizationId),
-      with: {
-        user: {
-          columns: {
-            name: true,
-            email: true,
-            image: true,
-          },
-        },
-        role: true,
-      },
-    });
-
-    return members.map((m) => ({
-      id: m.id,
-      userId: m.userId,
-      organizationId: m.organizationId,
-      roleId: m.roleId,
-      roleName: m.role.name,
-      joinedAt: m.createdAt.toISOString(),
-      user: m.user,
-    }));
-  }
-
-  /**
-   * Update a member's role.
-   */
-  async updateMemberRole(params: {
-    adminId: string;
-    organizationId: string;
-    targetUserId: string;
-    roleId: string;
-  }) {
-    const { adminId, organizationId, targetUserId, roleId } = params;
-
-    return await db.transaction(async (tx) => {
-      // 1. Verify requester has permission
-      await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
-
-      // 2. Get target membership
-      const targetMembership = await tx.query.organizationMemberships.findFirst({
-        where: and(
-          eq(organizationMemberships.userId, targetUserId),
-          eq(organizationMemberships.organizationId, organizationId),
-        ),
-      });
-
-      if (!targetMembership) throw new Error('NOT_FOUND');
-
-      // 3. Lockout protection using RBACService logic
-      const canDowngrade = await rbacService.canDowngrade(targetUserId, organizationId);
-      if (!canDowngrade) {
-        // We need to check if the NEW role still has management permission
-        // If it doesn't, and this was the last admin, we block it.
-        const newRolePermissions = await tx.query.rolePermissionSets.findMany({
-          where: eq(rolePermissionSets.roleId, roleId),
-          with: {
-            permissionSet: {
-              with: {
-                items: true,
-              },
-            },
-          },
-        });
-
-        const hasManagement = newRolePermissions.some((rp) =>
-          rp.permissionSet.items.some((i) => i.permissionId === PERMISSIONS.ORGANIZATION.MEMBERS),
-        );
-
-        if (!hasManagement) {
-          throw new Error('LAST_ADMIN_LOCKOUT');
-        }
-      }
-
-      // 4. Update role
-      await tx
-        .update(organizationMemberships)
-        .set({ roleId, updatedAt: new Date() })
-        .where(eq(organizationMemberships.id, targetMembership.id));
-
-      return { success: true };
-    });
-  }
-
-  /**
-   * Remove a member from the organization.
-   */
-  async removeMember(params: { adminId: string; organizationId: string; targetUserId: string }) {
-    const { adminId, organizationId, targetUserId } = params;
-
-    return await db.transaction(async (tx) => {
-      // 1. Verify requester has permission
-      await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
-
-      // 2. Get target membership
-      const targetMembership = await tx.query.organizationMemberships.findFirst({
-        where: and(
-          eq(organizationMemberships.userId, targetUserId),
-          eq(organizationMemberships.organizationId, organizationId),
-        ),
-      });
-
-      if (!targetMembership) throw new Error('NOT_FOUND');
-
-      // 3. Lockout protection
-      const canRemove = await rbacService.canDowngrade(targetUserId, organizationId);
-      if (!canRemove) {
-        throw new Error('LAST_ADMIN_LOCKOUT');
-      }
-
-      // 4. Delete membership
-      await tx
-        .delete(organizationMemberships)
-        .where(eq(organizationMemberships.id, targetMembership.id));
-
-      return { success: true };
-    });
-  }
-
-  /**
    * Update organization details.
    */
   async updateOrganization(adminId: string, organizationId: string, data: UpdateOrganizationInput) {
     return await db.transaction(async (tx) => {
       // 1. Verify requester has permission
       await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.SETTINGS);
+
+      const existingOrg = await tx.query.organizations.findFirst({
+        where: eq(organizations.id, organizationId),
+      });
+      if (!existingOrg) throw new AppError('Organization not found', 404);
 
       const updateData: UpdateOrganizationInput & { updatedAt: Date } = {
         ...data,
@@ -393,95 +187,31 @@ export class OrganizationsService {
         .where(eq(organizations.id, organizationId))
         .returning();
 
-      if (!updated) throw new Error('NOT_FOUND');
+      if (!updated) throw new AppError('Failed to update organization', 500);
+
+      // 3. Sync default currency if country changed
+      if (data.defaultCountry) {
+        await this.syncDefaultCurrency(tx, organizationId, adminId, data.defaultCountry);
+      }
+
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          userId: adminId,
+          entityType: 'organization',
+          entityId: organizationId,
+          entityDisplayId: updated.slug,
+          entityLabel: 'Organization',
+          action: 'UPDATED',
+          reason: 'Organization settings modified.',
+        },
+        existingOrg,
+        data,
+      );
 
       return updated;
     });
-  }
-
-  /**
-   * Resend an invitation.
-   */
-  async resendInvite(params: { adminId: string; organizationId: string; inviteId: string }) {
-    const { adminId, organizationId, inviteId } = params;
-
-    return await db.transaction(async (tx) => {
-      await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
-
-      const invite = await tx.query.organizationInvites.findFirst({
-        where: and(
-          eq(organizationInvites.id, inviteId),
-          eq(organizationInvites.organizationId, organizationId),
-        ),
-      });
-
-      if (!invite) throw new Error('NOT_FOUND');
-
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-
-      await tx
-        .update(organizationInvites)
-        .set({
-          expiresAt,
-          status: 'pending',
-          updatedAt: new Date(),
-        })
-        .where(eq(organizationInvites.id, inviteId));
-
-      return { success: true };
-    });
-  }
-
-  /**
-   * Cancel a pending invitation.
-   */
-  async cancelInvite(params: { adminId: string; organizationId: string; inviteId: string }) {
-    const { adminId, organizationId, inviteId } = params;
-
-    return await db.transaction(async (tx) => {
-      await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
-
-      const [updated] = await tx
-        .update(organizationInvites)
-        .set({ status: 'revoked', updatedAt: new Date() })
-        .where(
-          and(
-            eq(organizationInvites.id, inviteId),
-            eq(organizationInvites.organizationId, organizationId),
-          ),
-        )
-        .returning();
-
-      if (!updated) throw new Error('NOT_FOUND');
-
-      return { success: true };
-    });
-  }
-
-  /**
-   * List all invitations.
-   */
-  async listInvites(adminId: string, organizationId: string) {
-    await this.ensurePermission(adminId, organizationId, PERMISSIONS.ORGANIZATION.MEMBERS);
-
-    const invites = await db.query.organizationInvites.findMany({
-      where: eq(organizationInvites.organizationId, organizationId),
-      with: {
-        role: true,
-      },
-      orderBy: (invites, { desc }) => [desc(invites.createdAt)],
-    });
-
-    return invites.map((i) => ({
-      id: i.id,
-      email: i.email,
-      roleId: i.roleId,
-      roleName: i.role.name,
-      status: i.status,
-      expiresAt: i.expiresAt.toISOString(),
-      createdAt: i.createdAt.toISOString(),
-    }));
   }
 
   /**
@@ -496,7 +226,7 @@ export class OrganizationsService {
         .where(eq(organizations.id, organizationId))
         .returning();
 
-      if (!deleted) throw new Error('NOT_FOUND');
+      if (!deleted) throw new AppError('Organization not found', 404);
 
       return { success: true };
     });
@@ -505,46 +235,57 @@ export class OrganizationsService {
   private async ensurePermission(userId: string, organizationId: string, permission: string) {
     const permissions = await rbacService.getPermissions(userId, organizationId);
     if (!permissions.includes(permission as Permission)) {
-      throw new Error('FORBIDDEN');
+      throw new AppError('Forbidden', 403);
     }
   }
 
   /**
-   * Process any pending invites for a newly registered user.
+   * Synchronize the default currency based on the organization's country.
    */
-  async processPendingInvites(userEmail: string, userId: string) {
-    return await db.transaction(async (tx) => {
-      const pendingInvites = await tx.query.organizationInvites.findMany({
-        where: and(
-          eq(organizationInvites.email, userEmail),
-          eq(organizationInvites.status, 'pending'),
-        ),
-      });
+  private async syncDefaultCurrency(
+    tx: Transaction,
+    organizationId: string,
+    userId: string,
+    countryCode: string,
+  ) {
+    const currency = getCurrencyByCountry(countryCode);
 
-      for (const invite of pendingInvites) {
-        await tx
-          .insert(organizationMemberships)
-          .values({
-            userId: userId,
-            organizationId: invite.organizationId,
-            roleId: invite.roleId,
-          })
-          .onConflictDoUpdate({
-            target: [organizationMemberships.userId, organizationMemberships.organizationId],
-            set: {
-              roleId: invite.roleId,
-              updatedAt: new Date(),
-            },
-          });
+    // 1. Unset any existing defaults
+    await tx
+      .update(currencies)
+      .set({ isDefault: false, updatedAt: new Date(), updatedBy: userId })
+      .where(eq(currencies.organizationId, organizationId));
 
-        await tx
-          .update(organizationInvites)
-          .set({ status: 'accepted', updatedAt: new Date() })
-          .where(eq(organizationInvites.id, invite.id));
-      }
-
-      return { processedCount: pendingInvites.length };
+    // 2. Check if the currency record already exists
+    const existing = await tx.query.currencies.findFirst({
+      where: and(
+        eq(currencies.organizationId, organizationId),
+        sql`lower(${currencies.code}) = ${currency.code.toLowerCase()}`,
+      ),
     });
+
+    if (existing) {
+      await tx
+        .update(currencies)
+        .set({
+          isDefault: true,
+          isActive: true,
+          updatedAt: new Date(),
+          updatedBy: userId,
+        })
+        .where(eq(currencies.id, existing.id));
+    } else {
+      await tx.insert(currencies).values({
+        organizationId,
+        code: currency.code,
+        symbol: currency.symbol,
+        name: currency.name,
+        isDefault: true,
+        isActive: true,
+        createdBy: userId,
+        updatedBy: userId,
+      });
+    }
   }
 }
 

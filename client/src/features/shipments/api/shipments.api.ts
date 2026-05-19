@@ -1,5 +1,9 @@
 import { apiFetch } from '@/lib/api';
-import type { CreateShipmentInput } from '@shared/contracts/shipments.contract';
+import type {
+  CreateShipmentInput,
+  UpdateShipmentInput,
+} from '@shared/contracts/shipments.contract';
+import { API_ENDPOINTS } from '@/lib/api-endpoints';
 
 export interface ShipmentLineResponse {
   id: string;
@@ -41,11 +45,26 @@ export interface ShipmentResponse {
 }
 
 export const shipmentsApi = {
-  fetchShipments: () => apiFetch<ShipmentResponse[]>('/shipments'),
-  fetchShipment: (id: string) => apiFetch<ShipmentResponse>(`/shipments/${id}`),
+  fetchShipments: () => apiFetch<ShipmentResponse[]>(API_ENDPOINTS.sales.shipments.base),
+  fetchShipment: (id: string) =>
+    apiFetch<ShipmentResponse>(API_ENDPOINTS.sales.shipments.detail(id)),
   createShipment: (data: CreateShipmentInput) =>
-    apiFetch<ShipmentResponse>('/shipments', {
+    apiFetch<ShipmentResponse>(API_ENDPOINTS.sales.shipments.base, {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+  updateShipment: (id: string, data: UpdateShipmentInput) =>
+    apiFetch<ShipmentResponse>(API_ENDPOINTS.sales.shipments.detail(id), {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteShipment: (id: string) =>
+    apiFetch<void>(API_ENDPOINTS.sales.shipments.detail(id), {
+      method: 'DELETE',
+    }),
+  bulkDeleteShipments: (ids: string[]) =>
+    apiFetch<void>(API_ENDPOINTS.sales.shipments.bulkDelete, {
+      method: 'DELETE',
+      body: JSON.stringify({ ids }),
     }),
 };

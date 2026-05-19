@@ -13,8 +13,12 @@ import { Separator } from '@/components/ui/separator';
 
 import type { CreateReceiptInput } from '@shared/contracts/receipts.contract';
 import { createReceiptSchema } from '@shared/contracts/receipts.contract';
-import { useProducts } from '@/features/products/hooks/products.hooks';
-import { useWarehouses } from '@/features/warehouses/hooks/warehouses.hooks';
+import { useProductsQuery } from '@/features/products/hooks/products.hooks';
+import { useWarehousesQuery } from '@/features/warehouses/hooks/warehouses.hooks';
+import {
+  usePurchaseOrdersQuery,
+  usePurchaseOrder,
+} from '@/features/purchase-orders/hooks/purchase-orders.hooks';
 
 interface ReceiptFormProps {
   form: UseFormReturn<CreateReceiptInput, unknown>;
@@ -23,13 +27,32 @@ interface ReceiptFormProps {
 }
 
 export function ReceiptForm({ form, onSubmit, formId }: ReceiptFormProps) {
-  const { data: products = [] } = useProducts();
-  const { data: warehouses = [] } = useWarehouses();
+  const { data: products = [] } = useProductsQuery();
+  const { data: warehouses = [] } = useWarehousesQuery();
+  const { data: purchaseOrders = [] } = usePurchaseOrdersQuery();
 
-  const { fields, append, remove } = useFieldArray({
+  const selectedPoId = form.watch('purchaseOrderId');
+  const { data: selectedPo } = usePurchaseOrder(selectedPoId ?? undefined);
+
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: 'lines',
   });
+
+  // Auto-populate lines when PO is selected
+  React.useEffect(() => {
+    if (selectedPo && selectedPo.lines.length > 0) {
+      const firstWh = warehouses[0];
+      const poLines = selectedPo.lines.map((line) => ({
+        purchaseOrderLineId: line.id,
+        productId: line.productId,
+        warehouseId: firstWh?.id || '',
+        binId: firstWh?.bins?.[0]?.id || null,
+        quantityReceived: line.quantity,
+      }));
+      replace(poLines);
+    }
+  }, [selectedPo, replace, warehouses]);
 
   const productOptions = React.useMemo(
     () =>
@@ -47,6 +70,17 @@ export function ReceiptForm({ form, onSubmit, formId }: ReceiptFormProps) {
         value: w.id,
       })),
     [warehouses],
+  );
+
+  const poOptions = React.useMemo(
+    () =>
+      purchaseOrders
+        .filter((po) => po.status !== 'received' && po.status !== 'cancelled')
+        .map((po) => ({
+          label: `${po.documentNumber} - ${po.supplier.name}`,
+          value: po.id,
+        })),
+    [purchaseOrders],
   );
 
   const handleAddLine = () => {
@@ -80,6 +114,17 @@ export function ReceiptForm({ form, onSubmit, formId }: ReceiptFormProps) {
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="grid gap-6 sm:grid-cols-2">
+                <FormField name="purchaseOrderId" label="Purchase Order (Optional)">
+                  {({ field }) => (
+                    <SearchableSelect
+                      options={poOptions}
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                      placeholder="Select Purchase Order..."
+                    />
+                  )}
+                </FormField>
+
                 <FormField name="reference" label="Reference (Optional)">
                   {({ field }) => (
                     <Input
