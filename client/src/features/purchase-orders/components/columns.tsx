@@ -2,26 +2,15 @@ import * as React from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatDate } from '@shared/utils/date';
 import type { PurchaseOrderResponse } from '../api/purchase-orders.api';
 import { PurchaseOrderRowActions } from './PurchaseOrderRowActions';
 import { useCurrency } from '@/features/currencies/hooks/use-currency';
 
-export const purchaseOrderStatusMap: StatusMap<string> = {
-  draft: { label: 'Draft', tone: 'neutral' },
-  sent: { label: 'Sent', tone: 'info' },
-  partially_received: { label: 'Partial', tone: 'warning' },
-  received: { label: 'Received', tone: 'success' },
-  cancelled: { label: 'Cancelled', tone: 'danger' },
-};
+import { getStatusOptions } from '@/lib/status-registry';
 
-export const purchaseOrderStatusOptions = Object.entries(purchaseOrderStatusMap).map(
-  ([value, config]) => ({
-    label: config.label,
-    value,
-  }),
-);
+export const purchaseOrderStatusOptions = getStatusOptions('purchase_order');
 
 interface GetColumnsProps {
   onReceive: (po: PurchaseOrderResponse) => void;
@@ -89,12 +78,10 @@ export function usePurchaseOrderColumns({
         },
         cell: ({ row }) => {
           return (
-            <StatusBadge
-              value={row.getValue('status') as string}
-              statusMap={purchaseOrderStatusMap}
-            />
+            <StatusBadge value={row.getValue('status') as string} entityType="purchase_order" />
           );
         },
+
         meta: { variant: 'field', label: 'Status' },
       },
       {

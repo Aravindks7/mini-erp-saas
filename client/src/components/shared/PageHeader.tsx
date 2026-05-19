@@ -1,9 +1,23 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MoreVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useTenantPath } from '@/hooks/useTenantPath';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Separator } from '@/components/ui/separator';
+
+export interface PageHeaderNavigation {
+  onPrevious?: () => void;
+  onNext?: () => void;
+  isPreviousDisabled?: boolean;
+  isNextDisabled?: boolean;
+}
 
 export interface PageHeaderAction {
   label: string;
@@ -19,7 +33,7 @@ export interface PageHeaderAction {
 }
 
 export interface PageHeaderProps {
-  title: string;
+  title: React.ReactNode;
   description?: string;
   breadcrumbs?: React.ReactNode;
   backButton?: {
@@ -28,6 +42,9 @@ export interface PageHeaderProps {
     onClick?: () => void;
   };
   actions?: PageHeaderAction[];
+  actionLayout?: 'default' | 'dropdown';
+  primaryActionCount?: number;
+  navigation?: PageHeaderNavigation;
   children?: React.ReactNode;
   className?: string;
 }
@@ -46,6 +63,9 @@ export function PageHeader({
   breadcrumbs,
   backButton,
   actions = [],
+  actionLayout = 'default',
+  primaryActionCount = 1,
+  navigation,
   children,
   className,
 }: PageHeaderProps) {
@@ -63,7 +83,7 @@ export function PageHeader({
   };
 
   return (
-    <div className={cn('space-y-4 mb-8', className)}>
+    <div className={cn('space-y-4 mb-6', className)}>
       {(breadcrumbs || backButton) && (
         <div className="flex flex-col gap-2">
           {breadcrumbs && (
@@ -98,22 +118,125 @@ export function PageHeader({
         </div>
 
         <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-          {actions
-            .filter((action) => !action.hidden)
-            .map((action, idx) => (
-              <Button
-                key={idx}
-                variant={action.variant || 'default'}
-                onClick={action.onClick}
-                disabled={action.disabled || action.isLoading}
-                type={action.type || 'button'}
-                form={action.form}
-                className={cn('h-9 gap-2', action.className)}
-              >
-                {action.icon && <span>{action.icon}</span>}
-                {action.label}
-              </Button>
-            ))}
+          {actionLayout === 'dropdown' &&
+          actions.filter((a) => !a.hidden).length > primaryActionCount ? (
+            <div className="flex items-center gap-2">
+              {/* Primary Actions */}
+              {(() => {
+                const visibleActions = actions.filter((a) => !a.hidden);
+                const primary = visibleActions.slice(0, primaryActionCount);
+                const secondary = visibleActions.slice(primaryActionCount);
+
+                return (
+                  <>
+                    {primary.map((action, idx) => (
+                      <Button
+                        key={idx}
+                        variant={action.variant || 'default'}
+                        onClick={action.onClick}
+                        disabled={action.disabled || action.isLoading}
+                        className={action.className}
+                      >
+                        {action.icon && <span className="mr-2">{action.icon}</span>}
+                        {action.label}
+                      </Button>
+                    ))}
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="icon">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        {secondary.map((action, idx) => (
+                          <DropdownMenuItem
+                            key={idx}
+                            onClick={action.onClick}
+                            disabled={action.disabled || action.isLoading}
+                            className={cn('gap-2 cursor-pointer', action.className)}
+                          >
+                            {action.icon && <span className="size-4">{action.icon}</span>}
+                            {action.label}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {navigation && (
+                      <>
+                        <Separator orientation="vertical" className="m-2" />
+                        <div className="flex items-center border rounded-lg">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={navigation.onPrevious}
+                            disabled={navigation.isPreviousDisabled}
+                          >
+                            <ChevronLeft />
+                          </Button>
+                          <Separator orientation="vertical" className="my-1" />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={navigation.onNext}
+                            disabled={navigation.isNextDisabled}
+                          >
+                            <ChevronRight />
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              {actions
+                .filter((action) => !action.hidden)
+                .map((action, idx) => (
+                  <Button
+                    key={idx}
+                    variant={action.variant || 'default'}
+                    onClick={action.onClick}
+                    disabled={action.disabled || action.isLoading}
+                    type={action.type || 'button'}
+                    form={action.form}
+                    className={action.className}
+                  >
+                    {action.icon && <span className="mr-2">{action.icon}</span>}
+                    {action.label}
+                  </Button>
+                ))}
+
+              {navigation && (
+                <>
+                  <Separator orientation="vertical" className="mx-1 h-8" />
+                  <div className="flex items-center border rounded-md h-9 overflow-hidden bg-background">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-full rounded-none border-r w-8 hover:bg-muted"
+                      onClick={navigation.onPrevious}
+                      disabled={navigation.isPreviousDisabled}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-full rounded-none w-8 hover:bg-muted"
+                      onClick={navigation.onNext}
+                      disabled={navigation.isNextDisabled}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           {children}
         </div>
       </div>

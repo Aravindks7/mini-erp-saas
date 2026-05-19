@@ -6,10 +6,13 @@ import {
   inventoryLedgers,
   salesOrderLines,
   salesOrders,
+  products,
+  warehouses,
+  inventoryAllocations,
 } from '../../db/schema/index.js';
 import { sequencesService } from '../sequences/sequences.service.js';
 import { salesOrdersService } from '../sales-orders/sales-orders.service.js';
-import { sql, desc, and, eq } from 'drizzle-orm';
+import { sql, desc, and, eq, isNull } from 'drizzle-orm';
 import { CreateShipmentInput, UpdateShipmentInput } from '#shared/contracts/shipments.contract.js';
 import { BaseService } from '../../lib/base.service.js';
 import { ActivityLogger } from '../../lib/activity-logger.js';
@@ -115,7 +118,34 @@ export class ShipmentsService extends BaseService<typeof shipments> {
           ),
         );
 
-        // B. Update Inventory Level (UPSERT)
+        // B. Pre-flight Stock Validation
+        const currentLevel = await tx.query.inventoryLevels.findFirst({
+          where: and(
+            eq(inventoryLevels.organizationId, organizationId),
+            eq(inventoryLevels.productId, line.productId),
+            eq(inventoryLevels.warehouseId, line.warehouseId),
+            line.binId ? eq(inventoryLevels.binId, line.binId) : isNull(inventoryLevels.binId),
+          ),
+        });
+
+        const onHand = Number(currentLevel?.quantityOnHand || 0);
+        const requested = Number(line.quantityShipped);
+
+        if (onHand < requested) {
+          const product = await tx.query.products.findFirst({
+            where: eq(products.id, line.productId),
+          });
+          const warehouse = await tx.query.warehouses.findFirst({
+            where: eq(warehouses.id, line.warehouseId),
+          });
+          throw new Error(
+            `Insufficient stock for ${product?.sku || 'Product'}: ${onHand} available in ${
+              warehouse?.name || 'Warehouse'
+            }, but ${requested} requested.`,
+          );
+        }
+
+        // C. Update Inventory Level (UPSERT)
         // Note: For shipments, we use a negative quantity to reduce stock.
         const quantityChange = `-${line.quantityShipped}`;
 
@@ -128,7 +158,7 @@ export class ShipmentsService extends BaseService<typeof shipments> {
                 productId: line.productId,
                 warehouseId: line.warehouseId,
                 binId: line.binId,
-                quantityOnHand: '0', // Start with 0 to pass CHECK constraint validation
+                quantityOnHand: '0', // Base for addition in the update block
               },
               userId,
             ),
@@ -147,6 +177,38 @@ export class ShipmentsService extends BaseService<typeof shipments> {
               updatedBy: userId,
             },
           });
+
+        // Consume dynamic decoupled inventory_allocations
+        if (line.salesOrderLineId) {
+          await tx
+            .update(inventoryAllocations)
+            .set({
+              quantityAllocated: sql`GREATEST(0, ${inventoryAllocations.quantityAllocated} - ${line.quantityShipped}::numeric)`,
+              updatedAt: new Date(),
+              updatedBy: userId,
+            })
+            .where(
+              and(
+                eq(inventoryAllocations.organizationId, organizationId),
+                eq(inventoryAllocations.salesOrderLineId, line.salesOrderLineId),
+                eq(inventoryAllocations.warehouseId, line.warehouseId),
+                line.binId
+                  ? eq(inventoryAllocations.binId, line.binId)
+                  : sql`${inventoryAllocations.binId} IS NULL`,
+              ),
+            );
+
+          // Clean up zeroed allocations to keep dynamic ledger sparse
+          await tx
+            .delete(inventoryAllocations)
+            .where(
+              and(
+                eq(inventoryAllocations.organizationId, organizationId),
+                eq(inventoryAllocations.salesOrderLineId, line.salesOrderLineId),
+                eq(inventoryAllocations.quantityAllocated, '0'),
+              ),
+            );
+        }
 
         // C. Insert Ledger Entry for Audit Trail
         await tx.insert(inventoryLedgers).values(
@@ -173,7 +235,7 @@ export class ShipmentsService extends BaseService<typeof shipments> {
         entityDisplayId: shipmentNumber,
         entityLabel: 'Shipment',
         action: 'SHIPMENT_CREATED',
-        reason: data.reason || `Shipment created for order`,
+        reason: data.reason || `Inventory allocated and items shipped via ${shipmentNumber}.`,
         userId,
       });
 
@@ -207,6 +269,10 @@ export class ShipmentsService extends BaseService<typeof shipments> {
           });
         }
       }
+
+      // Trigger GL Posting
+      const { PostingService } = await import('../finance/posting.service.js');
+      await PostingService.postShipment(shipment.id, organizationId, tx);
 
       return await this.getShipmentById(organizationId, shipment.id, tx);
     };
@@ -339,6 +405,7 @@ export class ShipmentsService extends BaseService<typeof shipments> {
             .update(inventoryLevels)
             .set({
               quantityOnHand: sql`${inventoryLevels.quantityOnHand} + ${line.quantityShipped}::numeric`,
+              quantityAllocated: sql`${inventoryLevels.quantityAllocated} + ${line.quantityShipped}::numeric`,
               updatedAt: new Date(),
               updatedBy: userId,
             })
@@ -347,9 +414,40 @@ export class ShipmentsService extends BaseService<typeof shipments> {
                 eq(inventoryLevels.organizationId, organizationId),
                 eq(inventoryLevels.productId, line.productId),
                 eq(inventoryLevels.warehouseId, line.warehouseId),
-                eq(inventoryLevels.binId, line.binId as string),
+                line.binId
+                  ? eq(inventoryLevels.binId, line.binId)
+                  : sql`${inventoryLevels.binId} IS NULL`,
               ),
             );
+
+          // B. Restore allocation entry in inventoryAllocations (UPSERT)
+          if (line.salesOrderLineId) {
+            await tx
+              .insert(inventoryAllocations)
+              .values({
+                organizationId,
+                salesOrderLineId: line.salesOrderLineId,
+                productId: line.productId,
+                warehouseId: line.warehouseId,
+                binId: line.binId,
+                quantityAllocated: line.quantityShipped,
+                createdBy: userId,
+                updatedBy: userId,
+              })
+              .onConflictDoUpdate({
+                target: [
+                  inventoryAllocations.organizationId,
+                  inventoryAllocations.salesOrderLineId,
+                  inventoryAllocations.warehouseId,
+                  inventoryAllocations.binId,
+                ],
+                set: {
+                  quantityAllocated: sql`${inventoryAllocations.quantityAllocated} + ${line.quantityShipped}::numeric`,
+                  updatedAt: new Date(),
+                  updatedBy: userId,
+                },
+              });
+          }
 
           // B. Insert Reversal Ledger Entry
           await tx.insert(inventoryLedgers).values(
@@ -374,6 +472,9 @@ export class ShipmentsService extends BaseService<typeof shipments> {
           .update(shipments)
           .set(this.withAudit({ status: 'cancelled' }, userId, true))
           .where(and(eq(shipments.id, id), eq(shipments.organizationId, organizationId)));
+
+        const { PostingService } = await import('../finance/posting.service.js');
+        await PostingService.postShipmentReversal(id, organizationId, tx);
 
         // Reconcile SO Status
         if (shipment.salesOrderId) {

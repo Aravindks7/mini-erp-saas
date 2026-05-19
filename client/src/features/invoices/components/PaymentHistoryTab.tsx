@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatDate } from '@shared/utils/date';
 import { usePaymentsQuery, usePaymentIntentsQuery } from '@/features/payments/hooks/payments.hooks';
 import type { PaymentResponse, PaymentIntentResponse } from '@/features/payments/api/payments.api';
@@ -17,13 +17,6 @@ import type { InvoiceResponse } from '../api/invoices.api';
 interface PaymentHistoryTabProps {
   invoice: InvoiceResponse;
 }
-
-const intentStatusMap: StatusMap<string> = {
-  pending: { label: 'Pending', tone: 'warning' },
-  succeeded: { label: 'Succeeded', tone: 'success' },
-  failed: { label: 'Failed', tone: 'danger' },
-  expired: { label: 'Expired', tone: 'neutral' },
-};
 
 const paymentMethodMap: Record<string, string> = {
   cash: 'Cash',
@@ -114,7 +107,7 @@ export function PaymentHistoryTab({ invoice }: PaymentHistoryTabProps) {
                     <TableCell className="pl-6">{formatDate(i.createdAt)}</TableCell>
                     <TableCell className="capitalize">{i.provider}</TableCell>
                     <TableCell>
-                      <StatusBadge value={i.status} statusMap={intentStatusMap} />
+                      <StatusBadge value={i.status} entityType="payment_intent" />
                     </TableCell>
                     <TableCell className="text-right pr-6 font-semibold">
                       {formatCurrency(Number(i.amount))}

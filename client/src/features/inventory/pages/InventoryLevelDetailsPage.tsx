@@ -62,37 +62,32 @@ export default function InventoryLevelDetailsPage() {
         </TabsList>
 
         <TabsContent value="overview">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Quantities</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <DetailView
-                  sections={[
-                    {
-                      items: [
-                        { label: 'On Hand', value: Number(level.quantityOnHand).toLocaleString() },
-                        {
-                          label: 'Allocated',
-                          value: Number(level.quantityAllocated).toLocaleString(),
-                        },
-                        {
-                          label: 'Reserved',
-                          value: Number(level.quantityReserved).toLocaleString(),
-                        },
-                      ],
-                    },
-                  ]}
-                />
-                <AuditInfo
-                  createdAt={level.createdAt}
-                  updatedAt={level.updatedAt}
-                  className="mt-6"
-                />
-              </CardContent>
-            </Card>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Quantities</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DetailView
+                columns={3}
+                sections={[
+                  {
+                    items: [
+                      { label: 'On Hand', value: Number(level.quantityOnHand).toLocaleString() },
+                      {
+                        label: 'Allocated',
+                        value: Number(level.quantityAllocated).toLocaleString(),
+                      },
+                      {
+                        label: 'Reserved',
+                        value: Number(level.quantityReserved).toLocaleString(),
+                      },
+                    ],
+                  },
+                ]}
+              />
+              <AuditInfo createdAt={level.createdAt} updatedAt={level.updatedAt} className="mt-6" />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="ledger">

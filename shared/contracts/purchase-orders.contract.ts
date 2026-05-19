@@ -5,6 +5,7 @@ export const purchaseOrderStatusEnumSchema = z.enum([
   'sent',
   'partially_received',
   'received',
+  'closed',
   'cancelled',
 ]);
 

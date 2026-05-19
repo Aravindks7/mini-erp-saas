@@ -42,6 +42,16 @@ vi.mock('../../db/index.js', () => {
         findMany: vi.fn(),
       },
     },
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          orderBy: vi.fn(() => ({
+            for: vi.fn().mockResolvedValue([]),
+          })),
+          for: vi.fn().mockResolvedValue([]),
+        })),
+      })),
+    })),
     insert: vi.fn(() => ({
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: 'new-id', documentNumber: 'SO-2026-0001' }]),
@@ -106,6 +116,7 @@ describe('Sales Orders Module', () => {
 
       const response = await request(app).get('/sales-orders').set('x-organization-id', mockOrgId);
 
+      console.log(response.body);
       expect(response.status).toBe(200);
       expect(response.body).toEqual([
         {
@@ -154,6 +165,13 @@ describe('Sales Orders Module', () => {
               findFirst: vi.fn().mockResolvedValue(mockSO),
             },
           },
+          select: vi.fn(() => ({
+            from: vi.fn(() => ({
+              where: vi.fn(() => ({
+                for: vi.fn().mockResolvedValue([]),
+              })),
+            })),
+          })),
           update: vi.fn(() => ({
             set: vi.fn().mockReturnValue({
               where: vi.fn().mockReturnValue({
@@ -186,6 +204,13 @@ describe('Sales Orders Module', () => {
               findFirst: vi.fn().mockResolvedValue(mockSO),
             },
           },
+          select: vi.fn(() => ({
+            from: vi.fn(() => ({
+              where: vi.fn(() => ({
+                for: vi.fn().mockResolvedValue([]),
+              })),
+            })),
+          })),
         } as any;
         return cb(tx);
       });
@@ -256,6 +281,16 @@ describe('Sales Orders Module', () => {
               findFirst: vi.fn().mockResolvedValue(mockSO),
             },
           },
+          select: vi.fn(() => ({
+            from: vi.fn(() => ({
+              where: vi.fn(() => ({
+                for: vi.fn().mockResolvedValue([]),
+                orderBy: vi.fn(() => ({
+                  for: vi.fn().mockResolvedValue([]),
+                })),
+              })),
+            })),
+          })),
           update: vi.fn(() => ({
             set: vi.fn().mockReturnValue({
               where: vi.fn().mockReturnValue({
@@ -284,6 +319,64 @@ describe('Sales Orders Module', () => {
       expect(response.body).toHaveProperty('status', 'approved');
       expect(response.body).toHaveProperty('documentNumber', 'SO-001');
       expect(response.body).toHaveProperty('customer');
+    });
+
+    it('should successfully transition status from closed to partially_shipped', async () => {
+      const soId = 'so-123';
+      const mockSO = {
+        id: soId,
+        status: 'closed',
+        documentNumber: 'SO-001',
+        customer: { companyName: 'Test Customer' },
+        lines: [],
+      };
+
+      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
+        const tx = {
+          query: {
+            salesOrders: {
+              findFirst: vi
+                .fn()
+                .mockResolvedValueOnce(mockSO)
+                .mockResolvedValue({ ...mockSO, status: 'partially_shipped' }),
+            },
+          },
+          select: vi.fn(() => ({
+            from: vi.fn(() => ({
+              where: vi.fn(() => ({
+                for: vi.fn().mockResolvedValue([]),
+                orderBy: vi.fn(() => ({
+                  for: vi.fn().mockResolvedValue([]),
+                })),
+              })),
+            })),
+          })),
+          update: vi.fn(() => ({
+            set: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                returning: vi.fn().mockResolvedValue([{ status: 'partially_shipped' }]),
+              }),
+            }),
+          })),
+          insert: vi.fn(() => ({
+            values: vi.fn().mockResolvedValue({}),
+          })),
+        } as any;
+        return cb(tx);
+      });
+
+      const response = await request(app)
+        .patch(`/sales-orders/${soId}/status`)
+        .set('x-organization-id', mockOrgId)
+        .send({
+          status: 'partially_shipped',
+          action: 'STATUS_CHANGED',
+          reason: 'Reopening from closed due to shipment deletion',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('id', soId);
+      expect(response.body).toHaveProperty('status', 'partially_shipped');
     });
   });
 });

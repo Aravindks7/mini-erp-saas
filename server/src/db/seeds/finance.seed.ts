@@ -15,6 +15,12 @@ export async function seedFinance() {
     { id: ACCOUNTS.INVENTORY, name: 'Inventory Asset', code: '1400', type: 'asset' },
     { id: ACCOUNTS.PREPAID_EXPENSES, name: 'Prepaid Expenses', code: '1600', type: 'asset' },
     { id: ACCOUNTS.ACCOUNTS_PAYABLE, name: 'Accounts Payable', code: '2000', type: 'liability' },
+    {
+      id: ACCOUNTS.INVENTORY_CLEARING,
+      name: 'Inventory Clearing',
+      code: '2100',
+      type: 'liability',
+    },
     { id: ACCOUNTS.VAT_PAYABLE, name: 'VAT Payable', code: '2200', type: 'liability' },
     { id: ACCOUNTS.SALARIES_PAYABLE, name: 'Salaries Payable', code: '2400', type: 'liability' },
     {

@@ -13,8 +13,6 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
-import { useTenantPath } from '@/hooks/useTenantPath';
-import { purchaseOrderStatusMap } from '../components/columns';
 import { APP_PATHS } from '@/lib/paths';
 import { ReceivePurchaseOrderSheet } from '../components/ReceivePurchaseOrderSheet';
 import {
@@ -29,6 +27,7 @@ import { DetailView } from '@/components/shared/DetailView';
 import { ActivityTimeline } from '@/components/shared/ActivityTimeline';
 
 import { useCurrency } from '@/features/currencies/hooks/use-currency';
+import { useTenantPath } from '@/hooks/useTenantPath';
 
 export default function PurchaseOrderDetailsPage() {
   const { id } = useParams();
@@ -104,7 +103,7 @@ export default function PurchaseOrderDetailsPage() {
         ]}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">
-          <StatusBadge value={po.status} statusMap={purchaseOrderStatusMap} />
+          <StatusBadge value={po.status as string} entityType="purchase_order" />
         </div>
       </PageHeader>
 
@@ -158,7 +157,7 @@ export default function PurchaseOrderDetailsPage() {
             <DocumentSummary
               title="Order Summary"
               status={po.status}
-              statusMap={purchaseOrderStatusMap}
+              entityType="purchase_order"
               lines={[
                 {
                   label: 'Subtotal',

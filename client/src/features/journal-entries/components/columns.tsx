@@ -1,16 +1,9 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { format } from 'date-fns';
-
 import type { JournalEntryResponse } from '../api/journal-entries.api';
 import { JournalEntryRowActions } from './JournalEntryRowActions';
-
-const journalStatusMap: StatusMap<string> = {
-  draft: { label: 'Draft', tone: 'neutral' },
-  posted: { label: 'Posted', tone: 'success' },
-  void: { label: 'Voided', tone: 'danger' },
-};
 
 export const columns: ColumnDef<JournalEntryResponse>[] = [
   {
@@ -47,8 +40,9 @@ export const columns: ColumnDef<JournalEntryResponse>[] = [
     accessorKey: 'status',
     header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
     cell: ({ row }) => {
-      return <StatusBadge value={row.getValue('status') as string} statusMap={journalStatusMap} />;
+      return <StatusBadge value={row.getValue('status') as string} entityType="journal_entry" />;
     },
+
     meta: { variant: 'field', label: 'Status' },
   },
   {

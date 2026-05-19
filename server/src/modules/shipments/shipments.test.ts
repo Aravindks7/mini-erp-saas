@@ -34,6 +34,8 @@ vi.mock('../finance/posting.service.js', () => ({
     postInvoice: vi.fn().mockResolvedValue({ id: 'je-1' }),
     postPayment: vi.fn().mockResolvedValue({ id: 'je-2' }),
     postBill: vi.fn().mockResolvedValue({ id: 'je-3' }),
+    postShipment: vi.fn().mockResolvedValue({ id: 'je-4' }),
+    postShipmentReversal: vi.fn().mockResolvedValue({ id: 'je-5' }),
   },
 }));
 
@@ -47,7 +49,23 @@ vi.mock('../../db/index.js', () => {
         returning: vi.fn().mockResolvedValue([{ id: 'ship-1' }]),
       }),
     })),
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          for: vi.fn().mockResolvedValue([]),
+        })),
+      })),
+    })),
     query: {
+      inventoryLevels: {
+        findFirst: vi.fn().mockResolvedValue({ quantityOnHand: '100' }),
+      },
+      products: {
+        findFirst: vi.fn().mockResolvedValue({ sku: 'TEST-SKU' }),
+      },
+      warehouses: {
+        findFirst: vi.fn().mockResolvedValue({ name: 'Test Warehouse' }),
+      },
       shipments: {
         findFirst: vi.fn().mockResolvedValue({ id: '1', lines: [] }),
         findMany: vi.fn().mockResolvedValue([]),
@@ -57,15 +75,13 @@ vi.mock('../../db/index.js', () => {
         findFirst: vi.fn().mockResolvedValue({ id: '1', quantity: '100', shipmentLines: [] }),
       },
       salesOrders: {
-        findFirst: vi
-          .fn()
-          .mockResolvedValue({
-            id: '1',
-            status: 'approved',
-            lines: [],
-            invoices: [],
-            shipments: [],
-          }),
+        findFirst: vi.fn().mockResolvedValue({
+          id: '1',
+          status: 'approved',
+          lines: [],
+          invoices: [],
+          shipments: [],
+        }),
       },
     },
     update: vi.fn(() => ({
@@ -73,6 +89,11 @@ vi.mock('../../db/index.js', () => {
         where: vi.fn().mockReturnValue({
           returning: vi.fn().mockResolvedValue([{ id: '1' }]),
         }),
+      }),
+    })),
+    delete: vi.fn(() => ({
+      where: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: '1' }]),
       }),
     })),
   };
@@ -173,6 +194,7 @@ describe('Shipments Module', () => {
         .set('x-organization-id', mockOrgId)
         .send({ ids });
 
+      console.log('DELETE BULK', response.body);
       expect(response.status).toBe(204);
       expect(db.transaction).toHaveBeenCalled();
     });

@@ -270,9 +270,8 @@ export async function createBill(config: {
     })
     .onConflictDoNothing();
 
-  // Post to General Ledger - ONLY if NOT draft
   if (config.status !== 'draft') {
-    await PostingService.postBill(finalBillId, config.organizationId);
+    await PostingService.postBill(finalBillId, config.organizationId, db);
   }
 
   return { billId: finalBillId, amount };

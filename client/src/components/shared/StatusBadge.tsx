@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { type EntityType, resolveStatusConfig } from '@/lib/status-registry';
 
 export type StatusTone =
   | 'success'
@@ -22,7 +23,8 @@ export type StatusMap<T extends string> = Record<T, StatusConfig>;
 
 interface StatusBadgeProps<T extends string> {
   value: T;
-  statusMap: StatusMap<T>;
+  statusMap?: StatusMap<T>;
+  entityType?: EntityType;
   className?: string;
   variant?: 'default' | 'outline';
 }
@@ -49,17 +51,23 @@ const toneMap: Record<StatusTone, string> = {
 
 /**
  * Generic Status Badge for ERP SaaS.
- * Highly decoupled; consumes a mapping of enums to semantic tones provided by each feature.
+ * Highly decoupled; consumes a mapping of enums to semantic tones or resolves via Global Registry.
  */
 export function StatusBadge<T extends string>({
   value,
   statusMap,
+  entityType,
   className,
 }: StatusBadgeProps<T>) {
-  const config = (statusMap && value && statusMap[value]) || {
-    label: value || 'Unknown',
-    tone: 'neutral' as StatusTone,
-  };
+  // 1. If entityType is provided, resolve via Global Registry (Preferred)
+  // 2. If statusMap is provided, use it (Legacy/Specialized)
+  // 3. Fallback to Neutral
+  const config: StatusConfig = entityType
+    ? resolveStatusConfig(entityType, value)
+    : (statusMap && value && statusMap[value]) || {
+        label: value || 'Unknown',
+        tone: 'neutral',
+      };
 
   return (
     <Badge

@@ -20,11 +20,11 @@ export async function seedRBAC() {
     // 1. Seed Granular Permissions from TypeScript Constants
     const allPermissions = Object.values(PERMISSIONS).flatMap((group) => Object.values(group));
 
-    // Upsert all defined permissions
-    for (const p of allPermissions) {
+    // Upsert all defined permissions in a single batch
+    if (allPermissions.length > 0) {
       await db
         .insert(permissions)
-        .values({ id: p, description: `Permission for ${p}` })
+        .values(allPermissions.map((p) => ({ id: p, description: `Permission for ${p}` })))
         .onConflictDoNothing();
     }
 
@@ -55,14 +55,16 @@ export async function seedRBAC() {
       fullAccessSet = newSet;
     }
 
-    // Link all permissions to the "Full Access" set
-    for (const p of allPermissions) {
+    // Link all permissions to the "Full Access" set in a single batch
+    if (allPermissions.length > 0 && fullAccessSet) {
       await db
         .insert(permissionSetItems)
-        .values({
-          permissionSetId: fullAccessSet!.id,
-          permissionId: p,
-        })
+        .values(
+          allPermissions.map((p) => ({
+            permissionSetId: fullAccessSet!.id,
+            permissionId: p,
+          })),
+        )
         .onConflictDoNothing();
     }
 
@@ -119,14 +121,16 @@ export async function seedRBAC() {
       employeeAccessSet = newSet;
     }
 
-    // Link defined employee permissions to the "Employee Access" set
-    for (const p of employeePermissions) {
+    // Link defined employee permissions to the "Employee Access" set in a single batch
+    if (employeePermissions.length > 0 && employeeAccessSet) {
       await db
         .insert(permissionSetItems)
-        .values({
-          permissionSetId: employeeAccessSet!.id,
-          permissionId: p,
-        })
+        .values(
+          employeePermissions.map((p) => ({
+            permissionSetId: employeeAccessSet!.id,
+            permissionId: p,
+          })),
+        )
         .onConflictDoNothing();
     }
 
@@ -216,10 +220,15 @@ export async function seedRBAC() {
       salesAccessSet = newSet;
     }
 
-    for (const p of salesPermissions) {
+    if (salesPermissions.length > 0 && salesAccessSet) {
       await db
         .insert(permissionSetItems)
-        .values({ permissionSetId: salesAccessSet!.id, permissionId: p })
+        .values(
+          salesPermissions.map((p) => ({
+            permissionSetId: salesAccessSet!.id,
+            permissionId: p,
+          })),
+        )
         .onConflictDoNothing();
     }
 
@@ -265,10 +274,15 @@ export async function seedRBAC() {
       purchaseAccessSet = newSet;
     }
 
-    for (const p of purchasePermissions) {
+    if (purchasePermissions.length > 0 && purchaseAccessSet) {
       await db
         .insert(permissionSetItems)
-        .values({ permissionSetId: purchaseAccessSet!.id, permissionId: p })
+        .values(
+          purchasePermissions.map((p) => ({
+            permissionSetId: purchaseAccessSet!.id,
+            permissionId: p,
+          })),
+        )
         .onConflictDoNothing();
     }
 
@@ -315,10 +329,15 @@ export async function seedRBAC() {
       inventoryAccessSet = newSet;
     }
 
-    for (const p of inventoryPermissions) {
+    if (inventoryPermissions.length > 0 && inventoryAccessSet) {
       await db
         .insert(permissionSetItems)
-        .values({ permissionSetId: inventoryAccessSet!.id, permissionId: p })
+        .values(
+          inventoryPermissions.map((p) => ({
+            permissionSetId: inventoryAccessSet!.id,
+            permissionId: p,
+          })),
+        )
         .onConflictDoNothing();
     }
 
@@ -364,10 +383,15 @@ export async function seedRBAC() {
       financeAccessSet = newSet;
     }
 
-    for (const p of financePermissions) {
+    if (financePermissions.length > 0 && financeAccessSet) {
       await db
         .insert(permissionSetItems)
-        .values({ permissionSetId: financeAccessSet!.id, permissionId: p })
+        .values(
+          financePermissions.map((p) => ({
+            permissionSetId: financeAccessSet!.id,
+            permissionId: p,
+          })),
+        )
         .onConflictDoNothing();
     }
 

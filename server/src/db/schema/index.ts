@@ -32,6 +32,7 @@ export * from './bins.schema.js';
 export * from './dashboard.schema.js';
 
 export * from './inventory-levels.schema.js';
+export * from './inventory-allocations.schema.js';
 export * from './inventory-ledgers.schema.js';
 export * from './inventory-adjustments.schema.js';
 export * from './inventory-adjustment-lines.schema.js';

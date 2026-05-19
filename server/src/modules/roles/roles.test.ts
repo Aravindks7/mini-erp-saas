@@ -27,6 +27,17 @@ vi.mock('../../lib/activity-logger.js', () => ({
   },
 }));
 
+const mockQuery = {
+  from: vi.fn().mockReturnThis(),
+  where: vi.fn().mockReturnThis(),
+  orderBy: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockReturnThis(),
+  groupBy: vi.fn().mockReturnThis(),
+  innerJoin: vi.fn().mockReturnThis(),
+  then: (onFulfilled: any) => Promise.resolve([]).then(onFulfilled),
+  catch: (onRejected: any) => Promise.resolve([]).catch(onRejected),
+};
+
 vi.mock('../../db/index.js', () => {
   const mockTx = {
     query: {
@@ -53,6 +64,7 @@ vi.mock('../../db/index.js', () => {
     delete: vi.fn(() => ({
       where: vi.fn().mockResolvedValue([]),
     })),
+    select: vi.fn(() => mockQuery),
   };
 
   return {
@@ -68,6 +80,7 @@ vi.mock('../../db/index.js', () => {
       },
       transaction: vi.fn((cb) => cb(mockTx)),
       execute: vi.fn().mockResolvedValue({ rows: [] }),
+      select: vi.fn(() => mockQuery),
     },
   };
 });
@@ -83,10 +96,17 @@ describe('Roles Module', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (auth.api.getSession as any).mockResolvedValue(mockSession);
-    (db.query.organizationMemberships.findFirst as any).mockResolvedValue({
-      organizationId: mockOrgId,
-      userId: mockUserId,
-      organization: { id: mockOrgId },
+    (db.query.organizationMemberships.findFirst as any).mockImplementation((opts?: any) => {
+      // console.log('DEBUG findFirst where:', JSON.stringify(opts?.where, null, 2));
+      if (opts?.where?.name === 'role_id' || opts?.where?.toString().includes('role_id')) {
+        return null;
+      }
+      // Auth check
+      return {
+        organizationId: mockOrgId,
+        userId: mockUserId,
+        organization: { id: mockOrgId },
+      };
     });
   });
 
@@ -156,22 +176,17 @@ describe('Roles Module', () => {
         permissionSets: [],
       };
 
-      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
-        const tx = {
-          query: {
-            roles: {
-              findFirst: vi.fn().mockResolvedValue(mockRole),
-            },
-            organizationMemberships: {
-              findFirst: vi.fn().mockResolvedValue(null), // Not in use
-            },
-          },
-          delete: vi.fn(() => ({
-            where: vi.fn().mockResolvedValue([]),
-          })),
-        } as any;
-        return cb(tx);
-      });
+      // Mock top-level checks
+      (db.query.roles.findFirst as any).mockResolvedValue(mockRole);
+      // The second call to organizationMemberships.findFirst (inUse check) should return null
+      // The first call (authMiddleware) should return the membership
+      (db.query.organizationMemberships.findFirst as any)
+        .mockResolvedValueOnce({
+          organizationId: mockOrgId,
+          userId: mockUserId,
+          organization: { id: mockOrgId },
+        }) // auth check
+        .mockResolvedValueOnce(null); // in-use check
 
       const response = await request(app)
         .delete(`/roles/${roleId}`)
@@ -191,16 +206,7 @@ describe('Roles Module', () => {
         permissionSets: [],
       };
 
-      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
-        const tx = {
-          query: {
-            roles: {
-              findFirst: vi.fn().mockResolvedValue(mockRole),
-            },
-          },
-        } as any;
-        return cb(tx);
-      });
+      (db.query.roles.findFirst as any).mockResolvedValue(mockRole);
 
       const response = await request(app)
         .delete(`/roles/${roleId}`)
@@ -219,19 +225,14 @@ describe('Roles Module', () => {
         permissionSets: [],
       };
 
-      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
-        const tx = {
-          query: {
-            roles: {
-              findFirst: vi.fn().mockResolvedValue(mockRole),
-            },
-            organizationMemberships: {
-              findFirst: vi.fn().mockResolvedValue({ id: 'm1' }), // In use
-            },
-          },
-        } as any;
-        return cb(tx);
-      });
+      (db.query.roles.findFirst as any).mockResolvedValue(mockRole);
+      (db.query.organizationMemberships.findFirst as any)
+        .mockResolvedValueOnce({
+          organizationId: mockOrgId,
+          userId: mockUserId,
+          organization: { id: mockOrgId },
+        }) // auth check
+        .mockResolvedValueOnce({ id: 'm1' }); // in-use check
 
       const response = await request(app)
         .delete(`/roles/${roleId}`)

@@ -49,13 +49,7 @@ export const getColumns = ({ onEdit }: ColumnProps): ColumnDef<UomResponse>[] =>
     header: ({ column }) => <DataTableColumnHeader column={column} title="Default" />,
     cell: ({ row }) => {
       const isDefault = row.getValue('isDefault') as boolean;
-      return isDefault ? (
-        <Badge variant="outline" className="border-primary text-primary">
-          Default
-        </Badge>
-      ) : (
-        '-'
-      );
+      return isDefault ? <Badge>Default</Badge> : '-';
     },
     meta: { variant: 'field', label: 'Default' },
   },

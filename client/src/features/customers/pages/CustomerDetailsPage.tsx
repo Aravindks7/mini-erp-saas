@@ -4,8 +4,9 @@ import { Building, MapPin, FileEdit, AlertCircle, Users } from 'lucide-react';
 import { useCustomer } from '../hooks/customers.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PageHeader } from '@/components/shared/PageHeader';
+
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
 import { DetailView } from '@/components/shared/DetailView';
@@ -15,11 +16,6 @@ import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { APP_PATHS } from '@/lib/paths';
-
-const customerStatusMap: StatusMap<string> = {
-  active: { label: 'Active', tone: 'success' },
-  inactive: { label: 'Inactive', tone: 'neutral' },
-};
 
 export default function CustomerDetailsPage() {
   const { id } = useParams();
@@ -76,7 +72,7 @@ export default function CustomerDetailsPage() {
         ]}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">
-          <StatusBadge value={customer.status} statusMap={customerStatusMap} />
+          <StatusBadge value={customer.status as string} entityType="customer" />
         </div>
       </PageHeader>
 
@@ -119,7 +115,7 @@ export default function CustomerDetailsPage() {
                       {
                         label: 'Relationship Status',
                         value: (
-                          <StatusBadge value={customer.status} statusMap={customerStatusMap} />
+                          <StatusBadge value={customer.status as string} entityType="customer" />
                         ),
                       },
                     ],

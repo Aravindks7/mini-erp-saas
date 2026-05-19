@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
 import type { CreateProductInput, UpdateProductInput } from '@shared/contracts/products.contract';
 import { productsApi } from '../api/products.api';
+import { activityKeys } from '@/features/activity/hooks/activity.hooks';
 
 export const productKeys = {
   all: ['products'] as const,

@@ -48,6 +48,24 @@ export class InvoiceReconciler {
       );
     }
 
+    // Verify completed payments before voiding
+    if (newStatus === 'void') {
+      const completedPayment = await tx.query.payments.findFirst({
+        where: and(
+          eq(payments.invoiceId, id),
+          eq(payments.organizationId, organizationId),
+          eq(payments.status, 'completed'),
+          sql`${payments.deletedAt} IS NULL`,
+        ),
+      });
+
+      if (completedPayment) {
+        throw new Error(
+          `Business Rule Violation: Cannot void Invoice ${existing.documentNumber} because it has active completed payments. Void the payments first.`,
+        );
+      }
+    }
+
     // 1. Transactional Update (Derived State Change)
     const updateData: Partial<typeof invoices.$inferInsert> = {
       status: newStatus,
@@ -66,10 +84,13 @@ export class InvoiceReconciler {
       .set(updateData)
       .where(and(eq(invoices.id, id), eq(invoices.organizationId, organizationId)));
 
-    // 2. Trigger GL Posting if transitioning to 'open'
+    // 2. Trigger GL Posting / Reversals
     if (newStatus === 'open') {
       const { PostingService } = await import('../finance/posting.service.js');
       await PostingService.postInvoice(id, organizationId, tx);
+    } else if (newStatus === 'void') {
+      const { PostingService } = await import('../finance/posting.service.js');
+      await PostingService.postInvoiceReversal(id, organizationId, tx);
     }
 
     // 3. Reconcile Sales Order Billing (if linked)

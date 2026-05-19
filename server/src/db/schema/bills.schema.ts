@@ -17,7 +17,13 @@ import { receipts } from './receipts.schema.js';
 import { purchaseOrders } from './purchase-orders.schema.js';
 import { billLines } from './bill-lines.schema.js';
 
-export const billStatusEnum = pgEnum('bill_status', ['draft', 'open', 'paid', 'void']);
+export const billStatusEnum = pgEnum('bill_status', [
+  'draft',
+  'open',
+  'partially_paid',
+  'paid',
+  'void',
+]);
 
 export const bills = pgTable(
   'bills',

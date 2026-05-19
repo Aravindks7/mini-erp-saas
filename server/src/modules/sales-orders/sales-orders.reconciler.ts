@@ -1,6 +1,6 @@
 import { db } from '../../db/index.js';
-import { salesOrders } from '../../db/schema/index.js';
-import { and, eq, sql } from 'drizzle-orm';
+import { salesOrders, inventoryLevels } from '../../db/schema/index.js';
+import { and, eq, sql, isNull } from 'drizzle-orm';
 import { ActivityLogger } from '../../lib/activity-logger.js';
 import { inventoryService } from '../inventory/inventory.service.js';
 import type { ActivityAction } from '#shared/config/activity-actions.config.js';
@@ -21,7 +21,7 @@ export class SalesOrderReconciler {
     approved: ['partially_shipped', 'shipped', 'cancelled'],
     partially_shipped: ['shipped', 'cancelled'],
     shipped: ['closed', 'cancelled'],
-    closed: [],
+    closed: ['shipped', 'partially_shipped', 'approved'],
     cancelled: [],
   };
 
@@ -38,6 +38,13 @@ export class SalesOrderReconciler {
     reason: string,
     tx: Transaction,
   ) {
+    // Root Serialization Lock: Ensure strictly linear transitions for this order
+    await tx
+      .select({ id: salesOrders.id })
+      .from(salesOrders)
+      .where(and(eq(salesOrders.id, id), eq(salesOrders.organizationId, organizationId)))
+      .for('update');
+
     const existing = await tx.query.salesOrders.findFirst({
       where: and(eq(salesOrders.id, id), eq(salesOrders.organizationId, organizationId)),
       with: {
@@ -79,37 +86,81 @@ export class SalesOrderReconciler {
 
     // 2. Inventory Allocation Side-Effects
     if (newStatus === 'approved') {
-      // Allocate stock for all lines
+      // Allocate stock for all lines using a dynamic warehouse sourcing strategy
       for (const line of existing.lines) {
-        await inventoryService.allocateStock(
-          organizationId,
-          userId,
-          line.productId,
-          line.quantity,
-          tx,
-        );
+        let remainingToAllocate = Number(line.quantity);
+
+        // Find warehouses with available stock for this product and lock the stock level rows FOR UPDATE
+        const stockLevels = await tx
+          .select()
+          .from(inventoryLevels)
+          .where(
+            and(
+              eq(inventoryLevels.organizationId, organizationId),
+              eq(inventoryLevels.productId, line.productId),
+              isNull(inventoryLevels.deletedAt),
+            ),
+          )
+          .orderBy(inventoryLevels.id)
+          .for('update');
+
+        for (const il of stockLevels) {
+          const available = Number(il.quantityOnHand) - Number(il.quantityAllocated);
+          if (available > 0) {
+            const toAllocate = Math.min(remainingToAllocate, available);
+            await inventoryService.allocateStock(
+              organizationId,
+              userId,
+              line.id,
+              line.productId,
+              il.warehouseId,
+              il.binId,
+              toAllocate,
+              tx,
+            );
+            remainingToAllocate -= toAllocate;
+          }
+          if (remainingToAllocate <= 0) break;
+        }
+
+        // If there's still quantity remaining to allocate (stock shortage), allocate to fallback warehouse
+        if (remainingToAllocate > 0) {
+          let targetWarehouseId: string | undefined;
+          let targetBinId: string | null = null;
+
+          const firstStockLevel = stockLevels[0];
+          if (firstStockLevel) {
+            targetWarehouseId = firstStockLevel.warehouseId;
+            targetBinId = firstStockLevel.binId;
+          } else {
+            // Get first warehouse in the organization as fallback
+            const defaultWh = await tx.query.warehouses.findFirst({
+              where: (wh, { eq }) => eq(wh.organizationId, organizationId),
+            });
+            targetWarehouseId = defaultWh?.id;
+          }
+
+          if (targetWarehouseId) {
+            await inventoryService.allocateStock(
+              organizationId,
+              userId,
+              line.id,
+              line.productId,
+              targetWarehouseId,
+              targetBinId,
+              remainingToAllocate,
+              tx,
+            );
+          }
+        }
       }
     } else if (
       newStatus === 'cancelled' &&
       (existing.status === 'approved' || existing.status === 'partially_shipped')
     ) {
-      // Deallocate remaining stock (ordered - shippedAlready)
+      // Deallocate remaining stock from the decoupled ledger and physical bins
       for (const line of existing.lines) {
-        // Find how much was already shipped for this line (exclude cancelled shipments)
-        const shippedAlready = (line.shipmentLines || [])
-          .filter((sl) => sl.shipment.status !== 'cancelled')
-          .reduce((acc, sl) => acc + Number(sl.quantityShipped), 0);
-
-        const remaining = Math.max(0, Number(line.quantity) - shippedAlready);
-        if (remaining > 0) {
-          await inventoryService.deallocateStock(
-            organizationId,
-            userId,
-            line.productId,
-            remaining,
-            tx,
-          );
-        }
+        await inventoryService.deallocateStock(organizationId, userId, line.id, tx);
       }
     }
 
@@ -190,6 +241,22 @@ export class SalesOrderReconciler {
       newStatus = 'approved';
     }
 
+    // Derive automated reason if none provided
+    let autoReason = reason;
+    if (!autoReason && newStatus !== so.status) {
+      if (newStatus === 'shipped') {
+        autoReason =
+          so.status === 'partially_shipped'
+            ? 'Backorder fulfillment completed: Order fully shipped.'
+            : 'Standard fulfillment completed.';
+      } else if (newStatus === 'partially_shipped') {
+        autoReason =
+          so.status === 'partially_shipped'
+            ? 'Subsequent partial fulfillment recorded (Backorder remains).'
+            : 'Initial partial fulfillment recorded.';
+      }
+    }
+
     if (newStatus !== so.status) {
       await this.updateStatus(
         organizationId,
@@ -197,7 +264,7 @@ export class SalesOrderReconciler {
         id,
         newStatus,
         (action as ActivityAction) || 'SYSTEM_RECONCILIATION',
-        reason || 'System reconciliation of fulfillment',
+        autoReason || reason || 'System reconciliation of fulfillment',
         tx,
       );
     }

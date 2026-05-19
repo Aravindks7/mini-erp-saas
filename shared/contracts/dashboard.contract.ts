@@ -1,10 +1,19 @@
 import { z } from 'zod';
 
+export const trendSchema = z.object({
+  value: z.number(),
+  isPositive: z.boolean(),
+});
+
 export const dashboardMetricsSchema = z.object({
   totalSales: z.string(),
+  totalSalesTrend: trendSchema.optional(),
   totalPurchases: z.string(),
+  totalPurchasesTrend: trendSchema.optional(),
   activeCustomers: z.number(),
+  activeCustomersTrend: trendSchema.optional(),
   totalProducts: z.number(),
+  totalProductsTrend: trendSchema.optional(),
 });
 
 export type DashboardMetrics = z.infer<typeof dashboardMetricsSchema>;
@@ -31,10 +40,19 @@ export const recentActivitySchema = z.object({
 
 export type RecentActivity = z.infer<typeof recentActivitySchema>;
 
+export const performancePointSchema = z.object({
+  date: z.string(),
+  revenue: z.number(),
+  expenses: z.number(),
+});
+
+export type PerformancePoint = z.infer<typeof performancePointSchema>;
+
 export const dashboardResponseSchema = z.object({
   metrics: dashboardMetricsSchema,
   lowStockItems: z.array(lowStockItemSchema),
   recentActivity: z.array(recentActivitySchema),
+  performanceData: z.array(performancePointSchema),
 });
 
 export type DashboardResponse = z.infer<typeof dashboardResponseSchema>;

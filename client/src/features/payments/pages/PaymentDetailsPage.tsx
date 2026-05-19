@@ -6,7 +6,7 @@ import { PageContainer } from '@/components/shared/PageContainer';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { AuditInfo } from '@/components/shared/AuditInfo';
 import { DetailView } from '@/components/shared/DetailView';
@@ -14,18 +14,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePayment } from '../hooks/payments.hooks';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { APP_PATHS } from '@/lib/paths';
-
-const paymentStatusMap: StatusMap<string> = {
-  pending: { label: 'Pending', tone: 'warning' },
-  completed: { label: 'Completed', tone: 'success' },
-  failed: { label: 'Failed', tone: 'danger' },
-  refunded: { label: 'Refunded', tone: 'neutral' },
-};
-
-const paymentTypeMap: StatusMap<string> = {
-  inbound: { label: 'Inbound', tone: 'success' },
-  outbound: { label: 'Outbound', tone: 'neutral' },
-};
 
 import { useCurrency } from '@/features/currencies/hooks/use-currency';
 
@@ -69,8 +57,8 @@ export default function PaymentDetailsPage() {
         }}
       >
         <div className="hidden sm:block ml-4 border-l pl-4 gap-2">
-          <StatusBadge value={payment.status} statusMap={paymentStatusMap} />
-          <StatusBadge value={payment.paymentType} statusMap={paymentTypeMap} />
+          <StatusBadge value={payment.status} entityType="payment" />
+          <StatusBadge value={payment.paymentType} entityType="payment_type" />
         </div>
       </PageHeader>
 
@@ -112,12 +100,12 @@ export default function PaymentDetailsPage() {
                       {
                         label: 'Type',
                         value: (
-                          <StatusBadge value={payment.paymentType} statusMap={paymentTypeMap} />
+                          <StatusBadge value={payment.paymentType} entityType="payment_type" />
                         ),
                       },
                       {
                         label: 'Status',
-                        value: <StatusBadge value={payment.status} statusMap={paymentStatusMap} />,
+                        value: <StatusBadge value={payment.status} entityType="payment" />,
                       },
                       {
                         label: 'Reference Number',

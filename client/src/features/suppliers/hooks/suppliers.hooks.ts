@@ -4,6 +4,7 @@ import type {
   UpdateSupplierInput,
 } from '@shared/contracts/suppliers.contract';
 import { suppliersApi } from '../api/suppliers.api';
+import { activityKeys } from '@/features/activity/hooks/activity.hooks';
 
 export const supplierKeys = {
   all: ['suppliers'] as const,

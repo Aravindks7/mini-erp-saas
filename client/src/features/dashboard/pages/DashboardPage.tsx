@@ -8,6 +8,7 @@ import { useDashboard, useRefreshDashboard } from '../hooks/dashboard.hooks';
 import { DashboardMetricsCards } from '../components/DashboardMetricsCards';
 import { LowStockWidget } from '../components/LowStockWidget';
 import { RecentActivityWidget } from '../components/RecentActivityWidget';
+import { PerformanceChart } from '../components/PerformanceChart';
 
 import { usePermission } from '@/hooks/usePermission';
 
@@ -66,6 +67,8 @@ export default function DashboardPage() {
         <DashboardGrid>
           <DashboardMetricsCards metrics={data.metrics} />
         </DashboardGrid>
+        {/* Performance Overview Section */}
+        <PerformanceChart data={data.performanceData} />
 
         {/* Operational Intelligence Section */}
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">

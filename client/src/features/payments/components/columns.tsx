@@ -2,28 +2,16 @@ import * as React from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatDate } from '@shared/utils/date';
 import type { PaymentResponse } from '../api/payments.api';
 import { PaymentRowActions } from './PaymentRowActions';
 import { useCurrency } from '@/features/currencies/hooks/use-currency';
 
-const paymentStatusMap: StatusMap<string> = {
-  pending: { label: 'Pending', tone: 'warning' },
-  completed: { label: 'Completed', tone: 'success' },
-  failed: { label: 'Failed', tone: 'danger' },
-  refunded: { label: 'Refunded', tone: 'neutral' },
-};
+import { getStatusOptions } from '@/lib/status-registry';
+import { paymentTypeMap } from '../constants/status';
 
-const paymentTypeMap: StatusMap<string> = {
-  inbound: { label: 'Inbound', tone: 'success' },
-  outbound: { label: 'Outbound', tone: 'neutral' },
-};
-
-export const paymentStatusOptions = Object.entries(paymentStatusMap).map(([value, config]) => ({
-  label: config.label,
-  value,
-}));
+export const paymentStatusOptions = getStatusOptions('payment');
 
 export const paymentTypeOptions = Object.entries(paymentTypeMap).map(([value, config]) => ({
   label: config.label,
@@ -65,10 +53,11 @@ export function usePaymentColumns(): ColumnDef<PaymentResponse>[] {
         accessorKey: 'paymentType',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Type" />,
         cell: ({ row }) => (
-          <StatusBadge value={row.getValue('paymentType') as string} statusMap={paymentTypeMap} />
+          <StatusBadge value={row.getValue('paymentType') as string} entityType="payment_type" />
         ),
         meta: { variant: 'field', label: 'Type' },
       },
+
       {
         id: 'entity',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Payee/Payer" />,
@@ -100,10 +89,9 @@ export function usePaymentColumns(): ColumnDef<PaymentResponse>[] {
         accessorKey: 'status',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
         cell: ({ row }) => {
-          return (
-            <StatusBadge value={row.getValue('status') as string} statusMap={paymentStatusMap} />
-          );
+          return <StatusBadge value={row.getValue('status') as string} entityType="payment" />;
         },
+
         meta: { variant: 'field', label: 'Status' },
       },
       {

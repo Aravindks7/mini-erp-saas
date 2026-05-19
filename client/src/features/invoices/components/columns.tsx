@@ -2,24 +2,15 @@ import * as React from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatDate } from '@shared/utils/date';
 import type { InvoiceResponse } from '../api/invoices.api';
 import { InvoiceRowActions } from './InvoiceRowActions';
 import { useCurrency } from '@/features/currencies/hooks/use-currency';
 
-export const invoiceStatusMap: StatusMap<string> = {
-  draft: { label: 'Draft', tone: 'neutral' },
-  open: { label: 'Open', tone: 'info' },
-  partially_paid: { label: 'Partially Paid', tone: 'warning' },
-  paid: { label: 'Paid', tone: 'success' },
-  void: { label: 'Void', tone: 'danger' },
-};
+import { getStatusOptions } from '@/lib/status-registry';
 
-export const invoiceStatusOptions = Object.entries(invoiceStatusMap).map(([value, config]) => ({
-  label: config.label,
-  value,
-}));
+export const invoiceStatusOptions = getStatusOptions('invoice');
 
 interface GetColumnsProps {
   onAddPayment?: (invoice: InvoiceResponse) => void;
@@ -105,10 +96,9 @@ export function useInvoiceColumns({
           return Array.isArray(selectedValues) ? selectedValues.includes(rowValue) : false;
         },
         cell: ({ row }) => {
-          return (
-            <StatusBadge value={row.getValue('status') as string} statusMap={invoiceStatusMap} />
-          );
+          return <StatusBadge value={row.getValue('status') as string} entityType="invoice" />;
         },
+
         meta: { variant: 'field', label: 'Status' },
       },
       {

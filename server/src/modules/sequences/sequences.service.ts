@@ -57,6 +57,10 @@ export class SequencesService extends BaseService<typeof documentSequences> {
         .where(this.getTenantWhere(organizationId, id))
         .returning();
 
+      if (!updated) {
+        throw new Error('Sequence configuration not found during update.');
+      }
+
       await ActivityLogger.recordUpdate(
         tx,
         {

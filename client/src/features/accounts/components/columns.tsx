@@ -1,15 +1,9 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
-
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import type { AccountResponse } from '../api/accounts.api';
 import { AccountRowActions } from './AccountRowActions';
-
-const accountStatusMap: StatusMap<string> = {
-  active: { label: 'Active', tone: 'success' },
-  inactive: { label: 'Inactive', tone: 'neutral' },
-};
 
 export const columns = (
   onEdit: (account: AccountResponse) => void,
@@ -60,8 +54,9 @@ export const columns = (
     header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
     cell: ({ row }) => {
       const isActive = row.getValue('isActive') as boolean;
-      return <StatusBadge value={isActive ? 'active' : 'inactive'} statusMap={accountStatusMap} />;
+      return <StatusBadge value={isActive ? 'active' : 'inactive'} entityType="account" />;
     },
+
     meta: { variant: 'field', label: 'Status' },
   },
   {

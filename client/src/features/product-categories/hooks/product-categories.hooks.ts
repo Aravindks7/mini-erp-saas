@@ -4,24 +4,25 @@ import type {
   UpdateProductCategoryInput,
 } from '@shared/contracts/product-categories.contract';
 import { productCategoriesApi } from '../api/product-categories.api';
+import { activityKeys } from '@/features/activity/hooks/activity.hooks';
 
-export const productCategoryKeys = {
+export const categoryKeys = {
   all: ['product-categories'] as const,
-  lists: () => [...productCategoryKeys.all, 'list'] as const,
-  list: (filters?: string) => [...productCategoryKeys.lists(), { filters }] as const,
-  details: () => [...productCategoryKeys.all, 'detail'] as const,
-  detail: (id: string) => [...productCategoryKeys.details(), id] as const,
+  lists: () => [...categoryKeys.all, 'list'] as const,
+  list: (filters?: string) => [...categoryKeys.lists(), { filters }] as const,
+  details: () => [...categoryKeys.all, 'detail'] as const,
+  detail: (id: string) => [...categoryKeys.details(), id] as const,
 };
 
 export const productCategoryDetailQuery = (id: string) =>
   queryOptions({
-    queryKey: productCategoryKeys.detail(id),
+    queryKey: categoryKeys.detail(id),
     queryFn: () => productCategoriesApi.getCategory(id),
   });
 
 export const productCategoryListQuery = () =>
   queryOptions({
-    queryKey: productCategoryKeys.lists(),
+    queryKey: categoryKeys.lists(),
     queryFn: productCategoriesApi.listCategories,
     staleTime: 5000,
   });
@@ -34,8 +35,7 @@ export function useProductCategoriesActions() {
   const queryClient = useQueryClient();
 
   return {
-    invalidateCategories: () =>
-      queryClient.invalidateQueries({ queryKey: productCategoryKeys.lists() }),
+    invalidateCategories: () => queryClient.invalidateQueries({ queryKey: categoryKeys.lists() }),
   };
 }
 
@@ -52,7 +52,7 @@ export function useCreateProductCategory() {
   return useMutation({
     mutationFn: (data: CreateProductCategoryInput) => productCategoriesApi.createCategory(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: productCategoryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: categoryKeys.lists() });
     },
   });
 }
@@ -64,8 +64,8 @@ export function useUpdateProductCategory() {
     mutationFn: ({ id, data }: { id: string; data: UpdateProductCategoryInput }) =>
       productCategoriesApi.updateCategory(id, data),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: productCategoryKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: productCategoryKeys.detail(data.id) });
+      queryClient.invalidateQueries({ queryKey: categoryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: categoryKeys.detail(data.id) });
     },
   });
 }
@@ -76,7 +76,7 @@ export function useDeleteProductCategory() {
   return useMutation({
     mutationFn: (id: string) => productCategoriesApi.deleteCategory(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: productCategoryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: categoryKeys.lists() });
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });

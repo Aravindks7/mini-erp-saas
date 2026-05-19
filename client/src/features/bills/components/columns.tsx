@@ -2,23 +2,16 @@ import * as React from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
+
 import { formatDate } from '@shared/utils/date';
 import type { BillResponse } from '../api/bills.api';
 import { BillRowActions } from './BillRowActions';
 import { useCurrency } from '@/features/currencies/hooks/use-currency';
 
-export const billStatusMap: StatusMap<string> = {
-  draft: { label: 'Draft', tone: 'neutral' },
-  open: { label: 'Open', tone: 'warning' },
-  paid: { label: 'Paid', tone: 'success' },
-  void: { label: 'Void', tone: 'danger' },
-};
+import { getStatusOptions } from '@/lib/status-registry';
 
-export const billStatusOptions = Object.entries(billStatusMap).map(([value, config]) => ({
-  label: config.label,
-  value,
-}));
+export const billStatusOptions = getStatusOptions('bill');
 
 interface GetColumnsProps {
   onPayBill?: (bill: BillResponse) => void;
@@ -102,8 +95,9 @@ export function useBillColumns({ onPayBill }: GetColumnsProps = {}): ColumnDef<B
           return Array.isArray(selectedValues) ? selectedValues.includes(rowValue) : false;
         },
         cell: ({ row }) => {
-          return <StatusBadge value={row.getValue('status') as string} statusMap={billStatusMap} />;
+          return <StatusBadge value={row.getValue('status') as string} entityType="bill" />;
         },
+
         meta: { variant: 'field', label: 'Status' },
       },
       {

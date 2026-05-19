@@ -1,14 +1,21 @@
+import * as React from 'react';
 import { useParams } from 'react-router-dom';
-import { ClipboardList, Box, MapPin } from 'lucide-react';
+import { ClipboardList, Box, MapPin, CheckCircle, XCircle } from 'lucide-react';
 
-import { useInventoryAdjustment } from '../hooks/inventory.hooks';
+import {
+  useInventoryAdjustment,
+  useApproveAdjustment,
+  useCancelAdjustment,
+} from '../hooks/inventory.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
 import { DetailView } from '@/components/shared/DetailView';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
+import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import {
   Table,
   TableBody,
@@ -19,15 +26,14 @@ import {
 } from '@/components/ui/table';
 import { APP_PATHS } from '@/lib/paths';
 
-const adjustmentStatusMap: StatusMap<string> = {
-  draft: { label: 'Draft', tone: 'neutral' },
-  approved: { label: 'Approved', tone: 'success' },
-  cancelled: { label: 'Cancelled', tone: 'danger' },
-};
-
 export default function AdjustmentDetailsPage() {
   const { id } = useParams();
   const { data: adjustment, isLoading, isError } = useInventoryAdjustment(id);
+  const { mutate: approve, isPending: isApproving } = useApproveAdjustment();
+  const { mutate: cancel, isPending: isCancelling } = useCancelAdjustment();
+
+  const [showApproveDialog, setShowApproveDialog] = React.useState(false);
+  const [showCancelDialog, setShowCancelDialog] = React.useState(false);
 
   if (isLoading) {
     return (
@@ -54,10 +60,61 @@ export default function AdjustmentDetailsPage() {
         description={`Stock correction recorded on ${new Date(adjustment.adjustmentDate).toLocaleDateString()}`}
         backButton={{ href: APP_PATHS.inventory.adjustments.list(), label: 'Back to Adjustments' }}
       >
-        <div className="hidden sm:block ml-4 border-l pl-4">
-          <StatusBadge value={adjustment.status} statusMap={adjustmentStatusMap} />
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:block border-l pl-4">
+            <StatusBadge value={adjustment.status} entityType="inventory_adjustment" />
+          </div>
+          {adjustment.status === 'draft' && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-destructive hover:text-destructive"
+                onClick={() => setShowCancelDialog(true)}
+                disabled={isApproving || isCancelling}
+              >
+                <XCircle className="h-4 w-4" />
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="gap-2"
+                onClick={() => setShowApproveDialog(true)}
+                disabled={isApproving || isCancelling}
+              >
+                <CheckCircle className="h-4 w-4" />
+                Approve
+              </Button>
+            </div>
+          )}
         </div>
       </PageHeader>
+
+      <ConfirmDialog
+        isOpen={showApproveDialog}
+        onClose={() => setShowApproveDialog(false)}
+        onConfirm={() => {
+          if (id) approve(id);
+        }}
+        title="Approve Inventory Adjustment"
+        description="This will commit the stock changes to the inventory levels and create audit logs. This action cannot be undone."
+        confirmLabel="Approve & Commit"
+        isLoading={isApproving}
+      />
+
+      <ConfirmDialog
+        isOpen={showCancelDialog}
+        onClose={() => setShowCancelDialog(false)}
+        onConfirm={() => {
+          if (id) cancel(id);
+        }}
+        title="Cancel Adjustment"
+        description="Are you sure you want to cancel this adjustment? This will void the request and no stock changes will be made."
+        confirmLabel="Yes, Cancel"
+        variant="destructive"
+        isLoading={isCancelling}
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">

@@ -3,6 +3,7 @@ import { Receipt } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
 import { cn } from '@/lib/utils';
+import { type EntityType } from '@/lib/status-registry';
 
 interface SummaryLine {
   label: string;
@@ -14,7 +15,8 @@ interface SummaryLine {
 interface DocumentSummaryProps {
   title: string;
   status: string;
-  statusMap: StatusMap<string>;
+  entityType?: EntityType;
+  statusMap?: StatusMap<string>;
   lines: SummaryLine[];
   className?: string;
 }
@@ -27,6 +29,7 @@ export function DocumentSummary({
   title,
   status,
   statusMap,
+  entityType,
   lines,
   className,
 }: DocumentSummaryProps) {
@@ -41,8 +44,13 @@ export function DocumentSummary({
       <CardContent className="pt-6 space-y-4">
         <div className="flex justify-between items-center pb-2 border-b border-dashed">
           <span className="text-sm text-muted-foreground">Status</span>
-          <StatusBadge value={status} statusMap={statusMap} />
+          <StatusBadge
+            value={status}
+            statusMap={entityType ? undefined : statusMap}
+            entityType={entityType}
+          />
         </div>
+
         <div className="space-y-2">
           {lines.map((line, idx) => (
             <div

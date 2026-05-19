@@ -4,7 +4,7 @@ import { Truck, MapPin, FileEdit, AlertCircle, Users } from 'lucide-react';
 import { useSupplier } from '../hooks/suppliers.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
@@ -15,11 +15,6 @@ import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { APP_PATHS } from '@/lib/paths';
-
-const supplierStatusMap: StatusMap<string> = {
-  active: { label: 'Active', tone: 'success' },
-  inactive: { label: 'Inactive', tone: 'neutral' },
-};
 
 export default function SupplierDetailsPage() {
   const { id } = useParams();
@@ -76,7 +71,7 @@ export default function SupplierDetailsPage() {
         ]}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">
-          <StatusBadge value={supplier.status} statusMap={supplierStatusMap} />
+          <StatusBadge value={supplier.status as string} entityType="supplier" />
         </div>
       </PageHeader>
 
@@ -119,7 +114,7 @@ export default function SupplierDetailsPage() {
                       {
                         label: 'Relationship Status',
                         value: (
-                          <StatusBadge value={supplier.status} statusMap={supplierStatusMap} />
+                          <StatusBadge value={supplier.status as string} entityType="supplier" />
                         ),
                       },
                     ],

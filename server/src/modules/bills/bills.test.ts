@@ -34,6 +34,7 @@ vi.mock('../finance/posting.service.js', () => ({
     postInvoice: vi.fn().mockResolvedValue({ id: 'je-1' }),
     postPayment: vi.fn().mockResolvedValue({ id: 'je-2' }),
     postBill: vi.fn().mockResolvedValue({ id: 'je-3' }),
+    postBillReversal: vi.fn().mockResolvedValue({ id: 'je-3-rev' }),
   },
 }));
 
@@ -45,9 +46,17 @@ vi.mock('../../db/index.js', () => {
           .fn()
           .mockResolvedValueOnce({ id: 'bill-123', status: 'draft', documentNumber: 'BIL-001' })
           .mockResolvedValue({ id: 'bill-123', status: 'open', documentNumber: 'BIL-001' }),
+        findMany: vi.fn().mockResolvedValue([]),
       },
       receipts: {
         findFirst: vi.fn(),
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+      payments: {
+        findFirst: vi.fn().mockResolvedValue(undefined),
+      },
+      purchaseOrderLines: {
+        findMany: vi.fn().mockResolvedValue([]),
       },
     },
     insert: vi.fn(() => ({
@@ -104,9 +113,48 @@ describe('Bills Module', () => {
     session: { id: 'session-123' },
     user: { id: mockUserId, email: 'test@example.com' },
   };
+  let activeMockTx: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    activeMockTx = {
+      query: {
+        bills: {
+          findFirst: vi
+            .fn()
+            .mockResolvedValueOnce({ id: 'bill-123', status: 'draft', documentNumber: 'BIL-001' })
+            .mockResolvedValue({ id: 'bill-123', status: 'open', documentNumber: 'BIL-001' }),
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+        receipts: {
+          findFirst: vi.fn(),
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+        payments: {
+          findFirst: vi.fn().mockResolvedValue(undefined),
+        },
+        purchaseOrderLines: {
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+      },
+      insert: vi.fn(() => ({
+        values: vi.fn().mockReturnValue({
+          returning: vi
+            .fn()
+            .mockResolvedValue([{ id: 'new-bill-id', documentNumber: 'BIL-2026-0001' }]),
+        }),
+      })),
+      update: vi.fn(() => ({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([{ id: 'bill-123', status: 'open' }]),
+          }),
+        }),
+      })),
+    };
+    vi.mocked(db.transaction).mockImplementation(async (cb) => {
+      return cb(activeMockTx);
+    });
     (auth.api.getSession as any).mockResolvedValue(mockSession);
     (db.query.organizationMemberships.findFirst as any).mockResolvedValue({
       organizationId: mockOrgId,
@@ -155,6 +203,146 @@ describe('Bills Module', () => {
       expect(db.transaction).toHaveBeenCalled();
       expect(sequencesService.getNextSequence).toHaveBeenCalled();
     });
+
+    it('should successfully create a bill within 3-way match limits', async () => {
+      const payload = {
+        supplierId: '550e8400-e29b-41d4-a716-446655440002',
+        purchaseOrderId: '550e8400-e29b-41d4-a716-446655440005',
+        referenceNumber: 'VEND-INV-100',
+        issueDate: '2026-04-29',
+        dueDate: '2026-05-29',
+        lines: [
+          {
+            productId: '550e8400-e29b-41d4-a716-446655440003',
+            quantity: '5',
+            unitPrice: '100',
+            taxRateAtOrder: '0.1',
+            taxAmount: '10',
+            lineTotal: '510',
+          },
+        ],
+      };
+
+      activeMockTx.query.bills.findMany = vi.fn().mockResolvedValue([]);
+      activeMockTx.query.receipts.findMany = vi.fn().mockResolvedValue([
+        {
+          id: 'rec-1',
+          lines: [
+            {
+              productId: '550e8400-e29b-41d4-a716-446655440003',
+              quantityReceived: '5',
+            },
+          ],
+        },
+      ]);
+      activeMockTx.query.purchaseOrderLines.findMany = vi.fn().mockResolvedValue([
+        {
+          productId: '550e8400-e29b-41d4-a716-446655440003',
+          quantity: '10',
+        },
+      ]);
+
+      const response = await request(app)
+        .post('/bills')
+        .set('x-organization-id', mockOrgId)
+        .send(payload);
+
+      expect(response.status).toBe(201);
+    });
+
+    it('should fail to create a bill when quantity exceeds received quantity', async () => {
+      const payload = {
+        supplierId: '550e8400-e29b-41d4-a716-446655440002',
+        purchaseOrderId: '550e8400-e29b-41d4-a716-446655440005',
+        referenceNumber: 'VEND-INV-100',
+        issueDate: '2026-04-29',
+        dueDate: '2026-05-29',
+        lines: [
+          {
+            productId: '550e8400-e29b-41d4-a716-446655440003',
+            quantity: '6',
+            unitPrice: '100',
+            taxRateAtOrder: '0.1',
+            taxAmount: '10',
+            lineTotal: '610',
+          },
+        ],
+      };
+
+      activeMockTx.query.bills.findMany = vi.fn().mockResolvedValue([]);
+      activeMockTx.query.receipts.findMany = vi.fn().mockResolvedValue([
+        {
+          id: 'rec-1',
+          lines: [
+            {
+              productId: '550e8400-e29b-41d4-a716-446655440003',
+              quantityReceived: '5',
+            },
+          ],
+        },
+      ]);
+      activeMockTx.query.purchaseOrderLines.findMany = vi.fn().mockResolvedValue([
+        {
+          productId: '550e8400-e29b-41d4-a716-446655440003',
+          quantity: '10',
+        },
+      ]);
+
+      const response = await request(app)
+        .post('/bills')
+        .set('x-organization-id', mockOrgId)
+        .send(payload);
+
+      expect(response.status).toBe(500);
+      expect(response.body.message || response.text).toContain('exceeds the received quantity');
+    });
+
+    it('should fail to create a bill when quantity exceeds ordered quantity', async () => {
+      const payload = {
+        supplierId: '550e8400-e29b-41d4-a716-446655440002',
+        purchaseOrderId: '550e8400-e29b-41d4-a716-446655440005',
+        referenceNumber: 'VEND-INV-100',
+        issueDate: '2026-04-29',
+        dueDate: '2026-05-29',
+        lines: [
+          {
+            productId: '550e8400-e29b-41d4-a716-446655440003',
+            quantity: '6',
+            unitPrice: '100',
+            taxRateAtOrder: '0.1',
+            taxAmount: '10',
+            lineTotal: '610',
+          },
+        ],
+      };
+
+      activeMockTx.query.bills.findMany = vi.fn().mockResolvedValue([]);
+      activeMockTx.query.receipts.findMany = vi.fn().mockResolvedValue([
+        {
+          id: 'rec-1',
+          lines: [
+            {
+              productId: '550e8400-e29b-41d4-a716-446655440003',
+              quantityReceived: '10',
+            },
+          ],
+        },
+      ]);
+      activeMockTx.query.purchaseOrderLines.findMany = vi.fn().mockResolvedValue([
+        {
+          productId: '550e8400-e29b-41d4-a716-446655440003',
+          quantity: '5',
+        },
+      ]);
+
+      const response = await request(app)
+        .post('/bills')
+        .set('x-organization-id', mockOrgId)
+        .send(payload);
+
+      expect(response.status).toBe(500);
+      expect(response.body.message || response.text).toContain('exceeds the ordered quantity');
+    });
   });
 
   describe('POST /bills/from-receipt/:receiptId', () => {
@@ -162,15 +350,15 @@ describe('Bills Module', () => {
       const receiptId = '550e8400-e29b-41d4-a716-446655440010';
       const mockReceipt = {
         id: receiptId,
-        purchaseOrderId: 'po-123',
+        purchaseOrderId: '550e8400-e29b-41d4-a716-446655440005',
         purchaseOrder: {
-          id: 'po-123',
-          supplierId: 'supp-123',
+          id: '550e8400-e29b-41d4-a716-446655440005',
+          supplierId: '550e8400-e29b-41d4-a716-446655440002',
           documentNumber: 'PO-001',
         },
         lines: [
           {
-            productId: 'prod-1',
+            productId: '550e8400-e29b-41d4-a716-446655440003',
             quantityReceived: '10',
             purchaseOrderLine: {
               unitPrice: '100',
@@ -180,28 +368,17 @@ describe('Bills Module', () => {
         ],
       };
 
-      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
-        const tx = {
-          query: {
-            receipts: {
-              findFirst: vi.fn().mockResolvedValue(mockReceipt),
-            },
-            bills: {
-              findFirst: vi
-                .fn()
-                .mockResolvedValue({ id: 'new-bill-id', documentNumber: 'BIL-2026-0001' }),
-            },
-          },
-          insert: vi.fn(() => ({
-            values: vi.fn().mockReturnValue({
-              returning: vi
-                .fn()
-                .mockResolvedValue([{ id: 'new-bill-id', documentNumber: 'BIL-2026-0001' }]),
-            }),
-          })),
-        } as any;
-        return cb(tx);
-      });
+      activeMockTx.query.receipts.findFirst = vi.fn().mockResolvedValue(mockReceipt);
+      activeMockTx.query.receipts.findMany = vi.fn().mockResolvedValue([mockReceipt]);
+      activeMockTx.query.bills.findFirst = vi
+        .fn()
+        .mockResolvedValue({ id: 'new-bill-id', documentNumber: 'BIL-2026-0001' });
+      activeMockTx.query.bills.findMany = vi.fn().mockResolvedValue([]);
+      activeMockTx.query.purchaseOrderLines.findMany = vi
+        .fn()
+        .mockResolvedValue([
+          { id: 'pol-1', productId: '550e8400-e29b-41d4-a716-446655440003', quantity: '10' },
+        ]);
 
       const response = await request(app)
         .post(`/bills/from-receipt/${receiptId}`)
@@ -222,6 +399,58 @@ describe('Bills Module', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.status).toBe('open');
+    });
+
+    it('should successfully void a bill if no payments exist', async () => {
+      const billId = 'bill-123';
+      const mockBill = { id: billId, status: 'open', documentNumber: 'BIL-001' };
+
+      activeMockTx.query.bills.findFirst = vi
+        .fn()
+        .mockResolvedValueOnce(mockBill)
+        .mockResolvedValue({ ...mockBill, status: 'void' });
+      activeMockTx.query.payments.findFirst = vi.fn().mockResolvedValue(undefined);
+      activeMockTx.update = vi.fn(() => ({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([{ id: billId, status: 'void' }]),
+          }),
+        }),
+      }));
+
+      const { PostingService } = await import('../finance/posting.service.js');
+
+      const response = await request(app)
+        .patch(`/bills/${billId}/status`)
+        .set('x-organization-id', mockOrgId)
+        .send({ status: 'void', action: 'STATUS_CHANGED', reason: 'Voiding bill' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('void');
+      expect(PostingService.postBillReversal).toHaveBeenCalledWith(
+        billId,
+        mockOrgId,
+        expect.any(Object),
+      );
+    });
+
+    it('should reject transition to void if completed payments exist', async () => {
+      const billId = 'bill-123';
+      const mockBill = { id: billId, status: 'open', documentNumber: 'BIL-001' };
+      const mockPayment = { id: 'pmt-123', status: 'completed' };
+
+      activeMockTx.query.bills.findFirst = vi.fn().mockResolvedValue(mockBill);
+      activeMockTx.query.payments.findFirst = vi.fn().mockResolvedValue(mockPayment);
+
+      const response = await request(app)
+        .patch(`/bills/${billId}/status`)
+        .set('x-organization-id', mockOrgId)
+        .send({ status: 'void', action: 'STATUS_CHANGED', reason: 'Voiding bill' });
+
+      expect(response.status).toBe(500);
+      expect(response.body.message || response.text).toContain(
+        'Cannot void Bill BIL-001 because it has active completed payments',
+      );
     });
   });
 });

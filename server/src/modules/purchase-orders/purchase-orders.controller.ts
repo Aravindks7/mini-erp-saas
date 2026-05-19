@@ -5,6 +5,7 @@ import {
   updatePurchaseOrderStatusSchema,
 } from '#shared/contracts/purchase-orders.contract.js';
 import { logger } from '../../utils/logger.js';
+import { ActivityAction } from '#shared/config/activity-actions.config.js';
 
 /**
  * Controller for Purchase Orders.
@@ -138,7 +139,7 @@ export async function updatePOStatus(req: Request, res: Response) {
       userId,
       id as string,
       parseResult.data.status,
-      parseResult.data.action as any,
+      parseResult.data.action as ActivityAction,
       parseResult.data.reason,
     );
     res.json(updatedPO);

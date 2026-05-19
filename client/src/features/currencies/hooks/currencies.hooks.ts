@@ -4,6 +4,7 @@ import type {
   UpdateCurrencyInput,
 } from '@shared/contracts/currencies.contract';
 import { currenciesApi } from '../api/currencies.api';
+import { activityKeys } from '@/features/activity/hooks/activity.hooks';
 
 import { useTenant } from '@/contexts/TenantContext';
 

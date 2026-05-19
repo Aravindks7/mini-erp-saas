@@ -7,9 +7,10 @@ import {
   inventoryTransfers,
   inventoryTransferLines,
   warehouses,
+  inventoryAllocations,
 } from '../../db/schema/index.js';
 import { sequencesService } from '../sequences/sequences.service.js';
-import { sql, desc, and, eq } from 'drizzle-orm';
+import { and, eq, sql, desc } from 'drizzle-orm';
 import {
   CreateInventoryAdjustmentInput,
   UpdateInventoryAdjustmentInput,
@@ -18,8 +19,9 @@ import {
   CreateInventoryTransferInput,
   UpdateInventoryTransferInput,
 } from '#shared/contracts/inventory-transfers.contract.js';
-import { BaseService } from '../../lib/base.service.js';
+import { logger } from '../../utils/logger.js';
 import { ActivityLogger } from '../../lib/activity-logger.js';
+import { BaseService } from '../../lib/base.service.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -247,6 +249,16 @@ export class InventoryService extends BaseService<typeof inventoryAdjustments> {
       }
 
       for (const line of adjustment.lines) {
+        logger.info(
+          {
+            adjustmentId: id,
+            productId: line.productId,
+            quantityChange: line.quantityChange,
+            warehouseId: line.warehouseId,
+          },
+          'Committing inventory adjustment line',
+        );
+
         // A. Update Level
         await tx
           .insert(inventoryLevels)
@@ -257,7 +269,7 @@ export class InventoryService extends BaseService<typeof inventoryAdjustments> {
                 productId: line.productId,
                 warehouseId: line.warehouseId,
                 binId: line.binId,
-                quantityOnHand: '0',
+                quantityOnHand: line.quantityChange,
               },
               userId,
             ),
@@ -317,6 +329,49 @@ export class InventoryService extends BaseService<typeof inventoryAdjustments> {
         },
         adjustment,
         { status: 'approved' },
+      );
+
+      return updated!;
+    });
+  }
+
+  /**
+   * Cancels a draft adjustment.
+   */
+  async cancelAdjustment(organizationId: string, userId: string, id: string) {
+    return await db.transaction(async (tx) => {
+      const adjustment = await tx.query.inventoryAdjustments.findFirst({
+        where: this.getTenantWhere(organizationId, id),
+      });
+
+      if (!adjustment || adjustment.status !== 'draft') {
+        throw new Error('Adjustment not found or cannot be cancelled');
+      }
+
+      await tx
+        .update(inventoryAdjustments)
+        .set({ status: 'cancelled', updatedAt: new Date(), updatedBy: userId })
+        .where(eq(inventoryAdjustments.id, id));
+
+      const updated = await tx.query.inventoryAdjustments.findFirst({
+        where: eq(inventoryAdjustments.id, id),
+        with: { lines: true },
+      });
+
+      await ActivityLogger.recordUpdate(
+        tx as Transaction,
+        {
+          organizationId,
+          userId,
+          entityType: 'inventory_adjustment',
+          entityId: id,
+          entityDisplayId: adjustment.reference || id,
+          entityLabel: 'Inventory Adjustment',
+          action: 'STATUS_CHANGED',
+          reason: 'Adjustment cancelled',
+        },
+        adjustment,
+        { status: 'cancelled' },
       );
 
       return updated!;
@@ -863,61 +918,127 @@ export class InventoryService extends BaseService<typeof inventoryAdjustments> {
     });
   }
   /**
-   * Allocates stock for a sales order.
-   * Increments quantityAllocated and validates against available stock.
+   * Allocates stock for a sales order line.
+   * Increments quantityAllocated on the physical warehouse/bin inventory level,
+   * and records the allocation in the decoupled inventory_allocations ledger.
    */
   async allocateStock(
     organizationId: string,
     userId: string,
+    salesOrderLineId: string,
     productId: string,
+    warehouseId: string,
+    binId: string | null,
     quantity: string | number,
     tx: Transaction,
   ) {
     const qty = Number(quantity);
     if (qty <= 0) return;
 
-    // In a multi-warehouse environment, we might need a more complex allocation strategy.
-    // For now, we update the main inventory record (or assume a primary warehouse/bin).
+    const qtyStr = qty.toString();
+
+    // A. Update physical stock allocation in inventory_levels (UPSERT)
     await tx
-      .update(inventoryLevels)
-      .set({
-        quantityAllocated: sql`${inventoryLevels.quantityAllocated} + ${qty.toString()}::numeric`,
-        updatedAt: new Date(),
+      .insert(inventoryLevels)
+      .values({
+        organizationId,
+        productId,
+        warehouseId,
+        binId,
+        quantityOnHand: '0',
+        quantityAllocated: qtyStr,
+        createdBy: userId,
         updatedBy: userId,
       })
-      .where(
-        and(
-          eq(inventoryLevels.organizationId, organizationId),
-          eq(inventoryLevels.productId, productId),
-        ),
-      );
+      .onConflictDoUpdate({
+        target: [
+          inventoryLevels.organizationId,
+          inventoryLevels.productId,
+          inventoryLevels.warehouseId,
+          inventoryLevels.binId,
+        ],
+        set: {
+          quantityAllocated: sql`${inventoryLevels.quantityAllocated} + ${qtyStr}::numeric`,
+          updatedAt: new Date(),
+          updatedBy: userId,
+        },
+      });
+
+    // B. Write allocation record to dynamic decoupled inventory_allocations (UPSERT)
+    await tx
+      .insert(inventoryAllocations)
+      .values({
+        organizationId,
+        salesOrderLineId,
+        productId,
+        warehouseId,
+        binId,
+        quantityAllocated: qtyStr,
+        createdBy: userId,
+        updatedBy: userId,
+      })
+      .onConflictDoUpdate({
+        target: [
+          inventoryAllocations.organizationId,
+          inventoryAllocations.salesOrderLineId,
+          inventoryAllocations.warehouseId,
+          inventoryAllocations.binId,
+        ],
+        set: {
+          quantityAllocated: sql`${inventoryAllocations.quantityAllocated} + ${qtyStr}::numeric`,
+          updatedAt: new Date(),
+          updatedBy: userId,
+        },
+      });
   }
 
   /**
-   * Deallocates stock (e.g. on order cancellation).
-   * Decrements quantityAllocated.
+   * Deallocates stock for a sales order line (e.g. on order cancellation).
+   * Decrements quantityAllocated on the physical warehouse/bin levels,
+   * and purges the allocation records from the decoupled ledger.
    */
   async deallocateStock(
     organizationId: string,
     userId: string,
-    productId: string,
-    quantity: string | number,
+    salesOrderLineId: string,
     tx: Transaction,
   ) {
-    const qty = Number(quantity);
-    if (qty <= 0) return;
+    // 1. Fetch all active allocations for the sales order line
+    const allocations = await tx.query.inventoryAllocations.findMany({
+      where: (alloc, { and, eq }) =>
+        and(eq(alloc.organizationId, organizationId), eq(alloc.salesOrderLineId, salesOrderLineId)),
+    });
 
+    for (const alloc of allocations) {
+      const qtyStr = alloc.quantityAllocated;
+
+      // A. Decrement physical stock allocation in inventory_levels
+      await tx
+        .update(inventoryLevels)
+        .set({
+          quantityAllocated: sql`GREATEST(0, ${inventoryLevels.quantityAllocated} - ${qtyStr}::numeric)`,
+          updatedAt: new Date(),
+          updatedBy: userId,
+        })
+        .where(
+          and(
+            eq(inventoryLevels.organizationId, organizationId),
+            eq(inventoryLevels.productId, alloc.productId),
+            eq(inventoryLevels.warehouseId, alloc.warehouseId),
+            alloc.binId
+              ? eq(inventoryLevels.binId, alloc.binId)
+              : sql`${inventoryLevels.binId} IS NULL`,
+          ),
+        );
+    }
+
+    // B. Delete the allocations from the decoupled ledger
     await tx
-      .update(inventoryLevels)
-      .set({
-        quantityAllocated: sql`GREATEST(0, ${inventoryLevels.quantityAllocated} - ${qty.toString()}::numeric)`,
-        updatedAt: new Date(),
-        updatedBy: userId,
-      })
+      .delete(inventoryAllocations)
       .where(
         and(
-          eq(inventoryLevels.organizationId, organizationId),
-          eq(inventoryLevels.productId, productId),
+          eq(inventoryAllocations.organizationId, organizationId),
+          eq(inventoryAllocations.salesOrderLineId, salesOrderLineId),
         ),
       );
   }

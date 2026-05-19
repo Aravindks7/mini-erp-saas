@@ -1,5 +1,5 @@
 {
-  "id": "fe978d0e-dcb9-4676-85dc-b7ac0331f193",
+  "id": "bf0a3507-b3a5-4f61-a841-73d15de99eac",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -4652,6 +4652,247 @@
       },
       "isRLSEnabled": false
     },
+    "public.inventory_allocations": {
+      "name": "inventory_allocations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sales_order_line_id": {
+          "name": "sales_order_line_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "product_id": {
+          "name": "product_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "warehouse_id": {
+          "name": "warehouse_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bin_id": {
+          "name": "bin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quantity_allocated": {
+          "name": "quantity_allocated",
+          "type": "numeric(18, 8)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        }
+      },
+      "indexes": {
+        "inv_alloc_org_idx": {
+          "name": "inv_alloc_org_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "inv_alloc_so_line_idx": {
+          "name": "inv_alloc_so_line_idx",
+          "columns": [
+            {
+              "expression": "sales_order_line_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "inv_alloc_product_idx": {
+          "name": "inv_alloc_product_idx",
+          "columns": [
+            {
+              "expression": "product_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "inv_alloc_warehouse_idx": {
+          "name": "inv_alloc_warehouse_idx",
+          "columns": [
+            {
+              "expression": "warehouse_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "inv_alloc_org_so_line_wh_bin_unique": {
+          "name": "inv_alloc_org_so_line_wh_bin_unique",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sales_order_line_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "warehouse_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "bin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "inventory_allocations_organization_id_organizations_id_fk": {
+          "name": "inventory_allocations_organization_id_organizations_id_fk",
+          "tableFrom": "inventory_allocations",
+          "tableTo": "organizations",
+          "columnsFrom": ["organization_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "inventory_allocations_sales_order_line_id_sales_order_lines_id_fk": {
+          "name": "inventory_allocations_sales_order_line_id_sales_order_lines_id_fk",
+          "tableFrom": "inventory_allocations",
+          "tableTo": "sales_order_lines",
+          "columnsFrom": ["sales_order_line_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "inventory_allocations_product_id_products_id_fk": {
+          "name": "inventory_allocations_product_id_products_id_fk",
+          "tableFrom": "inventory_allocations",
+          "tableTo": "products",
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "inventory_allocations_warehouse_id_warehouses_id_fk": {
+          "name": "inventory_allocations_warehouse_id_warehouses_id_fk",
+          "tableFrom": "inventory_allocations",
+          "tableTo": "warehouses",
+          "columnsFrom": ["warehouse_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "inventory_allocations_bin_id_bins_id_fk": {
+          "name": "inventory_allocations_bin_id_bins_id_fk",
+          "tableFrom": "inventory_allocations",
+          "tableTo": "bins",
+          "columnsFrom": ["bin_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "inv_alloc_quantity_check": {
+          "name": "inv_alloc_quantity_check",
+          "value": "\"inventory_allocations\".\"quantity_allocated\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.inventory_ledgers": {
       "name": "inventory_ledgers",
       "schema": "",
@@ -8084,7 +8325,7 @@
     "public.bill_status": {
       "name": "bill_status",
       "schema": "public",
-      "values": ["draft", "open", "paid", "void"]
+      "values": ["draft", "open", "partially_paid", "paid", "void"]
     },
     "public.customer_status": {
       "name": "customer_status",
@@ -8119,7 +8360,7 @@
     "public.purchase_order_status": {
       "name": "purchase_order_status",
       "schema": "public",
-      "values": ["draft", "sent", "partially_received", "received", "cancelled"]
+      "values": ["draft", "sent", "partially_received", "received", "closed", "cancelled"]
     },
     "public.receipt_status": {
       "name": "receipt_status",

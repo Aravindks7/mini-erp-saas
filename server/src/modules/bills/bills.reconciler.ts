@@ -6,13 +6,14 @@ import type { ActivityAction } from '#shared/config/activity-actions.config.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export type BillStatus = 'draft' | 'open' | 'paid' | 'void';
+export type BillStatus = 'draft' | 'open' | 'partially_paid' | 'paid' | 'void';
 
 export class BillReconciler {
   private static readonly BILL_TRANSITIONS: Record<BillStatus, BillStatus[]> = {
     draft: ['open', 'void'],
-    open: ['paid', 'void'],
-    paid: ['void'], // Voiding a paid bill requires voiding payments first
+    open: ['partially_paid', 'paid', 'void'],
+    partially_paid: ['paid', 'open', 'void'],
+    paid: ['open', 'partially_paid', 'void'], // Voiding a paid bill requires voiding payments first
     void: [],
   };
 
@@ -46,6 +47,24 @@ export class BillReconciler {
       );
     }
 
+    // Verify completed payments before voiding
+    if (newStatus === 'void') {
+      const completedPayment = await tx.query.payments.findFirst({
+        where: and(
+          eq(payments.billId, id),
+          eq(payments.organizationId, organizationId),
+          eq(payments.status, 'completed'),
+          sql`${payments.deletedAt} IS NULL`,
+        ),
+      });
+
+      if (completedPayment) {
+        throw new Error(
+          `Business Rule Violation: Cannot void Bill ${existing.documentNumber} because it has active completed payments. Void the payments first.`,
+        );
+      }
+    }
+
     // 1. Transactional Update (Derived State Change)
     const updateData: Partial<typeof bills.$inferInsert> = {
       status: newStatus,
@@ -64,10 +83,13 @@ export class BillReconciler {
       .set(updateData)
       .where(and(eq(bills.id, id), eq(bills.organizationId, organizationId)));
 
-    // 2. Trigger GL Posting if transitioning to 'open'
+    // 2. Trigger GL Posting / Reversals
     if (newStatus === 'open') {
       const { PostingService } = await import('../finance/posting.service.js');
       await PostingService.postBill(id, organizationId, tx);
+    } else if (newStatus === 'void') {
+      const { PostingService } = await import('../finance/posting.service.js');
+      await PostingService.postBillReversal(id, organizationId, tx);
     }
 
     // 3. Business Activity Log (Temporal Narrative)
@@ -129,6 +151,8 @@ export class BillReconciler {
     let newStatus: BillStatus = 'open';
     if (totalPaid >= totalAmount) {
       newStatus = 'paid';
+    } else if (totalPaid > 0) {
+      newStatus = 'partially_paid';
     }
 
     if (newStatus !== bill.status && bill.status !== 'void' && bill.status !== 'draft') {
@@ -139,6 +163,17 @@ export class BillReconciler {
         newStatus,
         'SYSTEM_RECONCILIATION',
         'System reconciliation of payments',
+        tx,
+      );
+    }
+
+    if (bill.purchaseOrderId) {
+      const { PurchaseOrderReconciler } =
+        await import('../purchase-orders/purchase-orders.reconciler.js');
+      await PurchaseOrderReconciler.reconcileBilling(
+        organizationId,
+        userId,
+        bill.purchaseOrderId,
         tx,
       );
     }

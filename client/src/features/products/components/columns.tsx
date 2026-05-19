@@ -2,21 +2,13 @@ import * as React from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
-
+import { StatusBadge } from '@/components/shared/StatusBadge';
+import { getStatusOptions } from '@/lib/status-registry';
 import type { ProductResponse } from '../api/products.api';
 import { ProductRowActions } from './ProductRowActions';
 import { useCurrency } from '@/features/currencies/hooks/use-currency';
 
-const productStatusMap: StatusMap<string> = {
-  active: { label: 'Active', tone: 'success' },
-  inactive: { label: 'Inactive', tone: 'neutral' },
-};
-
-export const productStatusOptions = Object.entries(productStatusMap).map(([value, config]) => ({
-  label: config.label,
-  value,
-}));
+export const productStatusOptions = getStatusOptions('product');
 
 export function useProductColumns(): ColumnDef<ProductResponse>[] {
   const { format: formatCurrency } = useCurrency();
@@ -91,10 +83,9 @@ export function useProductColumns(): ColumnDef<ProductResponse>[] {
           return Array.isArray(selectedValues) ? selectedValues.includes(rowValue) : false;
         },
         cell: ({ row }) => {
-          return (
-            <StatusBadge value={row.getValue('status') as string} statusMap={productStatusMap} />
-          );
+          return <StatusBadge value={row.getValue('status') as string} entityType="product" />;
         },
+
         meta: { variant: 'field', label: 'Status' },
       },
       {

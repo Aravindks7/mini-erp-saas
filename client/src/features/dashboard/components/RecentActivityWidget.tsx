@@ -8,21 +8,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
+import { type EntityType } from '@/lib/status-registry';
 import type { RecentActivity } from '@shared/contracts/dashboard.contract';
 
 interface RecentActivityWidgetProps {
-  activity: RecentActivity[];
+  activity: (Omit<RecentActivity, 'type'> & { type: EntityType })[];
 }
-
-const ORDER_STATUS_MAP: StatusMap<string> = {
-  draft: { label: 'Draft', tone: 'neutral' },
-  approved: { label: 'Approved', tone: 'info' },
-  shipped: { label: 'Shipped', tone: 'success' },
-  fulfilled: { label: 'Fulfilled', tone: 'success' },
-  cancelled: { label: 'Cancelled', tone: 'danger' },
-  pending: { label: 'Pending', tone: 'warning' },
-};
 
 import { useCurrency } from '@/features/currencies/hooks/use-currency';
 
@@ -75,8 +67,9 @@ export function RecentActivityWidget({ activity }: RecentActivityWidgetProps) {
                     {item.customerOrSupplierName}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge value={item.status} statusMap={ORDER_STATUS_MAP} />
+                    <StatusBadge value={item.status as string} entityType={item.type} />
                   </TableCell>
+
                   <TableCell className="text-right font-medium">
                     {formatCurrency(Number(item.amount))}
                   </TableCell>

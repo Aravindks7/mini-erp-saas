@@ -4,7 +4,7 @@ import * as React from 'react';
 
 import { useAccount } from '../hooks/accounts.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
@@ -13,11 +13,6 @@ import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { AccountForm } from '../components/AccountForm';
 import { APP_PATHS } from '@/lib/paths';
-
-const accountStatusMap: StatusMap<string> = {
-  active: { label: 'Active', tone: 'success' },
-  inactive: { label: 'Inactive', tone: 'neutral' },
-};
 
 export default function AccountDetailsPage() {
   const { id } = useParams();
@@ -71,10 +66,7 @@ export default function AccountDetailsPage() {
         ]}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">
-          <StatusBadge
-            value={account.isActive ? 'active' : 'inactive'}
-            statusMap={accountStatusMap}
-          />
+          <StatusBadge value={account.isActive ? 'active' : 'inactive'} entityType="account" />
         </div>
       </PageHeader>
 
@@ -103,7 +95,7 @@ export default function AccountDetailsPage() {
                       value: (
                         <StatusBadge
                           value={account.isActive ? 'active' : 'inactive'}
-                          statusMap={accountStatusMap}
+                          entityType="account"
                         />
                       ),
                     },

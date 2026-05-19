@@ -65,7 +65,12 @@ export async function updateAdjustmentStatus(req: Request, res: Response) {
       const result = await inventoryService.approveAdjustment(organizationId, userId, id as string);
       return res.json(result);
     }
-    // Handle cancel if needed
+
+    if (parseResult.data.status === 'cancelled') {
+      const result = await inventoryService.cancelAdjustment(organizationId, userId, id as string);
+      return res.json(result);
+    }
+
     res.status(400).json({ error: 'Unsupported status update' });
   } catch (error) {
     logger.error({ error, organizationId, userId, id }, 'Failed to update adjustment status');

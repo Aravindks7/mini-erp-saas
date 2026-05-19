@@ -17,7 +17,6 @@ import {
   useCreateOrganization,
   useOrganizationsActions,
 } from '@/features/organizations/hooks/organizations.hooks';
-import type { OrganizationResponse } from '@/features/organizations/api/organizations.api';
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect';
 import { COUNTRIES } from '@shared/utils/countries';
 import { Form } from '@/components/shared/form/Form';

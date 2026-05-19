@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { APP_PATHS } from '@/lib/paths';
@@ -20,12 +20,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
-const shipmentStatusMap: StatusMap<string> = {
-  draft: { label: 'Draft', tone: 'neutral' },
-  shipped: { label: 'Shipped', tone: 'success' },
-  cancelled: { label: 'Cancelled', tone: 'danger' },
-};
 
 export default function ShipmentDetailsPage() {
   const { id } = useParams();
@@ -104,7 +98,7 @@ export default function ShipmentDetailsPage() {
         actions={actions}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">
-          <StatusBadge value={shipment.status} statusMap={shipmentStatusMap} />
+          <StatusBadge value={shipment.status} entityType="shipment" />
         </div>
       </PageHeader>
 

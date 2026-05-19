@@ -100,10 +100,12 @@ export class PaymentsService extends BaseService<typeof payments> {
    */
   async fulfillPaymentIntent(providerRef: string) {
     return await db.transaction(async (tx) => {
-      // 1. Find the intent
-      const intent = await tx.query.paymentIntents.findFirst({
-        where: eq(paymentIntents.providerRef, providerRef),
-      });
+      // 1. Find the intent and lock it to serialize concurrent webhook notifications
+      const [intent] = await tx
+        .select()
+        .from(paymentIntents)
+        .where(eq(paymentIntents.providerRef, providerRef))
+        .for('update');
 
       if (!intent || intent.status !== 'pending') {
         return; // Already processed or not found
@@ -156,7 +158,7 @@ export class PaymentsService extends BaseService<typeof payments> {
       // 3a. Post to GL
       if (payment) {
         const { PostingService } = await import('../finance/posting.service.js');
-        await PostingService.postPayment(payment.id, intent.organizationId);
+        await PostingService.postPayment(payment.id, intent.organizationId, tx as Transaction);
       }
 
       // 4. Reconcile Invoice (or Bill)
@@ -389,6 +391,12 @@ export class PaymentsService extends BaseService<typeof payments> {
         .set(this.withAudit({ status: newStatus }, userId, true))
         .where(and(eq(payments.id, id), eq(payments.organizationId, organizationId)));
 
+      // Post counters to GL for GAAP compliance on completed payments
+      if (payment.status === 'completed') {
+        const { PostingService } = await import('../finance/posting.service.js');
+        await PostingService.postPaymentReversal(payment.id, organizationId, tx);
+      }
+
       if (payment.invoiceId) {
         await InvoiceReconciler.reconcilePayment(
           organizationId,
@@ -441,6 +449,12 @@ export class PaymentsService extends BaseService<typeof payments> {
           .update(payments)
           .set(this.withAudit({ status: newStatus }, userId, true))
           .where(and(eq(payments.id, p.id), eq(payments.organizationId, organizationId)));
+
+        // Post counters to GL for GAAP compliance on completed payments
+        if (p.status === 'completed') {
+          const { PostingService } = await import('../finance/posting.service.js');
+          await PostingService.postPaymentReversal(p.id, organizationId, tx);
+        }
 
         if (p.invoiceId) invoiceIds.add(p.invoiceId);
         if (p.billId) billIds.add(p.billId);

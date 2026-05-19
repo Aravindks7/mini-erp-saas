@@ -14,8 +14,6 @@ import {
 import type { InventoryTransferResponse } from '../../api/inventory.api';
 import type { ActivityLogResponse } from '@shared/contracts/activity-logs.contract';
 import { ArrowRight, Package, Warehouse } from 'lucide-react';
-import { transferStatusMap } from '../../config/index';
-
 interface TransferDetailsProps {
   transfer: InventoryTransferResponse;
   activityItems: ActivityLogResponse[];
@@ -29,7 +27,7 @@ export function TransferDetails({ transfer, activityItems }: TransferDetailsProp
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>General Information</CardTitle>
-              <StatusBadge value={transfer.status} statusMap={transferStatusMap} />
+              <StatusBadge value={transfer.status} entityType="inventory_transfer" />
             </div>
           </CardHeader>
           <CardContent>

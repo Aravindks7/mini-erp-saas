@@ -138,6 +138,14 @@
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
   }
+  .custom-scrollbar {
+    @apply [&::-webkit-scrollbar]:w-1.5
+           [&::-webkit-scrollbar-track]:rounded-full
+           [&::-webkit-scrollbar-track]:bg-muted/50
+           [&::-webkit-scrollbar-thumb]:rounded-full
+           [&::-webkit-scrollbar-thumb]:bg-muted-foreground/10
+           hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/15;
+  }
 }
 
 @layer base {
@@ -170,4 +178,9 @@
 
 ::view-transition-new(root) {
   z-index: 2147483647;
+}
+
+/* Disable all transitions during theme toggle to prevent performance bottleneck in complex dashboards */
+.theme-transitioning * {
+  transition: none !important;
 }

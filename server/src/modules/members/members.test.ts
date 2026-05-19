@@ -27,6 +27,17 @@ vi.mock('../../lib/activity-logger.js', () => ({
   },
 }));
 
+const mockQuery = {
+  from: vi.fn().mockReturnThis(),
+  where: vi.fn().mockReturnThis(),
+  orderBy: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockReturnThis(),
+  groupBy: vi.fn().mockReturnThis(),
+  innerJoin: vi.fn().mockReturnThis(),
+  then: (onFulfilled: any) => Promise.resolve([]).then(onFulfilled),
+  catch: (onRejected: any) => Promise.resolve([]).catch(onRejected),
+};
+
 vi.mock('../../db/index.js', () => {
   const mockTx = {
     query: {
@@ -51,19 +62,7 @@ vi.mock('../../db/index.js', () => {
     delete: vi.fn(() => ({
       where: vi.fn().mockResolvedValue([]),
     })),
-    select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        innerJoin: vi.fn(() => ({
-          innerJoin: vi.fn(() => ({
-            innerJoin: vi.fn(() => ({
-              where: vi.fn(() => ({
-                groupBy: vi.fn().mockResolvedValue([{ userId: 'admin-1' }]),
-              })),
-            })),
-          })),
-        })),
-      })),
-    })),
+    select: vi.fn(() => mockQuery),
   };
 
   return {
@@ -76,19 +75,7 @@ vi.mock('../../db/index.js', () => {
       },
       transaction: vi.fn((cb) => cb(mockTx)),
       execute: vi.fn().mockResolvedValue({ rows: [] }),
-      select: vi.fn(() => ({
-        from: vi.fn(() => ({
-          innerJoin: vi.fn(() => ({
-            innerJoin: vi.fn(() => ({
-              innerJoin: vi.fn(() => ({
-                where: vi.fn(() => ({
-                  groupBy: vi.fn().mockResolvedValue([{ userId: 'admin-1' }]),
-                })),
-              })),
-            })),
-          })),
-        })),
-      })),
+      select: vi.fn(() => mockQuery),
     },
   };
 });
@@ -104,10 +91,14 @@ describe('Members Module', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (auth.api.getSession as any).mockResolvedValue(mockSession);
-    (db.query.organizationMemberships.findFirst as any).mockResolvedValue({
-      organizationId: mockOrgId,
-      userId: mockUserId,
-      organization: { id: mockOrgId },
+    (db.query.organizationMemberships.findFirst as any).mockImplementation(() => {
+      // If the query is looking for a roleId or something else, it might be a usage guard
+      // But here we mainly need it for auth
+      return {
+        organizationId: mockOrgId,
+        userId: mockUserId,
+        organization: { id: mockOrgId },
+      };
     });
   });
 
@@ -116,8 +107,11 @@ describe('Members Module', () => {
       const mockMembers = [
         {
           userId: '550e8400-e29b-41d4-a716-446655440003',
+          organizationId: mockOrgId,
+          roleId: 'admin-role',
           role: { name: 'Admin' },
           user: { name: 'User 1', email: 'u1@test.com', image: null },
+          createdAt: new Date(),
         },
       ];
       (db.query.organizationMemberships.findMany as any).mockResolvedValue(mockMembers);
@@ -139,12 +133,10 @@ describe('Members Module', () => {
         const tx = {
           query: {
             organizationMemberships: {
-              findFirst: vi
-                .fn()
-                .mockResolvedValue({
-                  id: '550e8400-e29b-41d4-a716-446655440005',
-                  roleId: 'old-role',
-                }),
+              findFirst: vi.fn().mockResolvedValue({
+                id: '550e8400-e29b-41d4-a716-446655440005',
+                roleId: 'old-role',
+              }),
             },
             rolePermissionSets: {
               findMany: vi
@@ -154,6 +146,7 @@ describe('Members Module', () => {
                 ]),
             },
           },
+          select: vi.fn(() => mockQuery),
           update: vi.fn(() => ({
             set: vi.fn().mockReturnValue({
               where: vi.fn().mockReturnValue({
@@ -168,7 +161,7 @@ describe('Members Module', () => {
       });
 
       const response = await request(app)
-        .patch(`/members/${targetUserId}`)
+        .patch(`/members/${targetUserId}/role`)
         .set('x-organization-id', mockOrgId)
         .send(payload);
 
@@ -185,43 +178,43 @@ describe('Members Module', () => {
         const tx = {
           query: {
             organizationMemberships: {
-              findFirst: vi
-                .fn()
-                .mockResolvedValue({
-                  id: '550e8400-e29b-41d4-a716-446655440005',
-                  roleId: 'admin-role',
-                }),
+              findFirst: vi.fn().mockResolvedValue({
+                id: '550e8400-e29b-41d4-a716-446655440005',
+                roleId: 'admin-role',
+              }),
             },
             rolePermissionSets: {
               findMany: vi.fn().mockResolvedValue([{ permissionSet: { items: [] } }]), // Target role has no management perms
             },
           },
-          select: vi.fn(() => ({
-            from: vi.fn(() => ({
-              innerJoin: vi.fn(() => ({
-                innerJoin: vi.fn(() => ({
-                  innerJoin: vi.fn(() => ({
-                    where: vi.fn(() => ({
-                      groupBy: vi
-                        .fn()
-                        .mockResolvedValue([{ userId: '550e8400-e29b-41d4-a716-446655440003' }]), // Only one admin exists
-                    })),
-                  })),
-                })),
-              })),
-            })),
-          })),
+          select: vi
+            .fn()
+            .mockReturnValueOnce({
+              ...mockQuery,
+              then: (onFulfilled: any) =>
+                Promise.resolve([{ userId: '550e8400-e29b-41d4-a716-446655440003' }]).then(
+                  onFulfilled,
+                ),
+            })
+            .mockReturnValueOnce({
+              ...mockQuery,
+              then: (onFulfilled: any) => Promise.resolve([]).then(onFulfilled),
+            }),
         } as any;
         return cb(tx);
       });
 
       const response = await request(app)
-        .patch(`/members/${targetUserId}`)
+        .patch(`/members/${targetUserId}/role`)
         .set('x-organization-id', mockOrgId)
         .send(payload);
 
+      if (response.status !== 400) {
+        console.error(response.body);
+      }
+
       expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Cannot demote the last administrator');
+      expect(response.body.error).toContain('LAST_ADMIN_LOCKOUT');
     });
   });
 });

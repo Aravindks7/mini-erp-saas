@@ -5,7 +5,7 @@ import { isToday, isYesterday, format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from './UserAvatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Link } from 'react-router-dom';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import {
@@ -149,8 +149,11 @@ export function ActivityTimeline({
                     'to' in snapshot.status),
                 );
 
-                const statusFrom = snapshot?.previousStatus || (snapshot?.status as any)?.from;
-                const statusTo = snapshot?.newStatus || (snapshot?.status as any)?.to;
+                const statusFrom =
+                  snapshot?.previousStatus ||
+                  (snapshot?.status as unknown as { from: string }).from;
+                const statusTo =
+                  snapshot?.newStatus || (snapshot?.status as unknown as { to: string }).to;
 
                 const otherDiffs = snapshot
                   ? Object.entries(snapshot).filter(([key, value]) => {

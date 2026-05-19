@@ -174,6 +174,10 @@ export class ReceiptsService extends BaseService<typeof receipts> {
         }
       }
 
+      // Trigger GL Posting
+      const { PostingService } = await import('../finance/posting.service.js');
+      await PostingService.postReceipt(receipt.id, organizationId, tx);
+
       return await this.getReceiptById(organizationId, receipt.id, tx);
     };
 
@@ -339,6 +343,9 @@ export class ReceiptsService extends BaseService<typeof receipts> {
           .update(receipts)
           .set(this.withAudit({ status: 'cancelled' }, userId, true))
           .where(and(eq(receipts.id, id), eq(receipts.organizationId, organizationId)));
+
+        const { PostingService } = await import('../finance/posting.service.js');
+        await PostingService.postReceiptReversal(id, organizationId, tx);
 
         if (receipt.purchaseOrderId) {
           await PurchaseOrderReconciler.reconcileReceiving(

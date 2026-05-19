@@ -6,8 +6,17 @@ import { db } from '../../db/index.js';
 
 vi.mock('../rbac/rbac.service.js', () => ({
   rbacService: {
-    getPermissions: vi.fn().mockResolvedValue(['payments:read', 'payments:create']),
+    getPermissions: vi
+      .fn()
+      .mockResolvedValue(['payments:read', 'payments:create', 'payments:delete']),
     invalidateCache: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+vi.mock('../finance/posting.service.js', () => ({
+  PostingService: {
+    postPayment: vi.fn().mockResolvedValue({ id: 'je-mock-pay' }),
+    postPaymentReversal: vi.fn().mockResolvedValue({ id: 'je-mock-rev' }),
   },
 }));
 
@@ -214,6 +223,47 @@ describe('Payments Module', () => {
         .send(payload);
 
       expect(response.status).toBe(400);
+    });
+  });
+
+  describe('DELETE /payments/:id', () => {
+    it('should delete a payment and post counter entries to General Ledger', async () => {
+      const mockPayment = {
+        id: 'pay-123',
+        status: 'completed',
+        amount: '1000',
+        paymentType: 'inbound',
+        referenceNumber: 'REF-123',
+      };
+
+      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
+        const tx = {
+          query: {
+            payments: {
+              findFirst: vi.fn().mockResolvedValue(mockPayment),
+            },
+          },
+          update: vi.fn(() => ({
+            set: vi.fn().mockReturnValue({
+              where: vi.fn().mockResolvedValue([{ id: 'pay-123', status: 'refunded' }]),
+            }),
+          })),
+        } as any;
+        return cb(tx);
+      });
+
+      const { PostingService } = await import('../finance/posting.service.js');
+
+      const response = await request(app)
+        .delete('/payments/pay-123')
+        .set('x-organization-id', mockOrgId);
+
+      expect(response.status).toBe(204);
+      expect(PostingService.postPaymentReversal).toHaveBeenCalledWith(
+        'pay-123',
+        mockOrgId,
+        expect.any(Object),
+      );
     });
   });
 });

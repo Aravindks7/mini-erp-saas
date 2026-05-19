@@ -22,6 +22,16 @@ vi.mock('../auth/auth.js', () => ({
 
 // Complex mock for db
 vi.mock('../../db/index.js', () => {
+  const mockQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
+    groupBy: vi.fn().mockReturnThis(),
+    innerJoin: vi.fn().mockReturnThis(),
+    then: (onFulfilled: any) => Promise.resolve([]).then(onFulfilled),
+    catch: (onRejected: any) => Promise.resolve([]).catch(onRejected),
+  };
   const mockDb = {
     query: {
       organizationMemberships: {
@@ -33,19 +43,12 @@ vi.mock('../../db/index.js', () => {
       salesOrders: {
         findMany: vi.fn(),
       },
+      purchaseOrders: {
+        findMany: vi.fn(),
+      },
     },
     select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        innerJoin: vi.fn(() => ({
-          innerJoin: vi.fn(() => ({
-            where: vi.fn(() => ({
-              orderBy: vi.fn(() => ({
-                limit: vi.fn().mockResolvedValue([]),
-              })),
-            })),
-          })),
-        })),
-      })),
+      from: vi.fn(() => mockQuery),
     })),
     execute: vi.fn().mockResolvedValue({ rows: [] }),
     transaction: vi.fn((cb) => cb(mockDb)),
@@ -79,14 +82,21 @@ describe('Dashboard Module', () => {
         activeCustomers: 10,
       });
       (db.query.salesOrders.findMany as any).mockResolvedValue([]);
+      (db.query.purchaseOrders.findMany as any).mockResolvedValue([]);
 
       const response = await request(app).get('/dashboard').set('x-organization-id', mockOrgId);
+
+      if (response.status !== 200) {
+        console.error(response.body);
+      }
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('metrics');
       expect(response.body).toHaveProperty('lowStockItems');
       expect(response.body).toHaveProperty('recentActivity');
+      expect(response.body).toHaveProperty('performanceData');
       expect(response.body.metrics.totalSales).toBe('1000');
+      expect(Array.isArray(response.body.performanceData)).toBe(true);
     });
   });
 

@@ -2,15 +2,15 @@
   "folders": [
     {
       "name": "erp-saas-app",
-      "path": "."
+      "path": ".",
     },
     {
       "name": "client",
-      "path": "client"
+      "path": "client",
     },
     {
       "name": "server",
-      "path": "server"
-    }
+      "path": "server",
+    },
   ],
 }

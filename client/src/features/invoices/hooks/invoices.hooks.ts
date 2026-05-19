@@ -55,6 +55,7 @@ export function useCreateInvoice() {
     onSuccess: (data) => {
       queryClient.setQueryData(invoiceKeys.detail(data.id), data);
       queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: salesOrderKeys.all });
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
@@ -83,6 +84,7 @@ export function useUpdateInvoiceStatus() {
     onSuccess: (data) => {
       queryClient.setQueryData(invoiceKeys.detail(data.id), data);
       queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: salesOrderKeys.all });
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
@@ -95,6 +97,7 @@ export function useDeleteInvoice() {
     mutationFn: (id: string) => invoicesApi.deleteInvoice(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: salesOrderKeys.all });
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
       toast.success('Invoice processed successfully');
     },
@@ -111,6 +114,7 @@ export function useBulkDeleteInvoices() {
     mutationFn: (ids: string[]) => invoicesApi.bulkDeleteInvoices(ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: salesOrderKeys.all });
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
       toast.success('Invoices processed successfully');
     },

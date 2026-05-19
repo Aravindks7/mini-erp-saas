@@ -27,6 +27,17 @@ vi.mock('../../lib/activity-logger.js', () => ({
   },
 }));
 
+const mockQuery = {
+  from: vi.fn().mockReturnThis(),
+  where: vi.fn().mockReturnThis(),
+  orderBy: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockReturnThis(),
+  groupBy: vi.fn().mockReturnThis(),
+  innerJoin: vi.fn().mockReturnThis(),
+  then: (onFulfilled: any) => Promise.resolve([]).then(onFulfilled),
+  catch: (onRejected: any) => Promise.resolve([]).catch(onRejected),
+};
+
 vi.mock('../../db/index.js', () => {
   const mockTx = {
     query: {
@@ -53,6 +64,7 @@ vi.mock('../../db/index.js', () => {
     delete: vi.fn(() => ({
       where: vi.fn().mockResolvedValue([]),
     })),
+    select: vi.fn(() => mockQuery),
   };
 
   return {
@@ -65,9 +77,13 @@ vi.mock('../../db/index.js', () => {
           findFirst: vi.fn(),
           findMany: vi.fn(),
         },
+        rolePermissionSets: {
+          findFirst: vi.fn(),
+        },
       },
       transaction: vi.fn((cb) => cb(mockTx)),
       execute: vi.fn().mockResolvedValue({ rows: [] }),
+      select: vi.fn(() => mockQuery),
     },
   };
 });
@@ -83,10 +99,13 @@ describe('Permission Sets Module', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (auth.api.getSession as any).mockResolvedValue(mockSession);
-    (db.query.organizationMemberships.findFirst as any).mockResolvedValue({
-      organizationId: mockOrgId,
-      userId: mockUserId,
-      organization: { id: mockOrgId },
+    (db.query.organizationMemberships.findFirst as any).mockImplementation(() => {
+      // Return the auth membership by default unless we specifically want null for a usage guard (if any)
+      return {
+        organizationId: mockOrgId,
+        userId: mockUserId,
+        organization: { id: mockOrgId },
+      };
     });
   });
 
@@ -152,16 +171,7 @@ describe('Permission Sets Module', () => {
       const psId = '550e8400-e29b-41d4-a716-446655440008';
       const mockPS = { id: psId, name: 'System Set', organizationId: null, items: [] };
 
-      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
-        const tx = {
-          query: {
-            permissionSets: {
-              findFirst: vi.fn().mockResolvedValue(mockPS),
-            },
-          },
-        } as any;
-        return cb(tx);
-      });
+      (db.query.permissionSets.findFirst as any).mockResolvedValue(mockPS);
 
       const response = await request(app)
         .delete(`/permission-sets/${psId}`)
@@ -175,19 +185,8 @@ describe('Permission Sets Module', () => {
       const psId = '550e8400-e29b-41d4-a716-446655440009';
       const mockPS = { id: psId, name: 'In Use Set', organizationId: mockOrgId, items: [] };
 
-      vi.mocked(db.transaction).mockImplementationOnce(async (cb) => {
-        const tx = {
-          query: {
-            permissionSets: {
-              findFirst: vi.fn().mockResolvedValue(mockPS),
-            },
-            rolePermissionSets: {
-              findFirst: vi.fn().mockResolvedValue({ roleId: 'r1' }), // In use
-            },
-          },
-        } as any;
-        return cb(tx);
-      });
+      (db.query.permissionSets.findFirst as any).mockResolvedValue(mockPS);
+      (db.query.rolePermissionSets.findFirst as any).mockResolvedValue({ roleId: 'r1' });
 
       const response = await request(app)
         .delete(`/permission-sets/${psId}`)

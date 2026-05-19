@@ -1,77 +1,123 @@
 import {
-  PlusCircle,
-  CheckCircle2,
-  RefreshCcw,
-  DollarSign,
-  Ban,
-  Truck,
-  Activity,
   ShoppingCart,
   Package,
   FileText,
   Receipt,
   Users,
+  Truck,
   Boxes,
   Layers,
   CreditCard,
-  User,
-  ShieldCheck,
-  Percent,
-  Ruler,
-  Warehouse,
-  Archive,
-  ClipboardCheck,
-  Book,
-  Hash,
-  Coins,
-  type LucideIcon,
+  Settings,
+  Shield,
+  Activity,
+  PlusCircle,
+  CheckCircle2,
+  AlertCircle,
+  Info,
+  DollarSign,
+  Ban,
+  ArrowRightLeft,
+  Briefcase,
+  History,
+  Lock,
 } from 'lucide-react';
-import type { ActivityAction, EntityType } from '@shared/config/activity-actions.config';
-import type { StatusMap } from '@/components/shared/StatusBadge';
+import type { LucideIcon } from 'lucide-react';
+import type { ActivityAction } from '@shared/config/activity-actions.config';
 import { APP_PATHS } from '@/lib/paths';
+import { GLOBAL_STATUS_REGISTRY } from '@/lib/status-registry';
+import type { StatusMap } from '@/lib/status-registry';
 
-// Import feature status maps for rich status badge rendering
-import { invoiceStatusMap } from '@/features/invoices/components/columns';
-import { salesOrderStatusMap } from '@/features/sales-orders/components/columns';
-import { purchaseOrderStatusMap } from '@/features/purchase-orders/components/columns';
-import { billStatusMap } from '@/features/bills/components/columns';
-import { transferStatusMap, adjustmentStatusMap } from '@/features/inventory/config';
+/**
+ * Technical Taxonomy: Activity Logging Visual System
+ * 1. Action Groups: Semantic grouping of actions for color coding.
+ * 2. ACTION_TO_GROUP: Mapping of specific actions to their semantic group.
+ * 3. ENTITY_CONFIG: Visual styling for different entity types.
+ * 4. ENTITY_PATH_MAP: Route mapping for activity links.
+ */
 
-export interface ActionDisplayConfig {
+type ActionGroup =
+  | 'CREATION'
+  | 'SUCCESS'
+  | 'WARNING'
+  | 'INFO'
+  | 'FINANCE'
+  | 'DANGER'
+  | 'LOGISTICS'
+  | 'GENERAL'
+  | 'UPDATE';
+
+interface ActionDisplayConfig {
   label: string;
   color: string;
   icon: LucideIcon;
 }
 
-export interface EntityDisplayConfig {
+interface EntityDisplayConfig {
   color: string;
   icon: LucideIcon;
 }
 
-/**
- * Semantic Intents for Activity Actions.
- * Groups exhaustive strings from @shared/config into visual categories.
- * Rule 7.1: Maintains premium UI consistency across 50+ actions.
- */
-const ACTION_GROUPS: Record<string, ActionDisplayConfig> = {
+// Inferred from activity logs - shared with backend
+type EntityType =
+  | 'sales_order'
+  | 'purchase_order'
+  | 'invoice'
+  | 'bill'
+  | 'customer'
+  | 'supplier'
+  | 'product'
+  | 'product_category'
+  | 'payment'
+  | 'payment_intent'
+  | 'user'
+  | 'role'
+  | 'permission_set'
+  | 'organization'
+  | 'tax'
+  | 'uom'
+  | 'warehouse'
+  | 'inventory_level'
+  | 'inventory_adjustment'
+  | 'inventory_transfer'
+  | 'inventory_allocation'
+  | 'receipt'
+  | 'shipment'
+  | 'account'
+  | 'journal_entry'
+  | 'sequence'
+  | 'auth'
+  | 'currency';
+
+const ACTION_GROUPS: Record<ActionGroup, ActionDisplayConfig> = {
   CREATION: {
     label: 'Created',
     color: 'text-emerald-500 bg-emerald-500/10 dark:text-emerald-400 dark:bg-emerald-500/20',
     icon: PlusCircle,
   },
-  SUCCESS: {
-    label: 'Approved',
-    color: 'text-sky-500 bg-sky-500/10 dark:text-sky-400 dark:bg-sky-500/20',
-    icon: CheckCircle2,
-  },
   UPDATE: {
     label: 'Updated',
-    color: 'text-violet-500 bg-violet-500/10 dark:text-violet-400 dark:bg-violet-500/20',
-    icon: RefreshCcw,
+    color: 'text-blue-500 bg-blue-500/10 dark:text-blue-400 dark:bg-blue-500/20',
+    icon: History,
+  },
+  SUCCESS: {
+    label: 'Success',
+    color: 'text-green-500 bg-green-500/10 dark:text-green-400 dark:bg-green-500/20',
+    icon: CheckCircle2,
+  },
+  WARNING: {
+    label: 'Warning',
+    color: 'text-amber-500 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-500/20',
+    icon: AlertCircle,
+  },
+  INFO: {
+    label: 'Information',
+    color: 'text-blue-500 bg-blue-500/10 dark:text-blue-400 dark:bg-blue-500/20',
+    icon: Info,
   },
   FINANCE: {
     label: 'Financial',
-    color: 'text-amber-500 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-500/20',
+    color: 'text-emerald-500 bg-emerald-500/10 dark:text-emerald-400 dark:bg-emerald-500/20',
     icon: DollarSign,
   },
   DANGER: {
@@ -84,12 +130,18 @@ const ACTION_GROUPS: Record<string, ActionDisplayConfig> = {
     color: 'text-slate-500 bg-slate-500/10 dark:text-slate-400 dark:bg-slate-500/20',
     icon: Truck,
   },
+  GENERAL: {
+    label: 'General',
+    color: 'text-slate-500 bg-slate-500/10 dark:text-slate-400 dark:bg-slate-500/20',
+    icon: Activity,
+  },
 };
 
 /**
  * Exhaustive mapping of ActivityAction to Semantic Intent.
+ * Matches types in @shared/config/activity-actions.config
  */
-const ACTION_TO_GROUP: Record<ActivityAction, keyof typeof ACTION_GROUPS> = {
+const ACTION_TO_GROUP: Record<ActivityAction, ActionGroup> = {
   // Creation & Onboarding
   CREATED: 'CREATION',
   USER_CREATED: 'CREATION',
@@ -108,8 +160,10 @@ const ACTION_TO_GROUP: Record<ActivityAction, keyof typeof ACTION_GROUPS> = {
   SHIPMENT_CREATED: 'CREATION',
   INVENTORY_TRANSFER_CREATED: 'CREATION',
   STRIPE_INTENT_CREATED: 'CREATION',
+  PAYMENT_CREATED: 'FINANCE',
+  TAX_CONFIG_CREATED: 'CREATION',
 
-  // Approval & Fulfillment
+  // Success & Completion
   ORDER_APPROVED: 'SUCCESS',
   PO_APPROVED: 'SUCCESS',
   PO_RECEIVED: 'SUCCESS',
@@ -120,23 +174,20 @@ const ACTION_TO_GROUP: Record<ActivityAction, keyof typeof ACTION_GROUPS> = {
   INVOICE_POSTED: 'SUCCESS',
   VENDOR_BILL_POSTED: 'SUCCESS',
   LEDGER_POSTED: 'SUCCESS',
+  PAYMENT_RECEIVED: 'SUCCESS',
+  PAYMENT_REALIZED: 'SUCCESS',
+  PAYMENT_SENT: 'SUCCESS',
 
-  // Modifications & Maintenance
+  // Updates & Modifications
   UPDATED: 'UPDATE',
   STATUS_CHANGED: 'UPDATE',
   MEMBER_ROLE_CHANGED: 'UPDATE',
   PERMISSION_SET_UPDATED: 'UPDATE',
-  DOCUMENT_RENAMED: 'UPDATE',
   SEQUENCE_INITIALIZED: 'UPDATE',
+  DOCUMENT_RENAMED: 'UPDATE',
+  ROLE_UPDATED: 'UPDATE',
 
-  // Finance & Ledger
-  PAYMENT_RECEIVED: 'FINANCE',
-  PAYMENT_CREATED: 'FINANCE',
-  PAYMENT_REALIZED: 'FINANCE',
-  PAYMENT_SENT: 'FINANCE',
-  BILL_CREATED: 'FINANCE',
-
-  // Risk & Destructive
+  // Danger & Destructive
   DELETED: 'DANGER',
   VOIDED: 'DANGER',
   ORDER_CANCELLED: 'DANGER',
@@ -146,10 +197,11 @@ const ACTION_TO_GROUP: Record<ActivityAction, keyof typeof ACTION_GROUPS> = {
   INVITE_REVOKED: 'DANGER',
   MEMBER_REMOVED: 'DANGER',
   PERMISSION_SET_DELETED: 'DANGER',
+  ROLE_DELETED: 'DANGER',
 
-  // Logistics & Ops
+  // Logistics & Special
   SYSTEM_RECONCILIATION: 'LOGISTICS',
-  TAX_CONFIG_CREATED: 'CREATION',
+  BILL_CREATED: 'FINANCE',
 };
 
 /**
@@ -203,68 +255,58 @@ const ENTITY_CONFIG: Partial<Record<EntityType, EntityDisplayConfig>> = {
   },
   payment_intent: {
     color:
-      'text-sky-600 bg-sky-50 border-sky-200 dark:text-sky-400 dark:bg-sky-500/10 dark:border-sky-500/20 hover:bg-sky-100 dark:hover:bg-sky-500/20',
-    icon: DollarSign,
-  },
-  currency: {
-    color:
-      'text-indigo-600 bg-indigo-50 border-indigo-200 dark:text-indigo-400 dark:bg-indigo-500/10 dark:border-indigo-500/20 hover:bg-indigo-100 dark:hover:bg-indigo-500/20',
-    icon: Coins,
+      'text-slate-600 bg-slate-50 border-slate-200 dark:text-slate-400 dark:bg-slate-500/10 dark:border-slate-500/20 hover:bg-slate-100 dark:hover:bg-slate-500/20',
+    icon: CreditCard,
   },
   user: {
     color:
-      'text-violet-600 bg-violet-50 border-violet-200 dark:text-violet-400 dark:bg-violet-500/10 dark:border-violet-500/20 hover:bg-violet-100 dark:hover:bg-violet-500/20',
-    icon: User,
+      'text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-500/10 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/20',
+    icon: Users,
   },
   role: {
     color:
       'text-purple-600 bg-purple-50 border-purple-200 dark:text-purple-400 dark:bg-purple-500/10 dark:border-purple-500/20 hover:bg-purple-100 dark:hover:bg-purple-500/20',
-    icon: ShieldCheck,
+    icon: Shield,
+  },
+  permission_set: {
+    color:
+      'text-violet-600 bg-violet-50 border-violet-200 dark:text-violet-400 dark:bg-violet-500/10 dark:border-violet-500/20 hover:bg-violet-100 dark:hover:bg-violet-500/20',
+    icon: Lock,
   },
   tax: {
     color:
-      'text-zinc-600 bg-zinc-50 border-zinc-200 dark:text-zinc-400 dark:bg-zinc-500/10 dark:border-zinc-500/20 hover:bg-zinc-100 dark:hover:bg-zinc-500/20',
-    icon: Percent,
+      'text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-500/10 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20',
+    icon: DollarSign,
   },
   uom: {
     color:
-      'text-neutral-600 bg-neutral-50 border-neutral-200 dark:text-neutral-400 dark:bg-neutral-500/10 dark:border-neutral-500/20 hover:bg-neutral-100 dark:hover:bg-neutral-500/20',
-    icon: Ruler,
+      'text-slate-600 bg-slate-50 border-slate-200 dark:text-slate-400 dark:bg-slate-500/10 dark:border-slate-500/20 hover:bg-slate-100 dark:hover:bg-slate-500/20',
+    icon: Settings,
   },
   warehouse: {
     color:
-      'text-cyan-600 bg-cyan-50 border-cyan-200 dark:text-cyan-400 dark:bg-cyan-500/10 dark:border-cyan-500/20 hover:bg-cyan-100 dark:hover:bg-cyan-500/20',
-    icon: Warehouse,
-  },
-  bin: {
-    color:
-      'text-sky-600 bg-sky-50 border-sky-200 dark:text-sky-400 dark:bg-sky-500/10 dark:border-sky-500/20 hover:bg-sky-100 dark:hover:bg-sky-500/20',
-    icon: Archive,
+      'text-stone-600 bg-stone-50 border-stone-200 dark:text-stone-400 dark:bg-stone-500/10 dark:border-stone-500/20 hover:bg-stone-100 dark:hover:bg-stone-500/20',
+    icon: Briefcase,
   },
   inventory_adjustment: {
     color:
-      'text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/20 hover:bg-red-100 dark:hover:bg-red-500/20',
-    icon: RefreshCcw,
+      'text-orange-600 bg-orange-50 border-orange-200 dark:text-orange-400 dark:bg-orange-500/10 dark:border-orange-500/20 hover:bg-orange-100 dark:hover:bg-orange-500/20',
+    icon: ArrowRightLeft,
   },
   inventory_transfer: {
     color:
-      'text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-500/10 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20',
-    icon: RefreshCcw,
+      'text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-500/10 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/20',
+    icon: Truck,
   },
   receipt: {
     color:
-      'text-yellow-600 bg-yellow-50 border-yellow-200 dark:text-yellow-400 dark:bg-yellow-500/10 dark:border-yellow-500/20 hover:bg-yellow-100 dark:hover:bg-yellow-500/20',
-    icon: ClipboardCheck,
+      'text-teal-600 bg-teal-50 border-teal-200 dark:text-teal-400 dark:bg-teal-500/10 dark:border-teal-500/20 hover:bg-teal-100 dark:hover:bg-teal-500/20',
+    icon: Receipt,
   },
   journal_entry: {
     color:
-      'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-500 dark:bg-amber-500/10 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20',
-    icon: Book,
-  },
-  sequence: {
-    color:
-      'text-slate-500 bg-slate-50 border-slate-200 dark:text-slate-400 dark:bg-slate-500/10 dark:border-slate-500/20 hover:bg-slate-100 dark:hover:bg-slate-500/20',
-    icon: Hash,
+      'text-slate-600 bg-slate-50 border-slate-200 dark:text-slate-400 dark:bg-slate-500/10 dark:border-slate-500/20 hover:bg-slate-100 dark:hover:bg-slate-500/20',
+    icon: FileText,
   },
 };
 
@@ -304,18 +346,12 @@ export function getActionDisplayConfig(action: string): ActionDisplayConfig {
   if (group) {
     return {
       ...group,
-      label: action
-        .replace(/_/g, ' ')
-        .toLowerCase()
-        .replace(/\b\w/g, (c) => c.toUpperCase()),
+      label: toTitleCase(action),
     };
   }
 
   return {
-    label: action
-      .replace(/_/g, ' ')
-      .toLowerCase()
-      .replace(/\b\w/g, (c) => c.toUpperCase()),
+    label: toTitleCase(action),
     color: 'text-muted-foreground bg-muted',
     icon: Activity,
   };
@@ -340,24 +376,13 @@ export function getEntityPath(entityType: string): string | null {
   return ENTITY_PATH_MAP[entityType as EntityType] || null;
 }
 
-/**
- * Resolves the appropriate status map for a given entity type.
- */
 export function getStatusMap(entityType: string): StatusMap<string> | undefined {
-  switch (entityType) {
-    case 'invoice':
-      return invoiceStatusMap;
-    case 'sales_order':
-      return salesOrderStatusMap;
-    case 'purchase_order':
-      return purchaseOrderStatusMap;
-    case 'bill':
-      return billStatusMap;
-    case 'inventory_transfer':
-      return transferStatusMap;
-    case 'inventory_adjustment':
-      return adjustmentStatusMap;
-    default:
-      return undefined;
-  }
+  return (GLOBAL_STATUS_REGISTRY as Partial<Record<string, StatusMap<string>>>)[entityType];
+}
+
+function toTitleCase(str: string): string {
+  return str
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }

@@ -1,29 +1,16 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatDate } from '@shared/utils/date';
 import type { SalesOrderResponse } from '../api/sales-orders.api';
 import { SalesOrderRowActions } from './SalesOrderRowActions';
 
-export const salesOrderStatusMap: StatusMap<string> = {
-  draft: { label: 'Draft', tone: 'neutral' },
-  approved: { label: 'Approved', tone: 'info' },
-  partially_shipped: { label: 'Partially Shipped', tone: 'warning' },
-  shipped: { label: 'Shipped', tone: 'success' },
-  closed: { label: 'Closed', tone: 'secondary' },
-  cancelled: { label: 'Cancelled', tone: 'danger' },
-};
-
 import * as React from 'react';
 import { useCurrency } from '@/features/currencies/hooks/use-currency';
+import { getStatusOptions } from '@/lib/status-registry';
 
-export const salesOrderStatusOptions = Object.entries(salesOrderStatusMap).map(
-  ([value, config]) => ({
-    label: config.label,
-    value,
-  }),
-);
+export const salesOrderStatusOptions = getStatusOptions('sales_order');
 
 interface GetColumnsProps {
   onFulfill: (so: SalesOrderResponse) => void;
@@ -89,11 +76,10 @@ export function useSalesOrderColumns({
           const selectedValues = typeof value === 'string' ? value.split(',') : value;
           return Array.isArray(selectedValues) ? selectedValues.includes(rowValue) : false;
         },
-        cell: ({ row }) => {
-          return (
-            <StatusBadge value={row.getValue('status') as string} statusMap={salesOrderStatusMap} />
-          );
-        },
+        cell: ({ row }) => (
+          <StatusBadge value={row.getValue('status') as string} entityType="sales_order" />
+        ),
+
         meta: { variant: 'field', label: 'Status' },
       },
 

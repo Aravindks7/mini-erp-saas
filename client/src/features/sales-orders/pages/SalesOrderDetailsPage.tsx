@@ -1,85 +1,52 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  ShoppingCart,
-  FileEdit,
-  AlertCircle,
-  Truck,
-  User,
-  ReceiptText,
-  Package,
-  CheckCircle,
-} from 'lucide-react';
-import { toast } from 'sonner';
-
-import { useSalesOrder, useUpdateSalesOrderStatus } from '../hooks/sales-orders.hooks';
-import { useShipmentsQuery } from '@/features/shipments/hooks/shipments.hooks';
-import { useEntityActivity } from '@/features/activity/hooks/activity.hooks';
-import { useCreateInvoiceFromSO } from '@/features/invoices/hooks/invoices.hooks';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { StatusBadge } from '@/components/shared/StatusBadge';
-import { DocumentSummary } from '@/components/shared/domain/DocumentSummary';
-import { PageHeader } from '@/components/shared/PageHeader';
-import { PageContainer } from '@/components/shared/PageContainer';
-import { AuditInfo } from '@/components/shared/AuditInfo';
-import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { APP_PATHS } from '@/lib/paths';
-import { salesOrderStatusMap } from '../components/columns';
-import { FulfillSalesOrderSheet } from '../components/FulfillSalesOrderSheet';
-import { DetailView } from '@/components/shared/DetailView';
-import { ActivityTimeline } from '@/components/shared/ActivityTimeline';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Truck, ReceiptText, CheckCircle, FileEdit, Mail, Printer, XCircle } from 'lucide-react';
 import React from 'react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-import { useCurrency } from '@/features/currencies/hooks/use-currency';
+import { useSalesOrder, useSalesOrdersQuery } from '../hooks/sales-orders.hooks';
+import { useSalesOrderActions } from '../hooks/use-sales-order-actions';
+import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
+import { FulfillSalesOrderSheet } from '../components/FulfillSalesOrderSheet';
+import { EntityDetailsProvider } from '@/components/shared/EntityDetails/EntityDetailsProvider';
+import { PageContainer } from '@/components/shared/PageContainer';
+
+import { SalesOrderHeader } from '../components/SalesOrderHeader';
+import { SalesOrderItemsCard } from '../components/SalesOrderItemsCard';
+import { SalesOrderSummaryCard } from '../components/SalesOrderSummaryCard';
+import { SalesOrderSidebar } from '../components/SalesOrderSidebar';
+import { FulfillmentHistoryCard } from '@/components/shared/domain/FulfillmentHistoryCard';
+import { BillingHistoryCard } from '../components/BillingHistoryCard';
 
 export default function SalesOrderDetailsPage() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getPath } = useTenantPath();
-  const { format: formatCurrency } = useCurrency();
   const { data: so, isLoading, isError } = useSalesOrder(id);
-  const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateSalesOrderStatus();
-  const { mutate: generateInvoice, isPending: isGeneratingInvoice } = useCreateInvoiceFromSO();
+  const { data: orders } = useSalesOrdersQuery();
+
+  const currentIndex = orders?.findIndex((o) => o.id === id) ?? -1;
+  const prevOrderId = currentIndex > 0 ? orders?.[currentIndex - 1]?.id : null;
+  const nextOrderId =
+    currentIndex !== -1 && currentIndex < (orders?.length ?? 0) - 1
+      ? orders?.[currentIndex + 1]?.id
+      : null;
+
+  const navigation = {
+    onPrevious: () => prevOrderId && navigate(getPath(APP_PATHS.sales.orders.detail(prevOrderId))),
+    onNext: () => nextOrderId && navigate(getPath(APP_PATHS.sales.orders.detail(nextOrderId))),
+    isPreviousDisabled: !prevOrderId,
+    isNextDisabled: !nextOrderId,
+  };
+  const { handleEdit, onApprove, onGenerateInvoice, isUpdatingStatus, isGeneratingInvoice } =
+    useSalesOrderActions(id || '');
 
   const [isFulfillSheetOpen, setIsFulfillSheetOpen] = React.useState(false);
-  const { data: activityData, isLoading: isLoadingActivity } = useEntityActivity('sales_order', id);
 
-  const handleGenerateInvoice = () => {
-    if (!so) return;
-    generateInvoice(so.id, {
-      onSuccess: (invoice) => {
-        toast.success(`Invoice ${invoice.documentNumber} generated successfully`);
-        navigate(getPath(APP_PATHS.sales.invoices.detail(invoice.id)));
-      },
-      onError: (error: Error) => {
-        toast.error(error.message || 'Failed to generate invoice');
-      },
-    });
-  };
-
-  const handleApprove = () => {
-    if (!so) return;
-    updateStatus(
-      { id: so.id, status: 'approved', action: 'STATUS_CHANGED', reason: 'Order approved' },
-      {
-        onSuccess: () => {
-          toast.success('Sales order approved successfully');
-        },
-        onError: (error: Error) => {
-          toast.error(error.message || 'Failed to approve order');
-        },
-      },
-    );
-  };
+  const canShip = so?.status === 'approved' || so?.status === 'partially_shipped';
+  const canEdit = so?.status === 'draft';
+  const isCancelled = so?.status === 'cancelled';
 
   if (isLoading) {
     return (
@@ -92,322 +59,134 @@ export default function SalesOrderDetailsPage() {
   if (isError || !so) {
     return (
       <PageContainer>
-        <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center animate-in zoom-in-95 duration-300">
-          <div className="bg-destructive/10 p-4 rounded-full mb-4">
-            <AlertCircle className="h-12 w-12 text-destructive" />
-          </div>
-          <h2 className="text-2xl font-bold tracking-tight mb-2">Sales Order Not Found</h2>
-          <p className="text-muted-foreground max-w-xs mb-6">
-            The sales order you are looking for doesn't exist or you don't have access.
-          </p>
-          <button
-            onClick={() => navigate(getPath(APP_PATHS.sales.orders.list()))}
-            className="text-primary font-semibold hover:underline"
-          >
-            Return to Sales List
-          </button>
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
+          <h2 className="text-2xl font-bold">Sales Order Not Found</h2>
+          <p className="text-muted-foreground">The requested order could not be loaded.</p>
         </div>
       </PageContainer>
     );
   }
 
-  const canShip = so.status === 'approved' || so.status === 'partially_shipped';
-  const canEdit = so.status === 'draft';
+  const subtotal = so.lines.reduce((acc, l) => acc + Number(l.quantity) * Number(l.unitPrice), 0);
+  const taxAmount = so.lines.reduce((acc, l) => acc + Number(l.taxAmount), 0);
 
   return (
     <PageContainer>
-      <PageHeader
-        title={so.documentNumber}
-        description={`Sales document for ${so.customer.companyName}.`}
-        backButton={{
-          onClick: () => navigate(getPath(APP_PATHS.sales.orders.list())),
-          label: 'Back to List',
-        }}
-        actions={[
-          {
-            label: 'Approve Order',
-            onClick: handleApprove,
-            icon: <CheckCircle className="h-4 w-4" />,
-            variant: 'default',
-            isLoading: isUpdatingStatus,
-            hidden: so.status !== 'draft',
-          },
-          {
-            label: 'Generate Invoice',
-            onClick: handleGenerateInvoice,
-            icon: <ReceiptText className="h-4 w-4" />,
-            variant: 'outline',
-            isLoading: isGeneratingInvoice,
-            hidden: so.status === 'draft' || so.status === 'cancelled',
-          },
-          {
-            label: 'Ship Items',
-            onClick: () => setIsFulfillSheetOpen(true),
-            icon: <Truck className="h-4 w-4" />,
-            variant: 'outline',
-            hidden: !canShip,
-          },
-          {
-            label: 'Edit Order',
-            onClick: () => navigate(getPath(APP_PATHS.sales.orders.edit(so.id))),
-            icon: <FileEdit className="h-4 w-4" />,
-            variant: 'outline',
-            hidden: !canEdit,
-          },
-        ]}
-      >
-        <div className="hidden sm:block ml-4 border-l pl-4">
-          <StatusBadge value={so.status} statusMap={salesOrderStatusMap} />
-        </div>
-      </PageHeader>
+      <EntityDetailsProvider data={so} id={id || ''} entityType="sales_order">
+        <SalesOrderHeader
+          orderNumber={so.documentNumber}
+          status={so.status}
+          createdAt={so.createdAt}
+          onEdit={() => handleEdit(so.id)}
+          primaryActionCount={2}
+          navigation={navigation}
+          actions={[
+            {
+              label: 'Approve Order',
+              onClick: onApprove,
+              icon: <CheckCircle className="h-4 w-4" />,
+              variant: 'default',
+              isLoading: isUpdatingStatus,
+              hidden: so.status !== 'draft',
+            },
+            {
+              label: 'Ship Items',
+              onClick: () => setIsFulfillSheetOpen(true),
+              icon: <Truck className="h-4 w-4" />,
+              variant: 'default',
+              hidden: !canShip,
+            },
+            {
+              label: 'Edit Order',
+              onClick: () => handleEdit(so.id),
+              icon: <FileEdit className="h-4 w-4" />,
+              variant: 'outline',
+              hidden: !canEdit,
+            },
+            {
+              label: 'Generate Invoice',
+              onClick: onGenerateInvoice,
+              icon: <ReceiptText className="h-4 w-4" />,
+              variant: 'outline',
+              isLoading: isGeneratingInvoice,
+              hidden: so.status === 'draft' || so.status === 'cancelled',
+            },
+            {
+              label: 'Send Email',
+              onClick: () => {},
+              icon: <Mail className="h-4 w-4" />,
+              variant: 'outline',
+            },
+            {
+              label: 'Print PDF',
+              onClick: () => {},
+              icon: <Printer className="h-4 w-4" />,
+              variant: 'outline',
+            },
+            {
+              label: 'Cancel Order',
+              onClick: () => {},
+              icon: <XCircle className="h-4 w-4" />,
+              variant: 'destructive',
+              hidden:
+                so.status === 'cancelled' || so.status === 'closed' || so.status === 'shipped',
+            },
+          ]}
+        />
 
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 lg:w-[700px] h-11 bg-muted/50 p-1">
-          <TabsTrigger value="overview" className="data-[state=active]:shadow-sm">
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="items" className="data-[state=active]:shadow-sm">
-            Line Items ({so.lines?.length || 0})
-          </TabsTrigger>
-          <TabsTrigger value="shipments" className="data-[state=active]:shadow-sm">
-            Shipment History
-          </TabsTrigger>
-          <TabsTrigger value="activity" className="data-[state=active]:shadow-sm">
-            Activity
-          </TabsTrigger>
-        </TabsList>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Main Column */}
+          <div className="lg:col-span-8 space-y-6">
+            {isCancelled && (
+              <Alert variant="destructive">
+                <XCircle className="h-4 w-4" />
+                <AlertTitle>Order Cancelled</AlertTitle>
+                <AlertDescription>
+                  This sales order was cancelled. All inventory allocations have been released.
+                </AlertDescription>
+              </Alert>
+            )}
 
-        <TabsContent value="overview" className="mt-6 space-y-6 animate-in fade-in-50 duration-500">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2 border-muted-foreground/20 overflow-hidden shadow-sm">
-              <CardHeader className="bg-muted/30 border-b pb-4">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-primary" />
-                  <CardTitle className="text-lg">Customer Details</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <DetailView
-                  columns={2}
-                  sections={[
-                    {
-                      items: [
-                        {
-                          label: 'Customer Name',
-                          value: so.customer.companyName,
-                        },
-                        {
-                          label: 'Document Number',
-                          value: so.documentNumber,
-                          valueClassName: 'font-mono bg-muted/50 w-fit px-2 py-0.5 rounded border',
-                        },
-                      ],
-                    },
-                  ]}
-                />
-              </CardContent>
-            </Card>
+            <SalesOrderItemsCard lines={so.lines} />
 
-            <DocumentSummary
-              title="Order Summary"
-              status={so.status}
-              statusMap={salesOrderStatusMap}
-              lines={[
-                {
-                  label: 'Subtotal',
-                  value: formatCurrency(
-                    so.lines.reduce((acc, l) => acc + Number(l.quantity) * Number(l.unitPrice), 0),
-                  ),
-                  isSubtotal: true,
-                },
-                {
-                  label: 'Total Tax',
-                  value: formatCurrency(so.lines.reduce((acc, l) => acc + Number(l.taxAmount), 0)),
-                },
-                {
-                  label: 'Order Total',
-                  value: formatCurrency(Number(so.totalAmount)),
-                  isTotal: true,
-                },
-              ]}
+            <SalesOrderSummaryCard
+              subtotal={subtotal}
+              taxAmount={taxAmount}
+              totalAmount={Number(so.totalAmount)}
+              itemCount={so.lines.length}
             />
+
+            <FulfillmentHistoryCard
+              type="shipment"
+              records={(so.shipments || []).map((s) => ({
+                id: s.id,
+                number: s.shipmentNumber,
+                date: s.shipmentDate,
+                status: s.status,
+                lines: s.lines.map((l) => ({
+                  id: l.id,
+                  productName: l.product.name,
+                  sku: l.product.sku,
+                  quantity: l.quantityShipped,
+                })),
+              }))}
+            />
+
+            <BillingHistoryCard invoices={so.invoices || []} />
           </div>
 
-          <AuditInfo createdAt={so.createdAt} updatedAt={so.updatedAt} />
-        </TabsContent>
+          {/* Sidebar */}
+          <div className="lg:col-span-4">
+            <SalesOrderSidebar order={so} />
+          </div>
+        </div>
 
-        <TabsContent value="items" className="mt-6 animate-in slide-in-from-left-2 duration-300">
-          <Card className="border-muted-foreground/20 overflow-hidden shadow-sm">
-            <CardHeader className="bg-muted/30 border-b pb-4">
-              <div className="flex items-center gap-2">
-                <ShoppingCart className="h-4 w-4 text-primary" />
-                <CardTitle className="text-lg">Order Items</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="w-[100px] pl-6 font-semibold">SKU</TableHead>
-                    <TableHead className="font-semibold">Product</TableHead>
-                    <TableHead className="text-right font-semibold">Ordered</TableHead>
-                    <TableHead className="text-right font-semibold">Shipped</TableHead>
-                    <TableHead className="text-right font-semibold">Remaining</TableHead>
-                    <TableHead className="text-right font-semibold">Unit Price</TableHead>
-                    <TableHead className="text-right pr-6 font-semibold">Line Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {so.lines.map((line) => {
-                    const lineSubtotal = Number(line.quantity) * Number(line.unitPrice);
-                    const lineTotal = lineSubtotal + Number(line.taxAmount);
-                    const shipped = Number(line.quantityShipped || 0);
-                    const remaining = Math.max(0, Number(line.quantity) - shipped);
-
-                    return (
-                      <TableRow key={line.id} className="hover:bg-muted/30 transition-colors">
-                        <TableCell className="font-mono text-xs pl-6">{line.product.sku}</TableCell>
-                        <TableCell className="font-medium">{line.product.name}</TableCell>
-                        <TableCell className="text-right">{line.quantity}</TableCell>
-                        <TableCell className="text-right text-blue-600 font-medium">
-                          {shipped > 0 ? shipped : '-'}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {remaining > 0 ? (
-                            <span
-                              className={
-                                remaining === Number(line.quantity) ? '' : 'text-amber-600'
-                              }
-                            >
-                              {remaining}
-                            </span>
-                          ) : (
-                            <span className="text-green-600">Filled</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(Number(line.unitPrice))}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold pr-6 text-primary">
-                          {formatCurrency(lineTotal)}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-              <div className="bg-muted/20 p-6 flex justify-end">
-                <div className="w-[250px] space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>
-                      {formatCurrency(
-                        so.lines.reduce(
-                          (acc, l) => acc + Number(l.quantity) * Number(l.unitPrice),
-                          0,
-                        ),
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Total Tax</span>
-                    <span>
-                      {formatCurrency(so.lines.reduce((acc, l) => acc + Number(l.taxAmount), 0))}
-                    </span>
-                  </div>
-                  <div className="flex justify-between pt-2 border-t font-bold text-lg text-primary">
-                    <span>Order Total</span>
-                    <span>{formatCurrency(Number(so.totalAmount))}</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent
-          value="shipments"
-          className="mt-6 space-y-6 animate-in slide-in-from-right-2 duration-300"
-        >
-          <ShipmentsHistory soId={so.id} />
-        </TabsContent>
-
-        <TabsContent value="activity" className="mt-6 animate-in fade-in-50 duration-500">
-          <Card className="border-muted-foreground/20 overflow-hidden shadow-sm">
-            <CardContent className="p-6">
-              <ActivityTimeline
-                items={
-                  (activityData ??
-                    []) as import('@/components/shared/ActivityTimeline').ActivityTimelineItem[]
-                }
-                isLoading={isLoadingActivity}
-                emptyMessage="No activity recorded for this order yet."
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      <FulfillSalesOrderSheet
-        isOpen={isFulfillSheetOpen}
-        onClose={() => setIsFulfillSheetOpen(false)}
-        so={so}
-      />
+        <FulfillSalesOrderSheet
+          isOpen={isFulfillSheetOpen}
+          onClose={() => setIsFulfillSheetOpen(false)}
+          so={so}
+        />
+      </EntityDetailsProvider>
     </PageContainer>
-  );
-}
-
-function ShipmentsHistory({ soId }: { soId: string }) {
-  const { data: allShipments, isLoading } = useShipmentsQuery();
-  const shipments = React.useMemo(
-    () => allShipments?.filter((s) => s.salesOrderId === soId) || [],
-    [allShipments, soId],
-  );
-
-  if (isLoading) return <SkeletonLoader variant="list" rows={3} />;
-
-  if (shipments.length === 0) {
-    return (
-      <Card className="border-dashed border-2">
-        <CardContent className="py-12 flex flex-col items-center justify-center text-center">
-          <Package className="h-10 w-10 text-muted-foreground/40 mb-4" />
-          <p className="text-muted-foreground">
-            No physical shipments recorded for this order yet.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {shipments.map((shipment) => (
-        <Card key={shipment.id} className="overflow-hidden border-muted-foreground/20">
-          <CardHeader className="bg-muted/30 py-3 border-b">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <Truck className="h-4 w-4 text-primary" />
-                <span className="font-mono font-semibold">{shipment.shipmentNumber}</span>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                Shipped: {new Date(shipment.shipmentDate).toLocaleDateString()}
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {shipment.lines.map((line) => (
-                <div key={line.id} className="text-sm">
-                  <p className="text-muted-foreground text-xs uppercase tracking-tighter">
-                    {line.product?.name || 'Unknown Product'}
-                  </p>
-                  <p className="font-medium">Qty: {line.quantityShipped}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
   );
 }

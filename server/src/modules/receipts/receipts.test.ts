@@ -28,6 +28,13 @@ vi.mock('../sequences/sequences.service.js', () => ({
   },
 }));
 
+vi.mock('../finance/posting.service.js', () => ({
+  PostingService: {
+    postReceipt: vi.fn().mockResolvedValue({ id: 'je-1' }),
+    postReceiptReversal: vi.fn().mockResolvedValue({ id: 'je-2' }),
+  },
+}));
+
 vi.mock('../../db/index.js', () => {
   const mockTx = {
     insert: vi.fn(() => ({

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
 import type { CreateTaxInput, UpdateTaxInput } from '@shared/contracts/taxes.contract';
 import { taxesApi } from '../api/taxes.api';
+import { activityKeys } from '@/features/activity/hooks/activity.hooks';
 
 export const taxKeys = {
   all: ['taxes'] as const,

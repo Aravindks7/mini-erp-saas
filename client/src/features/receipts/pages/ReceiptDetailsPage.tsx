@@ -16,7 +16,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { DetailView } from '@/components/shared/DetailView';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
@@ -31,12 +31,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
-const receiptStatusMap: StatusMap<string> = {
-  draft: { label: 'Draft', tone: 'neutral' },
-  received: { label: 'Received', tone: 'success' },
-  cancelled: { label: 'Cancelled', tone: 'danger' },
-};
 
 export default function ReceiptDetailsPage() {
   const { id } = useParams();
@@ -138,7 +132,7 @@ export default function ReceiptDetailsPage() {
         actions={actions}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">
-          <StatusBadge value={receipt.status} statusMap={receiptStatusMap} />
+          <StatusBadge value={receipt.status as string} entityType="receipt" />
         </div>
       </PageHeader>
 

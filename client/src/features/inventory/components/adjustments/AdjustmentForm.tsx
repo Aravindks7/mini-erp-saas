@@ -11,6 +11,13 @@ import { FormField } from '@/components/shared/form/FormField';
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect';
 import { DatePicker } from '@/components/shared/form/DatePicker';
 import { Separator } from '@/components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 import type { CreateInventoryAdjustmentInput } from '@shared/contracts/inventory-adjustments.contract';
 import { createInventoryAdjustmentSchema } from '@shared/contracts/inventory-adjustments.contract';
@@ -22,6 +29,16 @@ interface AdjustmentFormProps {
   onSubmit: (data: CreateInventoryAdjustmentInput) => Promise<void>;
   formId?: string;
 }
+
+const ADJUSTMENT_REASONS = [
+  'Cycle Count',
+  'Damage',
+  'Theft/Shrinkage',
+  'Found Stock',
+  'Correction',
+  'Promotion/Sample',
+  'Other',
+];
 
 export function AdjustmentForm({ form, onSubmit, formId }: AdjustmentFormProps) {
   const { data: products = [] } = useProductsQuery();
@@ -93,7 +110,18 @@ export function AdjustmentForm({ form, onSubmit, formId }: AdjustmentFormProps) 
 
                 <FormField name="reason" label="Reason">
                   {({ field }) => (
-                    <Input {...field} placeholder="e.g. Annual Cycle Count, Damage, etc." />
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="w-full h-10 border-input">
+                        <SelectValue placeholder="Select a reason" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ADJUSTMENT_REASONS.map((reason) => (
+                          <SelectItem key={reason} value={reason}>
+                            {reason}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   )}
                 </FormField>
 

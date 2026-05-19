@@ -94,6 +94,7 @@ export const API_ENDPOINTS = {
     orders: {
       base: '/purchase-orders',
       detail: (id: string) => `/purchase-orders/${id}`,
+      status: (id: string) => `/purchase-orders/${id}/status`,
       bulkDelete: '/purchase-orders',
     },
     receipts: {

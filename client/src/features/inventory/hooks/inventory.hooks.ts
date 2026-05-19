@@ -205,6 +205,24 @@ export function useApproveAdjustment() {
   });
 }
 
+export function useCancelAdjustment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => inventoryApi.updateAdjustmentStatus(id, 'cancelled'),
+    onSuccess: (data) => {
+      toast.success('Inventory adjustment cancelled');
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.adjustments.detail(data.id) });
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.adjustments.lists() });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
+    },
+    onError: (error) => {
+      toast.error('Failed to cancel adjustment');
+      console.error('Cancellation error:', error);
+    },
+  });
+}
+
 export function useCreateTransfer() {
   const queryClient = useQueryClient();
 

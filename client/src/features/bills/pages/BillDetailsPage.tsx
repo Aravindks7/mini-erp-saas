@@ -15,9 +15,11 @@ import { toast } from 'sonner';
 import { useBill, useUpdateBillStatus } from '../hooks/bills.hooks';
 import { useEntityActivity } from '@/features/activity/hooks/activity.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { DocumentSummary } from '@/components/shared/domain/DocumentSummary';
+
 import { DetailView } from '@/components/shared/DetailView';
 import { ActivityTimeline } from '@/components/shared/ActivityTimeline';
 import { StatusText } from '@/components/shared/domain/StatusText';
@@ -36,13 +38,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
-const billStatusMap: StatusMap<string> = {
-  draft: { label: 'Draft', tone: 'neutral' },
-  open: { label: 'Open', tone: 'warning' },
-  paid: { label: 'Paid', tone: 'success' },
-  void: { label: 'Void', tone: 'danger' },
-};
 
 import { useCurrency } from '@/features/currencies/hooks/use-currency';
 
@@ -87,7 +82,14 @@ export default function BillDetailsPage() {
 
   const handleStatusChange = (status: 'open' | 'paid' | 'void') => {
     updateStatus(
-      { id: bill.id, data: { status } },
+      {
+        id: bill.id,
+        data: {
+          status,
+          action: `STATUS_UPDATE_${status.toUpperCase()}`,
+          reason: `Manual status update to ${status} via Bill Details page`,
+        },
+      },
       {
         onSuccess: () => {
           toast.success(`Bill status updated to ${status}`);
@@ -140,7 +142,7 @@ export default function BillDetailsPage() {
         ]}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">
-          <StatusBadge value={bill.status} statusMap={billStatusMap} />
+          <StatusBadge value={bill.status as string} entityType="bill" />
         </div>
       </PageHeader>
 
@@ -212,7 +214,7 @@ export default function BillDetailsPage() {
             <DocumentSummary
               title="Bill Summary"
               status={bill.status}
-              statusMap={billStatusMap}
+              entityType="bill"
               lines={[
                 {
                   label: 'Subtotal',

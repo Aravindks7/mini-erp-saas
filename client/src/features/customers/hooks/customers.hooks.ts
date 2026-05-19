@@ -4,6 +4,7 @@ import type {
   UpdateCustomerInput,
 } from '@shared/contracts/customers.contract';
 import { customersApi } from '../api/customers.api';
+import { activityKeys } from '@/features/activity/hooks/activity.hooks';
 
 export const customerKeys = {
   all: ['customers'] as const,

@@ -3,12 +3,9 @@ import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableC
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatDate } from '@shared/utils/date';
 import type { InventoryTransferResponse } from '../../api/inventory.api';
-import { transferStatusMap } from '../../config/index';
+import { getStatusOptions } from '@/lib/status-registry';
 
-export const transferStatusOptions = Object.entries(transferStatusMap).map(([value, config]) => ({
-  label: config.label,
-  value,
-}));
+export const transferStatusOptions = getStatusOptions('inventory_transfer');
 
 import { ReferenceCell } from './ReferenceCell';
 
@@ -42,7 +39,9 @@ export const columns: ColumnDef<InventoryTransferResponse>[] = [
     accessorKey: 'status',
     header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
     cell: ({ row }) => {
-      return <StatusBadge value={row.getValue('status') as string} statusMap={transferStatusMap} />;
+      return (
+        <StatusBadge value={row.getValue('status') as string} entityType="inventory_transfer" />
+      );
     },
     meta: { variant: 'field', label: 'Status' },
   },

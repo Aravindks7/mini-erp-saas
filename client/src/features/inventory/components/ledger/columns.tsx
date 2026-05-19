@@ -3,8 +3,6 @@ import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableC
 import { formatDate } from '@shared/utils/date';
 import type { InventoryLedgerResponse } from '../../api/inventory.api';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { referenceTypeStatusMap } from '../../config/index';
-
 export const columns: ColumnDef<InventoryLedgerResponse>[] = [
   {
     accessorKey: 'createdAt',
@@ -18,7 +16,7 @@ export const columns: ColumnDef<InventoryLedgerResponse>[] = [
     cell: ({ row }) => (
       <StatusBadge
         value={row.original.referenceType}
-        statusMap={referenceTypeStatusMap}
+        entityType="inventory_reference"
         variant="outline"
       />
     ),

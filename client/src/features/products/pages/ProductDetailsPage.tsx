@@ -4,7 +4,7 @@ import { Package, Tag, FileEdit, AlertCircle, Scale, Receipt, Info } from 'lucid
 import { useProduct } from '../hooks/products.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
@@ -12,11 +12,6 @@ import { DetailView } from '@/components/shared/DetailView';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { APP_PATHS } from '@/lib/paths';
-
-const productStatusMap: StatusMap<string> = {
-  active: { label: 'Active', tone: 'success' },
-  inactive: { label: 'Inactive', tone: 'neutral' },
-};
 
 import { useCurrency } from '@/features/currencies/hooks/use-currency';
 
@@ -73,7 +68,7 @@ export default function ProductDetailsPage() {
         ]}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">
-          <StatusBadge value={product.status} statusMap={productStatusMap} />
+          <StatusBadge value={product.status} entityType="product" />
         </div>
       </PageHeader>
 
@@ -112,7 +107,7 @@ export default function ProductDetailsPage() {
                       },
                       {
                         label: 'Status',
-                        value: <StatusBadge value={product.status} statusMap={productStatusMap} />,
+                        value: <StatusBadge value={product.status} entityType="product" />,
                       },
                       {
                         label: 'Description',

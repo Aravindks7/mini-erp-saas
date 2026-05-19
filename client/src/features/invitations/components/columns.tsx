@@ -1,15 +1,9 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatDate } from '@shared/utils/date';
 import { Shield } from 'lucide-react';
 import type { InviteResponse } from '@shared/contracts/invitations.contract';
-
-const inviteStatusMap: StatusMap<'pending' | 'accepted' | 'revoked'> = {
-  pending: { label: 'Pending', tone: 'warning' },
-  accepted: { label: 'Accepted', tone: 'success' },
-  revoked: { label: 'Revoked', tone: 'neutral' },
-};
 
 export const columns: ColumnDef<InviteResponse>[] = [
   {
@@ -29,7 +23,9 @@ export const columns: ColumnDef<InviteResponse>[] = [
   {
     accessorKey: 'status',
     header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
-    cell: ({ row }) => <StatusBadge value={row.original.status} statusMap={inviteStatusMap} />,
+    cell: ({ row }) => (
+      <StatusBadge value={row.original.status as string} entityType="invitation" />
+    ),
   },
   {
     accessorKey: 'createdAt',

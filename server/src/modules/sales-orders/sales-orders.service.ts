@@ -25,7 +25,20 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
     const results = await db.query.salesOrders.findMany({
       where: this.getTenantWhere(organizationId),
       with: {
-        customer: true,
+        customer: {
+          with: {
+            contacts: {
+              with: {
+                contact: true,
+              },
+            },
+            addresses: {
+              with: {
+                address: true,
+              },
+            },
+          },
+        },
         lines: {
           with: {
             product: true,
@@ -35,9 +48,14 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
           where: (shipments, { and, isNull, ne }) =>
             and(isNull(shipments.deletedAt), ne(shipments.status, 'cancelled')),
           with: {
-            lines: true,
+            lines: {
+              with: {
+                product: true,
+              },
+            },
           },
         },
+        invoices: true,
       },
       orderBy: [desc(salesOrders.createdAt)],
     });
@@ -67,7 +85,20 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
     const so = await tx.query.salesOrders.findFirst({
       where: this.getTenantWhere(organizationId, id),
       with: {
-        customer: true,
+        customer: {
+          with: {
+            contacts: {
+              with: {
+                contact: true,
+              },
+            },
+            addresses: {
+              with: {
+                address: true,
+              },
+            },
+          },
+        },
         lines: {
           with: {
             product: true,
@@ -77,9 +108,14 @@ export class SalesOrdersService extends BaseService<typeof salesOrders> {
           where: (shipments, { and, isNull, ne }) =>
             and(isNull(shipments.deletedAt), ne(shipments.status, 'cancelled')),
           with: {
-            lines: true,
+            lines: {
+              with: {
+                product: true,
+              },
+            },
           },
         },
+        invoices: true,
       },
     });
 

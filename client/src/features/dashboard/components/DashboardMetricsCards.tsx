@@ -22,6 +22,7 @@ export function DashboardMetricsCards({ metrics }: DashboardMetricsCardsProps) {
         value={formatCurrency(Number(metrics.totalSales))}
         icon={TrendingUp}
         iconColor="text-emerald-500"
+        trend={metrics.totalSalesTrend}
         description="Historical sales total"
       />
       <StatsCard
@@ -29,6 +30,7 @@ export function DashboardMetricsCards({ metrics }: DashboardMetricsCardsProps) {
         value={formatCurrency(Number(metrics.totalPurchases))}
         icon={ShoppingCart}
         iconColor="text-blue-500"
+        trend={metrics.totalPurchasesTrend}
         description="Historical purchase total"
       />
       <StatsCard
@@ -36,6 +38,7 @@ export function DashboardMetricsCards({ metrics }: DashboardMetricsCardsProps) {
         value={metrics.activeCustomers}
         icon={Users}
         iconColor="text-indigo-500"
+        trend={metrics.activeCustomersTrend}
         description="Total registered customers"
       />
       <StatsCard
@@ -43,6 +46,7 @@ export function DashboardMetricsCards({ metrics }: DashboardMetricsCardsProps) {
         value={metrics.totalProducts}
         icon={Package}
         iconColor="text-amber-500"
+        trend={metrics.totalProductsTrend}
         description="Items in catalog"
       />
     </>

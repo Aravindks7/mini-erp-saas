@@ -1,20 +1,14 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTableColumnHeader } from '@/components/shared/data-table/DataTableColumnHeader';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 
 import type { CustomerResponse } from '../api/customers.api';
 import { CustomerRowActions } from './CustomerRowActions';
 
-const customerStatusMap: StatusMap<string> = {
-  active: { label: 'Active', tone: 'success' },
-  inactive: { label: 'Inactive', tone: 'neutral' },
-};
+import { getStatusOptions } from '@/lib/status-registry';
 
-export const customerStatusOptions = Object.entries(customerStatusMap).map(([value, config]) => ({
-  label: config.label,
-  value,
-}));
+export const customerStatusOptions = getStatusOptions('customer');
 
 export const columns: ColumnDef<CustomerResponse>[] = [
   {
@@ -97,8 +91,9 @@ export const columns: ColumnDef<CustomerResponse>[] = [
       return Array.isArray(selectedValues) ? selectedValues.includes(rowValue) : false;
     },
     cell: ({ row }) => {
-      return <StatusBadge value={row.getValue('status') as string} statusMap={customerStatusMap} />;
+      return <StatusBadge value={row.getValue('status') as string} entityType="customer" />;
     },
+
     meta: { variant: 'field', label: 'Status' },
   },
   {

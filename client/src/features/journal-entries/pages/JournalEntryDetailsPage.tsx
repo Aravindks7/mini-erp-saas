@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 
 import { useJournalEntry, useVoidJournalEntry } from '../hooks/journal-entries.hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { StatusBadge, type StatusMap } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { AuditInfo } from '@/components/shared/AuditInfo';
@@ -23,12 +23,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
-const journalStatusMap: StatusMap<string> = {
-  draft: { label: 'Draft', tone: 'neutral' },
-  posted: { label: 'Posted', tone: 'success' },
-  void: { label: 'Voided', tone: 'danger' },
-};
 
 export default function JournalEntryDetailsPage() {
   const { id } = useParams();
@@ -117,7 +111,7 @@ export default function JournalEntryDetailsPage() {
         actions={actions}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">
-          <StatusBadge value={entry.status} statusMap={journalStatusMap} />
+          <StatusBadge value={entry.status as string} entityType="journal_entry" />
         </div>
       </PageHeader>
 

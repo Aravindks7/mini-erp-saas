@@ -1,6 +1,7 @@
 import { useTheme } from 'next-themes';
 import { Moon, Sun, Monitor } from 'lucide-react';
 import { useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import { cn } from '@/lib/utils';
 
 interface ThemeToggleProps {
@@ -53,8 +54,16 @@ export function ThemeToggle({ variant = 'compact', className }: ThemeToggleProps
         Math.max(y, window.innerHeight - y),
       );
 
-      const transition = document.startViewTransition(async () => {
-        setTheme(newTheme);
+      document.documentElement.classList.add('theme-transitioning');
+
+      const transition = document.startViewTransition(() => {
+        flushSync(() => {
+          setTheme(newTheme);
+        });
+      });
+
+      transition.finished.finally(() => {
+        document.documentElement.classList.remove('theme-transitioning');
       });
 
       transition.ready.then(() => {
@@ -63,7 +72,7 @@ export function ThemeToggle({ variant = 'compact', className }: ThemeToggleProps
             clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`],
           },
           {
-            duration: 500,
+            duration: 400,
             easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
             pseudoElement: '::view-transition-new(root)',
           },

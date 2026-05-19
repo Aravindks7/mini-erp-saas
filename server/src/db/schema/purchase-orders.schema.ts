@@ -15,6 +15,7 @@ export const purchaseOrderStatusEnum = pgEnum('purchase_order_status', [
   'sent',
   'partially_received',
   'received',
+  'closed',
   'cancelled',
 ]);
 

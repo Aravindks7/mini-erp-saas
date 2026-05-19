@@ -1,14 +1,14 @@
 CREATE TYPE "public"."account_type" AS ENUM('asset', 'liability', 'equity', 'revenue', 'expense');--> statement-breakpoint
 CREATE TYPE "public"."invite_status" AS ENUM('pending', 'accepted', 'revoked');--> statement-breakpoint
 CREATE TYPE "public"."member_role" AS ENUM('admin', 'employee');--> statement-breakpoint
-CREATE TYPE "public"."bill_status" AS ENUM('draft', 'open', 'paid', 'void');--> statement-breakpoint
+CREATE TYPE "public"."bill_status" AS ENUM('draft', 'open', 'partially_paid', 'paid', 'void');--> statement-breakpoint
 CREATE TYPE "public"."customer_status" AS ENUM('active', 'inactive');--> statement-breakpoint
 CREATE TYPE "public"."product_status" AS ENUM('active', 'inactive');--> statement-breakpoint
 CREATE TYPE "public"."supplier_status" AS ENUM('active', 'inactive');--> statement-breakpoint
 CREATE TYPE "public"."inventory_reference_type" AS ENUM('po_receipt', 'so_shipment', 'adjustment', 'transfer', 'stock_count');--> statement-breakpoint
 CREATE TYPE "public"."sales_order_status" AS ENUM('draft', 'approved', 'partially_shipped', 'shipped', 'closed', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."shipment_status" AS ENUM('draft', 'shipped', 'cancelled');--> statement-breakpoint
-CREATE TYPE "public"."purchase_order_status" AS ENUM('draft', 'sent', 'partially_received', 'received', 'cancelled');--> statement-breakpoint
+CREATE TYPE "public"."purchase_order_status" AS ENUM('draft', 'sent', 'partially_received', 'received', 'closed', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."receipt_status" AS ENUM('draft', 'received', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."invoice_status" AS ENUM('draft', 'open', 'partially_paid', 'paid', 'void');--> statement-breakpoint
 CREATE TYPE "public"."payment_intent_status" AS ENUM('pending', 'succeeded', 'failed', 'expired');--> statement-breakpoint
@@ -505,6 +505,23 @@ CREATE TABLE "inventory_levels" (
 	CONSTRAINT "inv_levels_reserved_check" CHECK ("inventory_levels"."quantity_reserved" >= 0)
 );
 --> statement-breakpoint
+CREATE TABLE "inventory_allocations" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_by" uuid,
+	"updated_by" uuid,
+	"version" integer DEFAULT 1 NOT NULL,
+	"deleted_at" timestamp,
+	"sales_order_line_id" uuid NOT NULL,
+	"product_id" uuid NOT NULL,
+	"warehouse_id" uuid NOT NULL,
+	"bin_id" uuid,
+	"quantity_allocated" numeric(18, 8) DEFAULT '0' NOT NULL,
+	CONSTRAINT "inv_alloc_quantity_check" CHECK ("inventory_allocations"."quantity_allocated" >= 0)
+);
+--> statement-breakpoint
 CREATE TABLE "inventory_ledgers" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"organization_id" uuid NOT NULL,
@@ -899,6 +916,11 @@ ALTER TABLE "inventory_levels" ADD CONSTRAINT "inventory_levels_organization_id_
 ALTER TABLE "inventory_levels" ADD CONSTRAINT "inventory_levels_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inventory_levels" ADD CONSTRAINT "inventory_levels_warehouse_id_warehouses_id_fk" FOREIGN KEY ("warehouse_id") REFERENCES "public"."warehouses"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inventory_levels" ADD CONSTRAINT "inventory_levels_bin_id_bins_id_fk" FOREIGN KEY ("bin_id") REFERENCES "public"."bins"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "inventory_allocations" ADD CONSTRAINT "inventory_allocations_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "inventory_allocations" ADD CONSTRAINT "inventory_allocations_sales_order_line_id_sales_order_lines_id_fk" FOREIGN KEY ("sales_order_line_id") REFERENCES "public"."sales_order_lines"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "inventory_allocations" ADD CONSTRAINT "inventory_allocations_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "inventory_allocations" ADD CONSTRAINT "inventory_allocations_warehouse_id_warehouses_id_fk" FOREIGN KEY ("warehouse_id") REFERENCES "public"."warehouses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "inventory_allocations" ADD CONSTRAINT "inventory_allocations_bin_id_bins_id_fk" FOREIGN KEY ("bin_id") REFERENCES "public"."bins"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inventory_ledgers" ADD CONSTRAINT "inventory_ledgers_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inventory_ledgers" ADD CONSTRAINT "inventory_ledgers_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inventory_ledgers" ADD CONSTRAINT "inventory_ledgers_warehouse_id_warehouses_id_fk" FOREIGN KEY ("warehouse_id") REFERENCES "public"."warehouses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -1025,6 +1047,11 @@ CREATE INDEX "inv_levels_product_idx" ON "inventory_levels" USING btree ("produc
 CREATE INDEX "inv_levels_warehouse_idx" ON "inventory_levels" USING btree ("warehouse_id");--> statement-breakpoint
 CREATE INDEX "inv_levels_bin_idx" ON "inventory_levels" USING btree ("bin_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "inv_levels_org_prod_wh_bin_unique" ON "inventory_levels" USING btree ("organization_id","product_id","warehouse_id","bin_id");--> statement-breakpoint
+CREATE INDEX "inv_alloc_org_idx" ON "inventory_allocations" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "inv_alloc_so_line_idx" ON "inventory_allocations" USING btree ("sales_order_line_id");--> statement-breakpoint
+CREATE INDEX "inv_alloc_product_idx" ON "inventory_allocations" USING btree ("product_id");--> statement-breakpoint
+CREATE INDEX "inv_alloc_warehouse_idx" ON "inventory_allocations" USING btree ("warehouse_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "inv_alloc_org_so_line_wh_bin_unique" ON "inventory_allocations" USING btree ("organization_id","sales_order_line_id","warehouse_id","bin_id");--> statement-breakpoint
 CREATE INDEX "inv_ledger_org_idx" ON "inventory_ledgers" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "inv_ledger_product_idx" ON "inventory_ledgers" USING btree ("product_id");--> statement-breakpoint
 CREATE INDEX "inv_ledger_warehouse_idx" ON "inventory_ledgers" USING btree ("warehouse_id");--> statement-breakpoint

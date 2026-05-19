@@ -6,14 +6,21 @@ import type { ActivityAction } from '#shared/config/activity-actions.config.js';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export type POStatus = 'draft' | 'sent' | 'partially_received' | 'received' | 'cancelled';
+export type POStatus =
+  | 'draft'
+  | 'sent'
+  | 'partially_received'
+  | 'received'
+  | 'closed'
+  | 'cancelled';
 
 export class PurchaseOrderReconciler {
   private static readonly PO_TRANSITIONS: Record<POStatus, POStatus[]> = {
     draft: ['sent', 'cancelled'],
-    sent: ['partially_received', 'received', 'cancelled'],
-    partially_received: ['received', 'cancelled'],
-    received: ['cancelled'], // Usually no transitions out of received unless cancelled
+    sent: ['partially_received', 'received', 'closed', 'cancelled'],
+    partially_received: ['received', 'closed', 'cancelled'],
+    received: ['closed', 'cancelled'],
+    closed: ['cancelled'],
     cancelled: [],
   };
 
@@ -152,6 +159,91 @@ export class PurchaseOrderReconciler {
         newStatus,
         'SYSTEM_RECONCILIATION',
         'System reconciliation of receiving',
+        tx,
+      );
+    }
+  }
+
+  /**
+   * Reconciles the billing and payment status of a Purchase Order.
+   * Transitions PO to 'closed' when all lines are fully received, fully billed, and all linked Bills are paid.
+   */
+  static async reconcileBilling(
+    organizationId: string,
+    userId: string,
+    id: string,
+    tx: Transaction,
+  ) {
+    // Root Serialization Lock
+    await tx
+      .select({ id: purchaseOrders.id })
+      .from(purchaseOrders)
+      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.organizationId, organizationId)))
+      .for('update');
+
+    const po = await tx.query.purchaseOrders.findFirst({
+      where: and(eq(purchaseOrders.id, id), eq(purchaseOrders.organizationId, organizationId)),
+      with: { lines: true },
+    });
+
+    if (!po) return;
+    if (po.status === 'cancelled' || po.status === 'draft' || po.status === 'closed') return;
+    if (po.status !== 'received') return; // Must be fully received first
+
+    // Fetch all linked non-void Bills
+    const { bills } = await import('../../db/schema/index.js');
+    const linkedBills = await tx.query.bills.findMany({
+      where: and(
+        eq(bills.purchaseOrderId, id),
+        eq(bills.organizationId, organizationId),
+        sql`${bills.deletedAt} IS NULL`,
+        sql`${bills.status} != 'void'`,
+      ),
+      with: { lines: true },
+    });
+
+    // 1. Check if all linked bills are paid
+    let allPaid = true;
+    for (const bill of linkedBills) {
+      if (bill.status !== 'paid') {
+        allPaid = false;
+        break;
+      }
+    }
+
+    if (!allPaid) return; // Cannot close if bills are pending payment
+
+    // 2. Aggregate billed quantities by PO Line Product
+    // Note: Assuming bills link to products directly and PO lines are unique per product for simplicity,
+    // or we just sum by product. Let's sum by product.
+    const billedMap: Record<string, number> = {};
+    for (const bill of linkedBills) {
+      for (const line of bill.lines) {
+        if (line.productId) {
+          billedMap[line.productId] = (billedMap[line.productId] || 0) + Number(line.quantity);
+        }
+      }
+    }
+
+    // 3. Compare with ordered quantities
+    let allBilled = true;
+    for (const poLine of po.lines) {
+      const billed = billedMap[poLine.productId] || 0;
+      const ordered = Number(poLine.quantity);
+      if (billed < ordered) {
+        allBilled = false;
+        break;
+      }
+    }
+
+    if (allBilled) {
+      await this.updateStatus(
+        organizationId,
+        userId,
+        id,
+        'closed',
+        'SYSTEM_RECONCILIATION',
+        'System reconciliation of billing and payments',
         tx,
       );
     }

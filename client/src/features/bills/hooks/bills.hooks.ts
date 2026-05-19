@@ -6,6 +6,7 @@ import type {
 } from '@shared/contracts/bills.contract';
 import { billsApi } from '../api/bills.api';
 import { activityKeys } from '../../activity/hooks/activity.hooks';
+import { purchaseOrderKeys } from '../../purchase-orders/hooks/purchase-orders.hooks';
 
 export const billKeys = {
   all: ['bills'] as const,
@@ -83,6 +84,7 @@ export function useUpdateBillStatus() {
     onSuccess: (data) => {
       queryClient.setQueryData(billKeys.detail(data.id), data);
       queryClient.invalidateQueries({ queryKey: billKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.all });
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
@@ -95,6 +97,7 @@ export function useDeleteBill() {
     mutationFn: (id: string) => billsApi.deleteBill(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: billKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.all });
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
@@ -118,6 +121,7 @@ export function useCreateBillFromReceipt() {
     mutationFn: (receiptId: string) => billsApi.createFromReceipt(receiptId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: billKeys.all });
+      queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.all });
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });

@@ -37,8 +37,50 @@ export interface SalesOrderResponse {
   customer: {
     id: string;
     companyName: string;
+    taxNumber?: string;
+    contacts: Array<{
+      isPrimary: boolean;
+      contact: {
+        firstName: string;
+        lastName: string;
+        email?: string;
+        phone?: string;
+      };
+    }>;
+    addresses: Array<{
+      address: {
+        addressLine1: string;
+        city: string;
+        state: string;
+        postalCode: string;
+        country: string;
+      };
+    }>;
   };
   lines: SalesOrderLineResponse[];
+  shipments?: Array<{
+    id: string;
+    shipmentNumber: string;
+    status: string;
+    shipmentDate: string;
+    lines: Array<{
+      id: string;
+      productId: string;
+      quantityShipped: string;
+      product: {
+        name: string;
+        sku: string;
+      };
+    }>;
+  }>;
+  invoices?: Array<{
+    id: string;
+    documentNumber: string;
+    status: string;
+    totalAmount: string;
+    balanceDue: string;
+    createdAt: string;
+  }>;
 }
 
 export const salesOrdersApi = {

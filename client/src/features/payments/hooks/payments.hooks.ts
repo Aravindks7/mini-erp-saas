@@ -7,6 +7,8 @@ import { invoiceKeys } from '../../invoices/hooks/invoices.hooks';
 import { billKeys } from '../../bills/hooks/bills.hooks';
 import { customerKeys } from '../../customers/hooks/customers.hooks';
 import { supplierKeys } from '../../suppliers/hooks/suppliers.hooks';
+import { salesOrderKeys } from '../../sales-orders/hooks/sales-orders.hooks';
+import { purchaseOrderKeys } from '../../purchase-orders/hooks/purchase-orders.hooks';
 
 export const paymentKeys = {
   all: ['payments'] as const,
@@ -73,6 +75,8 @@ export function useCreatePayment() {
       // Also invalidate related document queries as their status might have changed
       queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
       queryClient.invalidateQueries({ queryKey: billKeys.all });
+      queryClient.invalidateQueries({ queryKey: salesOrderKeys.all });
+      queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.all });
       queryClient.invalidateQueries({ queryKey: customerKeys.all });
       queryClient.invalidateQueries({ queryKey: supplierKeys.all });
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
@@ -95,6 +99,8 @@ export function useDeletePayment() {
       queryClient.invalidateQueries({ queryKey: paymentKeys.all });
       queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
       queryClient.invalidateQueries({ queryKey: billKeys.all });
+      queryClient.invalidateQueries({ queryKey: salesOrderKeys.all });
+      queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.all });
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
@@ -109,6 +115,8 @@ export function useBulkDeletePayments() {
       queryClient.invalidateQueries({ queryKey: paymentKeys.all });
       queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
       queryClient.invalidateQueries({ queryKey: billKeys.all });
+      queryClient.invalidateQueries({ queryKey: salesOrderKeys.all });
+      queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.all });
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { HelpCircle, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';

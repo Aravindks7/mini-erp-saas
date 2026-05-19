@@ -72,7 +72,7 @@ export async function createInvoice(config: {
 
   // Post to General Ledger - ONLY if NOT draft
   if (config.status !== 'draft') {
-    await PostingService.postInvoice(finalInvId, config.organizationId);
+    await PostingService.postInvoice(finalInvId, config.organizationId, db);
   }
 
   return { invId: finalInvId, amount };
@@ -130,7 +130,7 @@ export async function createPayment(config: {
 
   // Post to General Ledger - ONLY if COMPLETED
   if (config.status === 'completed' || config.status === undefined) {
-    await PostingService.postPayment(pmtId, config.organizationId);
+    await PostingService.postPayment(pmtId, config.organizationId, db);
   }
 }
 

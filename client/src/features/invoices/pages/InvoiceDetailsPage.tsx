@@ -27,7 +27,7 @@ import { AuditInfo } from '@/components/shared/AuditInfo';
 import { SkeletonLoader } from '@/components/shared/SkeletonLoader';
 import { useTenantPath } from '@/hooks/useTenantPath';
 import { APP_PATHS } from '@/lib/paths';
-import { invoiceStatusMap } from '../components/columns';
+
 import {
   Table,
   TableBody,
@@ -89,7 +89,14 @@ export default function InvoiceDetailsPage() {
 
   const handleStatusChange = (status: 'open' | 'paid' | 'void') => {
     updateStatus(
-      { id: invoice.id, data: { status } },
+      {
+        id: invoice.id,
+        data: {
+          status,
+          action: `STATUS_UPDATE_${status.toUpperCase()}`,
+          reason: `Manual status update to ${status} via Invoice Details page`,
+        },
+      },
       {
         onSuccess: () => {
           toast.success(`Invoice status updated to ${status}`);
@@ -144,7 +151,7 @@ export default function InvoiceDetailsPage() {
         ]}
       >
         <div className="hidden sm:block ml-4 border-l pl-4">
-          <StatusBadge value={invoice.status} statusMap={invoiceStatusMap} />
+          <StatusBadge value={invoice.status} entityType="invoice" />
         </div>
       </PageHeader>
 
@@ -232,7 +239,7 @@ export default function InvoiceDetailsPage() {
             <DocumentSummary
               title="Invoice Summary"
               status={invoice.status}
-              statusMap={invoiceStatusMap}
+              entityType="invoice"
               lines={[
                 {
                   label: 'Subtotal',
